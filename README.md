@@ -1,265 +1,302 @@
-# 🏢 Dealer Dashboard Analytics - 3-Folder Architecture
+# 🏗️ Dealer Dashboard - Split Architecture
 
-A comprehensive dealer dashboard system with **3-folder application architecture** featuring independent Backend API, Analytics Dashboard, and Admin Panel applications with perfect separation of concerns.
+This project implements a **split service architecture** for the Dealer Dashboard Analytics application, separating concerns into independent services.
 
-## 📁 Project Structure
+## 🏗️ Architecture Overview
 
 ```
-dealer-dashboard/
-├── 📄 Core Application Files
-│   ├── admin_app.py              # Admin panel (modular architecture)
-│   ├── dashboard_analytics.py    # Analytics dashboard
-│   ├── main.py                   # FastAPI backend
-│   ├── database.py               # Database models
-│   ├── celery_app.py             # Celery configuration
-│   └── requirements.txt          # Python dependencies
-│
-├── 🧩 Components (Modular Admin Panel)
-│   ├── components/
-│   │   ├── api_utils.py          # API communication utilities
-│   │   ├── navigation.py         # Navigation and routing
-│   │   ├── dealer_management.py  # Dealer CRUD operations
-│   │   ├── run_jobs.py           # Job execution components
-│   │   ├── job_history.py        # Job history and analytics
-│   │   └── configuration.py      # System configuration
-│
-├── 🐳 Docker & Infrastructure
-│   ├── docker/
-│   │   ├── Dockerfile            # Application container
-│   │   ├── docker-compose.yml    # Main deployment (split architecture)
-│   │   ├── docker-compose.simple.yml  # Simple deployment
-│   │   ├── docker-compose.split.yml   # Split architecture
-│   │   ├── init.sql              # Database initialization
-│   │   └── monitoring/           # Prometheus & Grafana configs
-│
-├── 📜 Scripts & Utilities
-│   ├── scripts/
-│   │   ├── start*.bat            # Windows startup scripts
-│   │   ├── start*.py             # Python startup scripts
-│   │   ├── dev_setup.py          # Development setup
-│   │   ├── fix_pandas_issues.py  # Pandas compatibility fixes
-│   │   └── insert_sample_data.py # Sample data generation
-│
-├── 🧪 Tests
-│   ├── tests/
-│   │   ├── test_api.py           # API endpoint tests
-│   │   ├── test_app.py           # Application tests
-│   │   ├── test_services.py      # Service integration tests
-│   │   └── quick_test.py         # Quick functionality tests
-│
-├── 📚 Documentation
-│   ├── docs/
-│   │   ├── README.md             # Main documentation
-│   │   ├── MODULAR_ARCHITECTURE.md  # Architecture guide
-│   │   ├── ADMIN_PANEL_FEATURES.md  # Admin panel features
-│   │   ├── TROUBLESHOOTING.md    # Issue resolution guide
-│   │   ├── DEV_GUIDE.md          # Development guide
-│   │   └── api-specs/            # API specifications
-│
-├── 🔧 Utilities & Tasks
-│   ├── tasks/                    # Celery background tasks
-│   ├── utils/                    # Utility functions
-│   └── logs/                     # Application logs
-│
-└── 🚀 Quick Start
-    ├── start.bat                 # Main startup script
-    ├── docker-compose.yml        # Main deployment config
-    └── Makefile                  # Build automation
+┌─────────────────────────────────────────────────────────────────┐
+│                    Split Service Architecture                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  📊 Analytics Dashboard (Port 8501)                            │
+│  ├─ Direct Database Connection                                  │
+│  ├─ Real-time Charts & Metrics                                 │
+│  ├─ Cached Data (5min TTL)                                     │
+│  └─ Read-only Operations                                        │
+│                                                                 │
+│  ⚙️ Admin Panel (Port 8502)                                     │
+│  ├─ API-based Communication                                     │
+│  ├─ Dealer Management                                           │
+│  ├─ Job Execution & Monitoring                                  │
+│  └─ Configuration Management                                     │
+│                                                                 │
+│  🔧 Backend API (Port 8000)                                     │
+│  ├─ RESTful API Endpoints                                       │
+│  ├─ Business Logic                                              │
+│  ├─ Database Operations                                         │
+│  └─ Job Orchestration                                           │
+│                                                                 │
+│  🔄 Celery Worker                                               │
+│  ├─ Background Job Processing                                   │
+│  ├─ Data Fetching from DGI API                                 │
+│  ├─ Database Updates                                            │
+│  └─ Error Handling & Logging                                   │
+│                                                                 │
+│  💾 PostgreSQL Database                                         │
+│  ├─ Dealers, Prospects, Units                                  │
+│  ├─ Job Logs & Configuration                                   │
+│  └─ Centralized Data Storage                                   │
+│                                                                 │
+│  🔴 Redis                                                       │
+│  ├─ Celery Message Broker                                      │
+│  ├─ Task Queue Management                                      │
+│  └─ Result Backend                                             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+## 🎯 Service Separation Benefits
+
+### 📊 **Analytics Dashboard (Port 8501)**
+- **Direct DB Access**: Faster data retrieval, no API overhead
+- **Real-time Updates**: Live charts and metrics
+- **Independent Scaling**: Can scale separately from admin functions
+- **Optimized Queries**: Database-level optimizations for analytics
+- **Caching**: Built-in data caching for performance
+
+### ⚙️ **Admin Panel (Port 8502)**
+- **API-based**: Consistent with microservice architecture
+- **Job Management**: Centralized job execution and monitoring
+- **Security**: API-level authentication and authorization
+- **Audit Trail**: All operations logged through API
+- **Flexibility**: Easy to replace or extend admin functionality
 
 ## 🚀 Quick Start
 
-### Option 1: One-Click Startup (Recommended)
-```cmd
+### Option 1: Automated Script (Recommended)
+```bash
 # Windows
-start.bat
+start_split.bat
 
-# The script will:
-# 1. Check Docker status
-# 2. Build and start all services
-# 3. Verify service health
-# 4. Open both dashboards
+# Linux/Mac
+python start_split_services.py
 ```
 
 ### Option 2: Docker Compose
 ```bash
-# Start all services
-docker-compose up -d
-
-# Wait for services to start (2-3 minutes)
-# Access the applications
+docker-compose -f docker-compose.split.yml up -d
 ```
 
-### Option 3: Development Mode
+### Option 3: Manual Setup
 ```bash
-# Use development scripts
-python scripts/start_dev.py
-scripts/start_dev.bat  # Windows
+# 1. Start external services
+docker run -d --name postgres -p 5432:5432 \
+  -e POSTGRES_DB=dealer_dashboard \
+  -e POSTGRES_USER=dealer_user \
+  -e POSTGRES_PASSWORD=dealer_pass \
+  postgres:15-alpine
+
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Setup sample data
+python insert_sample_data.py more
+
+# 4. Start services (separate terminals):
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+celery -A celery_app worker --loglevel=info
+streamlit run dashboard_analytics.py --server.port 8501
+streamlit run admin_app.py --server.port 8502
 ```
 
 ## 🌐 Service URLs
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| 📊 **Analytics Dashboard** | http://localhost:8501 | Real-time charts, metrics, data visualization |
-| ⚙️ **Admin Panel** | http://localhost:8502 | Dealer management, job execution, configuration |
-| 🔧 **Backend API** | http://localhost:8000 | RESTful endpoints, business logic |
-| 📚 **API Documentation** | http://localhost:8000/docs | Swagger/OpenAPI documentation |
-| 📊 **Prometheus** | http://localhost:9090 | Metrics collection and monitoring |
-| 📈 **Grafana** | http://localhost:3000 | Performance dashboards (admin/admin) |
-
-## 🏗️ Architecture Overview
-
-```
-📊 Analytics Dashboard (8501)          ⚙️ Admin Panel (8502)
-├─ Direct Database Connection          ├─ API-based Communication
-├─ Real-time Charts & Metrics          ├─ Modular Components
-├─ Cached Queries (5min TTL)           ├─ Dealer Management
-├─ Independent Service                 ├─ Job Execution & Monitoring
-└─ Optimized Performance               └─ Job History & Configuration
-                    │                                │
-                    └────────────────┬───────────────┘
-                                     │
-                            🔧 Backend API (8000)
-                            ├─ RESTful Endpoints
-                            ├─ Business Logic
-                            ├─ Job Orchestration
-                            └─ Database Operations
-                                     │
-                    ┌────────────────┼────────────────┐
-                    │                │                │
-            💾 PostgreSQL      🔴 Redis        📊 Monitoring
-            ├─ Dealers         ├─ Job Queue    ├─ Prometheus (9090)
-            ├─ Prospects       ├─ Results      └─ Grafana (3000)
-            └─ Job Logs        └─ Cache
-```
-
-## ⚙️ Admin Panel Features (Modular Architecture)
-
-### **🖱️ Clickable Navigation**
-- Button-based sidebar navigation
-- Visual feedback for current page
-- Persistent state management
-
-### **🏢 Dealer Management**
-- ✅ **View Dealers**: Interactive list with status indicators
-- ✅ **Add Dealers**: Form-based creation with validation
-- ✅ **Edit Dealers**: Pre-populated forms with update functionality
-- ✅ **Quick Edit**: Direct edit access from dealer list
-
-### **🚀 Job Execution**
-- ✅ **Single Dealer Jobs**: Individual dealer job execution
-- ✅ **Bulk Operations**: Run jobs for all active dealers
-- ✅ **Real-time Monitoring**: Progress tracking and status updates
-- ✅ **Results Display**: Comprehensive success/failure reporting
-
-### **📋 Job History**
-- ✅ **Execution Logs**: Filterable job history display
-- ✅ **Performance Metrics**: Success rates and analytics
-- ✅ **Search & Filter**: Advanced filtering capabilities
-- ✅ **Data Export**: CSV export functionality
+| 📊 **Analytics Dashboard** | http://localhost:8501 | Charts, metrics, data visualization |
+| ⚙️ **Admin Panel** | http://localhost:8502 | Dealer management, job execution |
+| 🔧 **Backend API** | http://localhost:8000 | RESTful API endpoints |
+| 📚 **API Documentation** | http://localhost:8000/docs | Swagger/OpenAPI docs |
+| 📈 **Health Check** | http://localhost:8000/health | Service health status |
 
 ## 📊 Analytics Dashboard Features
 
 ### **Direct Database Connection**
-- ✅ **Real-time Data**: Direct PostgreSQL queries for maximum performance
-- ✅ **Optimized Queries**: Database-level aggregations and indexing
-- ✅ **Smart Caching**: 5-minute TTL for expensive analytics operations
-- ✅ **Independent Operation**: Works without API dependencies
+- ✅ **Real-time Data**: Direct queries to PostgreSQL
+- ✅ **Optimized Performance**: Database-level aggregations
+- ✅ **Caching**: 5-minute TTL for expensive queries
+- ✅ **Independent**: No dependency on API service
 
-### **Visualization Features**
-- 📈 **Daily Prospect Trends**: Line charts showing prospect counts over time
-- 📊 **Status Distribution**: Pie charts for prospect status breakdown
-- 🏍️ **Unit Type Analysis**: Bar charts for motorcycle unit preferences
-- 🔢 **Key Metrics**: Total, recent, and active prospect counts
+### **Analytics Features**
+- 📈 **Daily Prospect Trends**: Line charts showing daily counts
+- 📊 **Status Distribution**: Pie charts for prospect statuses
+- 🏍️ **Unit Type Analysis**: Bar charts for unit preferences
+- 🔢 **Key Metrics**: Total, recent, and active prospects
+- 🕒 **Recent Activity**: Latest data fetch operations
 
-## 🛠️ Development
+### **User Experience**
+- 🔄 **Auto-refresh**: Data updates every 5 minutes
+- 📱 **Responsive**: Works on desktop and mobile
+- 🎨 **Modern UI**: Clean, professional design
+- ⚡ **Fast Loading**: Optimized queries and caching
 
-### **Local Development**
-```bash
-# Start development environment
-python scripts/start_dev.py
+## ⚙️ Admin Panel Features
 
-# Or use specific scripts
-python scripts/dev_setup.py
-scripts/start_split.bat  # Windows
+### **Dealer Management**
+- ➕ **Add Dealers**: Create new dealer accounts
+- 📋 **View Dealers**: List all active dealers
+- 🔧 **API Configuration**: Set DGI API credentials
+- ✅ **Status Management**: Activate/deactivate dealers
+
+### **Job Execution**
+- 🚀 **Manual Jobs**: Run data fetch jobs on-demand
+- 📅 **Date Range**: Specify custom date ranges
+- 🔄 **Real-time Monitoring**: Watch job progress live
+- 📊 **Progress Tracking**: Visual progress indicators
+
+### **Job History**
+- 📋 **Execution Logs**: Complete job history
+- 🔍 **Filtering**: Filter by dealer, status, date
+- 📈 **Metrics**: Success rates, duration statistics
+- 🚨 **Error Tracking**: Detailed error messages
+
+### **Configuration**
+- ⚙️ **System Settings**: API endpoints, database URLs
+- 🔧 **Future Features**: Scheduling, notifications
+
+## 🔧 Technical Implementation
+
+### **Analytics Dashboard (dashboard_analytics.py)**
+```python
+# Direct database connection
+@st.cache_resource
+def get_database_connection():
+    engine = create_engine(DATABASE_URL)
+    return sessionmaker(bind=engine)
+
+# Cached analytics queries
+@st.cache_data(ttl=300)
+def get_prospect_analytics(dealer_id):
+    # Direct SQL queries for performance
+    return analytics_data
 ```
 
-### **Testing**
-```bash
-# Run all tests
-python tests/test_services.py
+### **Admin Panel (admin_app.py)**
+```python
+# API-based operations
+def run_manual_job(dealer_id, from_time, to_time):
+    response = requests.post(f"{BACKEND_URL}/jobs/run", json=payload)
+    return response.json()
 
-# Insert sample data
-python scripts/insert_sample_data.py more
-
-# Fix common issues
-python scripts/fix_pandas_issues.py
+# Real-time job monitoring
+def monitor_job_progress(task_id):
+    # Poll job status and update UI
+    pass
 ```
 
-### **Docker Development**
-```bash
-# Build and start
-docker-compose up -d --build
+## 📊 Data Flow
 
-# View logs
-docker-compose logs -f [service_name]
-
-# Stop services
-docker-compose down
+### **Analytics Dashboard Flow**
+```
+User Request → Streamlit → Direct DB Query → Cache → Charts → User
 ```
 
-## 🔧 API Integration
-
-### **Honda DGI API**
-- **Endpoint**: `https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/prsp/read`
-- **Authentication**: API Key + Token per dealer
-- **Data**: Prospect information, customer details, unit preferences
-- **Fallback**: Intelligent dummy data generation for development/demo
-
-## 📋 Troubleshooting
-
-### **Common Issues**
-- **Pandas DataFrame Errors**: Run `python scripts/fix_pandas_issues.py`
-- **Port Conflicts**: Check `docker ps` and stop conflicting services
-- **Database Connection**: Verify PostgreSQL is running and accessible
-
-### **Service Health Checks**
-```bash
-# Check all services
-python tests/test_services.py
-
-# Individual service checks
-curl http://localhost:8000/health
-curl http://localhost:8501/_stcore/health
-curl http://localhost:8502/_stcore/health
+### **Admin Panel Flow**
+```
+User Action → Streamlit → API Request → Backend → Database → Response → UI Update
 ```
 
-### **Log Analysis**
-```bash
-# View service logs
-docker-compose logs -f analytics_dashboard
-docker-compose logs -f admin_panel
-docker-compose logs -f backend
+### **Job Execution Flow**
+```
+Admin Panel → API → Celery Task → DGI API → Database → Job Log → Admin Panel
 ```
 
-## 🎯 Benefits of Clean Structure
+## 🔒 Security & Performance
 
-✅ **Organization**: Clear separation of concerns with logical folder structure  
-✅ **Maintainability**: Easy to locate and modify specific functionality  
-✅ **Scalability**: Modular components can be developed independently  
-✅ **Testing**: Isolated test files for focused testing  
-✅ **Documentation**: Centralized documentation for easy reference  
-✅ **Deployment**: Clean Docker configuration management  
+### **Security**
+- 🔐 **Database**: Connection string with credentials
+- 🛡️ **API**: CORS configuration for cross-origin requests
+- 🔑 **Environment**: Sensitive data in environment variables
 
-## 📞 Support
+### **Performance**
+- ⚡ **Caching**: 5-minute TTL for analytics queries
+- 🚀 **Direct DB**: No API overhead for analytics
+- 📊 **Optimized Queries**: Database-level aggregations
+- 🔄 **Connection Pooling**: Efficient database connections
 
-For issues, questions, or contributions:
-1. Check the troubleshooting guide: `docs/TROUBLESHOOTING.md`
-2. Review service logs for error details
-3. Test individual services using scripts in `tests/`
-4. Consult API documentation at `/docs` endpoint
+## 🧪 Testing the Split Architecture
 
----
+### **1. Test Analytics Dashboard**
+```bash
+# Open analytics dashboard
+http://localhost:8501
 
-**🎉 Your clean, organized dealer dashboard is ready for production use!**
+# Verify:
+- Dealer selection works
+- Charts display data
+- Metrics are accurate
+- Data refreshes properly
+```
+
+### **2. Test Admin Panel**
+```bash
+# Open admin panel
+http://localhost:8502
+
+# Verify:
+- Dealer management works
+- Job execution functions
+- Job history displays
+- Real-time monitoring works
+```
+
+### **3. Test Independence**
+```bash
+# Stop admin panel
+# Analytics dashboard should still work
+
+# Stop analytics dashboard  
+# Admin panel should still work
+```
+
+## 🔄 Migration from Monolithic
+
+If migrating from the original single dashboard:
+
+1. **Backup Data**: Export existing data
+2. **Deploy Split Services**: Use provided scripts
+3. **Update Bookmarks**: New URLs for each service
+4. **Train Users**: Different URLs for different functions
+
+## 🚀 Deployment Options
+
+### **Development**
+- Use provided scripts for local development
+- Services run on localhost with different ports
+
+### **Production**
+- Use Docker Compose for container deployment
+- Configure reverse proxy (nginx) for single domain
+- Set up proper environment variables
+- Configure monitoring and logging
+
+## 📈 Monitoring & Maintenance
+
+### **Health Checks**
+- Analytics Dashboard: `http://localhost:8501/_stcore/health`
+- Admin Panel: `http://localhost:8502/_stcore/health`
+- Backend API: `http://localhost:8000/health`
+
+### **Logs**
+- Each service logs to its own terminal/container
+- Centralized logging can be configured for production
+
+### **Performance Monitoring**
+- Database query performance
+- API response times
+- Cache hit rates
+- Job execution metrics
+
+## 🎯 Benefits Summary
+
+✅ **Separation of Concerns**: Analytics vs Administration  
+✅ **Independent Scaling**: Scale services based on usage  
+✅ **Performance**: Direct DB access for analytics  
+✅ **Maintainability**: Easier to update individual services  
+✅ **User Experience**: Specialized interfaces for different users  
+✅ **Reliability**: Service failures don't affect other services  
+
+This split architecture provides a robust, scalable foundation for the Dealer Dashboard system while maintaining the simplicity of the original design.
