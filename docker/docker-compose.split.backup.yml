@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dealer_postgres
+    environment:
+      POSTGRES_DB: dealer_dashboard
+      POSTGRES_USER: dealer_user
+      POSTGRES_PASSWORD: dealer_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dealer_user -d dealer_dashboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: dealer_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build: .
+    container_name: dealer_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker
+  celery_worker:
+    build: .
+    container_name: dealer_celery_worker
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A celery_app worker --loglevel=info
+    volumes:
+      - .:/app
+
+  # Analytics Dashboard (Port 8501)
+  analytics_dashboard:
+    build: .
+    container_name: dealer_analytics_dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: streamlit run dashboard_analytics.py --server.port 8501 --server.address 0.0.0.0
+    volumes:
+      - .:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Admin Panel (Port 8502)
+  admin_panel:
+    build: .
+    container_name: dealer_admin_panel
+    ports:
+      - "8502:8502"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: streamlit run admin_app.py --server.port 8502 --server.address 0.0.0.0
+    volumes:
+      - .:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8502/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:

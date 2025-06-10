@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dealer_postgres
+    environment:
+      POSTGRES_DB: dealer_dashboard
+      POSTGRES_USER: dealer_user
+      POSTGRES_PASSWORD: dealer_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - dealer_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dealer_user -d dealer_dashboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: dealer_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - dealer_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build: .
+    container_name: dealer_backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - SENTRY_DSN=${SENTRY_DSN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dealer_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker
+  celery_worker:
+    build: .
+    container_name: dealer_celery_worker
+    command: celery -A celery_app worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - SENTRY_DSN=${SENTRY_DSN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dealer_network
+
+  # Celery Beat Scheduler
+  celery_beat:
+    build: .
+    container_name: dealer_celery_beat
+    command: celery -A celery_app beat --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - SENTRY_DSN=${SENTRY_DSN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dealer_network
+
+  # Analytics Dashboard (Port 8501) - Direct DB Connection
+  analytics_dashboard:
+    build: .
+    container_name: dealer_analytics_dashboard
+    command: streamlit run dashboard_analytics.py --server.port 8501 --server.address 0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dealer_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Admin Panel (Port 8502) - API-based Management
+  admin_panel:
+    build: .
+    container_name: dealer_admin_panel
+    command: streamlit run admin_app.py --server.port 8502 --server.address 0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - "8502:8502"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - dealer_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8502/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dealer_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - dealer_network
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dealer_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - dealer_network
+
+volumes:
+  postgres_data:
+  grafana_data:
+
+networks:
+  dealer_network:
+    driver: bridge

@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dealer_postgres
+    environment:
+      POSTGRES_DB: dealer_dashboard
+      POSTGRES_USER: dealer_user
+      POSTGRES_PASSWORD: dealer_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - dealer_network
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: dealer_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - dealer_network
+
+  # FastAPI Backend
+  backend:
+    build: .
+    container_name: dealer_backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - dealer_network
+
+  # Celery Worker
+  celery_worker:
+    build: .
+    container_name: dealer_celery_worker
+    command: celery -A celery_app worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - dealer_network
+
+  # Streamlit Dashboard
+  dashboard:
+    build: .
+    container_name: dealer_dashboard
+    command: streamlit run dashboard.py --server.port=8501 --server.address=0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - dealer_network
+
+volumes:
+  postgres_data:
+
+networks:
+  dealer_network:
+    driver: bridge

@@ -1,0 +1,977 @@
+{
+	"info": {
+		"_postman_id": "74f60327-c4b7-48d3-a8ea-df3b6e11a239",
+		"name": "DGI 1.3 UAT B",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "8812100"
+	},
+	"item": [
+		{
+			"name": "DGI 1.3 Copy",
+			"item": [
+				{
+					"name": "H1",
+					"item": [
+						{
+							"name": "Prospek",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "81d7fd22c95ba5385e05563a515868905d20419df06190ab035cf8be307a1e0c",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1684749215",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"fromTime\": \"2023-05-11 00:12:00\",\r\n  \"toTime\": \"2023-05-11 23:59:00\",\r\n  \"dealerId\": \"12284\",\r\n  \"idProspect\": \"\",\r\n  \"idSalesPeople\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/prsp/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"prsp",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "LEASING",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "22cb293df9eff03a193169cf6b57f7483a4b6d4473c5165176eb295010384ade",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"fromTime\": \"2023-04-26 00:12:00\",\r\n  \"toTime\": \"2023-04-26 23:59:00\",\r\n  \"dealerId\": \"00999\",\r\n  \"idProspect\": \"\",\r\n  \"idSalesPeople\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/lsng/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"lsng",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "DEALING SPK",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "88feca69d5d71a3f6a65c6be7730ebde7661ac521b8794b38c7fb8eafd139d25",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1688561095",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"fromTime\": \"2023-07-05 00:00:00\",\r\n    \"toTime\": \"2023-07-05 23:59:00\",\r\n  \"dealerId\": \"\",\r\n  \"idProspect\": \"\",\r\n  \"idSalesPeople\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/prsp/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"prsp",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "UNIT INBOUND - UINB",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "4ef5075bbfc69c946b771513f83fbf6942c47234aafcd1dfc8ed7ba431784742",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1684305321",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"fromTime\": \"2023-05-11 00:12:00\",\r\n  \"toTime\": \"2023-05-11 23:59:00\",\r\n  \"dealerId\": \"12284x\",\r\n  \"poId\":\"\",\r\n  \"noShippingList\":\"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/uinb/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"uinb",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "MANAGE DELIVERY - BAST",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "23c754b4bdabea03b047adf8f4d88add7b8f24fe9c950c352696a2cdf5c8d450",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"fromTime\": \"2023-05-12 00:12:00\",\r\n  \"toTime\": \"2023-05-12 23:59:00\",\r\n  \"dealerId\": \"12284\",\r\n  \"deliveryDocumentId\": \"\",\r\n  \"idSPK\": \"\",\r\n  \"idCustomer\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/bast/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"bast",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "DOCUMENT HANDLING - DOCH",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "4c5b980b7e73df57f223c561fb97e093fd4da6be3d1ba2656db9f8d0899a5612",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1688609371",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"fromTime\": \"2023-07-05 00:00:00\",\r\n    \"toTime\": \"2023-07-06 23:59:00\",\r\n  \"dealerId\": \"12284\",\r\n  \"idSPK\": \"\",\r\n  \"idCustomer\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/doch/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"doch",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "BILLING PULL - INV1",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "be3de11bdb84e2d4efb68c2dcc1e15c576a37dde856716f9193ebe2761c50183",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"fromTime\": \"2023-04-19 00:12:00\",\r\n  \"toTime\": \"2023-04-19 23:59:00\",\r\n  \"dealerId\": \"00999\",\r\n  \"idProspect\": \"\",\r\n  \"idSalesPeople\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/inv1/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"inv1",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "BILLING PUSH - INV1",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "4221e4a52221d2839f7f90e5f648e8cb11c4ac169eceb4d33fbefb7d99619f5f",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"idInvoice\":\"TJ/00999/23/04/06\",\r\n    \"idSPK\":\"100002-23-04-00033\",\r\n    \"idCustomer\":\"J10/00999/23/04/PSP/1/00181\",\r\n    \"amount\":\"500000\",\r\n    \"tipePembayaran\":1,\r\n    \"caraBayar\":1,\r\n    \"status\":1,\r\n    \"note\":\"\",\r\n    \"dealerId\": \"00999\",\r\n    \"createdTime\":\"26/04/2023 10:50:26\",\r\n    \"modifiedTime\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/inv1/add",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"inv1",
+										"add"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "INVOICE MD H1 - MDINVH1",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "2585bbba3ae5f18f12ffe229b9f4537811fb587cb58522c6628b4962c10b3dc7",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"fromTime\": \"2023-04-26 01:31:00\",\r\n    \"toTime\": \"2023-04-28 23:50:00\",\r\n    \"dealerId\": \"00999\",\r\n    \"poId\": \"\",\r\n    \"noShippingList\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/mdinvh1/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"mdinvh1",
+										"read"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "H23",
+					"item": [
+						{
+							"name": "Manage WO - PKB",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "9f43fc143af9316a178adafa71b282e53e88514f74b885064b6958c91bcd5cfb",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1688447801",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"fromTime\": \"2023-07-04 01:01:00\",\r\n    \"toTime\":\"2023-07-04 23:59:00\",\r\n    \"dealerId\":\"\",\r\n    \"noWorkOrder\":\"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/pkb/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"pkb",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Part Inbound - PINB",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response time is less than 800ms\", function (){",
+											"    pm.expect(pm.response.responseTime).to.be.below(500);",
+											"});",
+											"",
+											"pm.test(\"Object is contained\", () => {",
+											"  const expectedObject = {",
+											"    \"status\": 0,",
+											"    \"message\": null,",
+											"    \"data\": [",
+											"        \"poNumber\"",
+											"    ]",
+											"  };",
+											"  pm.expect(pm.response.json()).to.deep.include(expectedObject);",
+											"});",
+											"",
+											"// const jsonData = pm.response.json();",
+											"// pm.test(\"Status 0 = Success\", function (){",
+											"//     pm.expect(jsonData.)",
+											"// })"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "12d67ba5-1636-4f76-8859-c32388e141da",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "e81d83982140bf9e40d9363a879f90f1e07f080fc446c1ac4d8a6629767977fc",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1688457521",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"fromTime\": \"2023-07-04 00:00:00\",\r\n    \"toTime\": \"2023-07-04 23:59:00\",\r\n    \"dealerId\":\"\",\r\n    \"noPO\":\"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/pinb/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"pinb",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Manage Part Sales - PRSL",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "e3985c9950d0ac1c2ecf1f389dbc70e67a1fd6a1417f8763d747d1054d0d3d49",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n   \"fromTime\":\"2023-04-15 00:00:01\",\r\n   \"toTime\":\"2023-04-20 23:59:01\",\r\n   \"dealerId\":\"12284\",\r\n   \"noPO\":\"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/prsl/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"prsl",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "DP HLO - PULL",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "2cedc8c243aecf79ee9035610b788d67108d1b71503a706657e49a2fdbbeae5a",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n \"fromTime\": \"2021-03-19 00:00:00\",\r\n \"toTime\": \"2021-03-19 00:00:00\",\r\n \"dealerId\": \"18182\",\r\n \"noWorkOrder\": \"\",\r\n \"idHLODocument\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/dphlo/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"dphlo",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "NJB NSC - INV2 - PULL",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "ead2d1ecd6b4cb18dc814c02d33f90f2b0f7664e22196f919e4f571d03a6152c",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"fromTime\": \"2023-04-21 01:01:00\",\r\n    \"toTime\":\"2023-04-21 23:59:00\",\r\n    \"dealerId\":\"06539\",\r\n    \"noWorkOrder\":\"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/inv2/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"inv2",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "UNPAID HLO - PULL",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "2cedc8c243aecf79ee9035610b788d67108d1b71503a706657e49a2fdbbeae5a",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n   \"fromTime\":\"2021-05-24 00:00:00\",\r\n   \"toTime\":\"2021-05-31 23:59:00\",\r\n   \"dealerId\":\"18182\",\r\n   \"noWorkOrder\":\"\",\r\n   \"idHLODocument\":\"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/unpaidhlo/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"unpaidhlo",
+										"read"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "NJB & NSC - INV2 - PUSH",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "706ba246f6e515c8091df7c4bde4136cfe89df6e7cef15055dbd505d1eee4c8e",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"noWorkOrder\": \"WO-06539-23-04-04129\",\r\n    \"noNJB\": \"NJB/06539/23/04/00001\",\r\n    \"tanggalNJB\": \"21/04/2023 16:16:31\",\r\n    \"totalHargaNJB\": 146250,\r\n    \"noNSC\": \"NSC/06539/23/04/00001\",\r\n    \"tanggalNSC\": \"21/04/2023 16:16:31\",\r\n    \"totalHargaNSC\": 118000,\r\n    \"hondaIdSA\": \"\",\r\n    \"hondaIdMekanik\": \"NONE\",\r\n    \"dealerId\": \"06539\",\r\n    \"createdTime\": \"21/04/2023 13:08:45\",\r\n    \"modifiedTime\": \"21/04/2023 16:16:31\",\r\n    \"njb\": [\r\n        {\r\n            \"idJob\": \"SO062\",\r\n            \"hargaServis\": 105000,\r\n            \"promoIdJasa\": \"\",\r\n            \"discServiceAmount\": 0,\r\n            \"discServicePercentage\": 0.0,\r\n            \"totalHargaServis\": 105000,\r\n            \"createdTime\": \"21/04/2023 12:40:55\",\r\n            \"modifiedTime\": \"21/04/2023 12:40:55\"\r\n        },\r\n        {\r\n            \"idJob\": \"SO081\",\r\n            \"hargaServis\": 7500,\r\n            \"promoIdJasa\": \"\",\r\n            \"discServiceAmount\": 0,\r\n            \"discServicePercentage\": 0.0,\r\n            \"totalHargaServis\": 7500,\r\n            \"createdTime\": \"21/04/2023 12:40:55\",\r\n            \"modifiedTime\": \"21/04/2023 12:40:55\"\r\n        },\r\n        {\r\n            \"idJob\": \"SO081\",\r\n            \"hargaServis\": 33750,\r\n            \"promoIdJasa\": \"\",\r\n            \"discServiceAmount\": 0,\r\n            \"discServicePercentage\": 0.0,\r\n            \"totalHargaServis\": 33750,\r\n            \"createdTime\": \"21/04/2023 12:40:55\",\r\n            \"modifiedTime\": \"21/04/2023 12:40:55\"\r\n        }\r\n    ],\r\n    \"nsc\": [\r\n        {\r\n            \"idJob\": \"SO081\",\r\n            \"partsNumber\": \"06455K46N21\",\r\n            \"kuantitas\": 1,\r\n            \"hargaParts\": 54055,\r\n            \"promoIdParts\": \"\",\r\n            \"discPartsAmount\": 0,\r\n            \"discPartsPercentage\": 0.0,\r\n            \"ppn\": 5946,\r\n            \"totalHargaParts\": 60000,\r\n            \"uangMuka\": 0,\r\n            \"createdTime\": \"21/04/2023 12:40:55\",\r\n            \"modifiedTime\": \"21/04/2023 12:40:55\"\r\n        },\r\n        {\r\n            \"idJob\": \"SO081\",\r\n            \"partsNumber\": \"082322MBK0LZ1\",\r\n            \"kuantitas\": 1,\r\n            \"hargaParts\": 52253,\r\n            \"promoIdParts\": \"\",\r\n            \"discPartsAmount\": 0,\r\n            \"discPartsPercentage\": 0.0,\r\n            \"ppn\": 5748,\r\n            \"totalHargaParts\": 58000,\r\n            \"uangMuka\": 0,\r\n            \"createdTime\": \"21/04/2023 12:40:55\",\r\n            \"modifiedTime\": \"21/04/2023 12:40:55\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/inv2/add",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"inv2",
+										"add"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "DP HLO - PUSH",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "6c796097-a453-420f-9a19-155a2a24513e",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-Token",
+										"value": "2cedc8c243aecf79ee9035610b788d67108d1b71503a706657e49a2fdbbeae5a",
+										"type": "text"
+									},
+									{
+										"key": "X-Request-Time",
+										"value": "1679891293",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n            \"noInvoiceUangJaminan\": \"INV-001\",\r\n            \"idHLODocument\": \"PODRAFT-100002-290421-14\",\r\n            \"tanggalPemesananHLO\": \"29/04/2021\",\r\n            \"noWorkOrder\": \"WO-00999-00005161\",\r\n            \"idCustomer\": \"1111111111111222\",\r\n            \"dealerId\": \"00999\",\r\n            \"createdTime\": \"2021/04/29 11:48:46\",\r\n            \"modifiedTime\": \"2021/04/29 11:48:46:\",\r\n            \"parts\": [\r\n               {\r\n                    \"partsNumber\": \"17239MFL000\",\r\n                    \"kuantitas\": 1,\r\n                    \"hargaParts\": 42000,\r\n                    \"totalHargaParts\": 42000,\r\n                    \"uangMuka\": 29400,\r\n                    \"sisaBayar\": 12600,\r\n                    \"createdTime\": \"29/04/2021 17:13:28\",\r\n                    \"modifiedTime\": \"29/04/2021 17:13:28\"\r\n                }\r\n            ]\r\n        }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/dphlo/add",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"dphlo",
+										"add"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "INVOICE MD H3 - MDINVH3",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "DGI-API-KEY",
+										"value": "12d67ba5-1636-4f76-8859-c32388e141da",
+										"type": "text"
+									},
+									{
+										"key": "DGI-API-TOKEN",
+										"value": "585efa10505ade520931f3b1a4f194b8fc7d114b52b90aa59d7cd6367439a1cc",
+										"type": "text"
+									},
+									{
+										"key": "X-REQUEST-TIME",
+										"value": "1688456834",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"fromTime\": \"2023-07-04 01:01:00\",\r\n    \"toTime\": \"2023-07-04 23:59:00\",\r\n    \"dealerId\": \"\",\r\n    \"noPO\": \"\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/mdinvh3/read",
+									"protocol": "https",
+									"host": [
+										"dev-gvt-gateway",
+										"eksad",
+										"com"
+									],
+									"path": [
+										"dgi-api",
+										"v1.3",
+										"mdinvh3",
+										"read"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "UAT B CRM",
+			"item": [
+				{
+					"name": "1. CRM/MDMS - Leads MD (API 3)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "DGI-API-KEY",
+								"value": "1ae9e5ec-d7e7-46fe-86d6-d2a5fb88f6b5",
+								"type": "text"
+							},
+							{
+								"key": "DGI-API-Token",
+								"value": "4d7c23341eff85841a0cb2cfb6bbb105758c3838e98eb070b0fa4797f9dfe1ee",
+								"type": "text"
+							},
+							{
+								"key": "X-Request-Time",
+								"value": "1689469018",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"prospects\": [\r\n        {\r\n            \"leadsID\": \"UH1202307000001\",\r\n            \"nama\": \"DAW LIMA\",\r\n            \"noHP\": \"085281810005\",\r\n            \"email\": \"\",\r\n            \"customerType\": \"R\",\r\n            \"kabupaten\": \"7501\",\r\n            \"assignedDealer\": \"12173\",\r\n            \"tanggalAssignDealer\": \"2023-07-16 06:30:54\",\r\n            \"noFramePembelianSebelumnya\": \"\",\r\n            \"kodeLeasingPembelianSebelumnya\": \"\",\r\n            \"tanggalNextFU\": \"2023-07-18\",\r\n            \"statusProspect\": \"1\",\r\n            \"keteranganNextFU\": \"\",\r\n            \"kodeTipeMotorProspect\": \"\",\r\n            \"kodeWarnaMotorProspect\": \"\",\r\n            \"batasWaktuSLA2\": \"2023-07-18 06:30:54\",\r\n            \"noTelp\": \"\",\r\n            \"provinsi\": \"7500\",\r\n            \"kelurahan\": \"7501040005\",\r\n            \"kecamatan\": \"750104\",\r\n            \"facebook\": \"\",\r\n            \"instagram\": \"\",\r\n            \"twitter\": \"\"\r\n        }\r\n    ],\r\n    \"interactions\": [\r\n        {\r\n            \"leadsID\": \"UH1202307000001\",\r\n            \"interactionID\": \"1\",\r\n            \"nama\": \"DAW LIMA\",\r\n            \"noHP\": \"085281810005\",\r\n            \"email\": \"\",\r\n            \"customerType\": \"R\",\r\n            \"eventCodeInvitation\": \"\",\r\n            \"customerActionDate\": \"2023-07-16 00:10:53\",\r\n            \"kabupaten\": \"7501\",\r\n            \"cmsSource\": \"5\",\r\n            \"segmentMotor\": \"\",\r\n            \"seriesMotor\": \"\",\r\n            \"deskripsiEvent\": \"CRM JULI 2023\",\r\n            \"kodeTypeUnit\": \"\",\r\n            \"kodeWarnaUnit\": \"\",\r\n            \"minatRidingTest\": \"\",\r\n            \"jadwalRidingTest\": \"\",\r\n            \"sourceData\": \"48\",\r\n            \"platformData\": \"D\",\r\n            \"noTelp\": \"\",\r\n            \"provinsi\": \"7500\",\r\n            \"kelurahan\": \"7501040005\",\r\n            \"kecamatan\": \"750104\",\r\n            \"keterangan\": \"\",\r\n            \"promoUnit\": \"\",\r\n            \"facebook\": \"\",\r\n            \"instagram\": \"\",\r\n            \"twitter\": \"\"\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://dev-gvt-gateway.eksad.com/uat-crm/v1.0/prospect",
+							"protocol": "https",
+							"host": [
+								"dev-gvt-gateway",
+								"eksad",
+								"com"
+							],
+							"path": [
+								"uat-crm",
+								"v1.0",
+								"prospect"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
