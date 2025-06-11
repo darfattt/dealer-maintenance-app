@@ -5,9 +5,9 @@ import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, and_, or_
 from sqlalchemy.orm import sessionmaker
-from database import Dealer, ProspectData, ProspectUnit, FetchLog
+from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart
 
 # Load environment variables
 load_dotenv()
@@ -151,7 +151,7 @@ def get_recent_fetch_logs(dealer_id, limit=10):
         ).order_by(
             FetchLog.completed_at.desc()
         ).limit(limit).all()
-        
+
         return [{
             "status": log.status,
             "records_fetched": log.records_fetched,
@@ -161,11 +161,118 @@ def get_recent_fetch_logs(dealer_id, limit=10):
     finally:
         db.close()
 
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_prospect_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get prospect data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(ProspectData).filter(ProspectData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            search_filter = or_(
+                ProspectData.nama_lengkap.ilike(f"%{search_term}%"),
+                ProspectData.no_kontak.ilike(f"%{search_term}%"),
+                ProspectData.id_prospect.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter)
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        prospects = query.order_by(ProspectData.tanggal_prospect.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries
+        data = []
+        for prospect in prospects:
+            data.append({
+                "ID Prospect": prospect.id_prospect,
+                "Nama Lengkap": prospect.nama_lengkap,
+                "No Kontak": prospect.no_kontak,
+                "Tanggal Prospect": prospect.tanggal_prospect.strftime('%Y-%m-%d') if prospect.tanggal_prospect else None,
+                "Status": prospect.status_prospect,
+                "Sumber": prospect.sumber_prospect,
+                "Alamat": prospect.alamat[:50] + "..." if prospect.alamat and len(prospect.alamat) > 50 else prospect.alamat,
+                "Sales People": prospect.id_sales_people,
+                "Created": prospect.created_time.strftime('%Y-%m-%d %H:%M') if prospect.created_time else None
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_pkb_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get PKB data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(PKBData).filter(PKBData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            search_filter = or_(
+                PKBData.no_work_order.ilike(f"%{search_term}%"),
+                PKBData.nama_pemilik.ilike(f"%{search_term}%"),
+                PKBData.no_polisi.ilike(f"%{search_term}%"),
+                PKBData.no_rangka.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter)
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        pkb_records = query.order_by(PKBData.tanggal_servis.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries
+        data = []
+        for pkb in pkb_records:
+            data.append({
+                "No Work Order": pkb.no_work_order,
+                "Tanggal Servis": pkb.tanggal_servis,
+                "Nama Pemilik": pkb.nama_pemilik,
+                "No Polisi": pkb.no_polisi,
+                "No Rangka": pkb.no_rangka,
+                "Tipe Unit": pkb.kode_tipe_unit,
+                "KM Terakhir": pkb.km_terakhir,
+                "Total Biaya": f"Rp {pkb.total_biaya_service:,.0f}" if pkb.total_biaya_service else "N/A",
+                "Status": pkb.status_work_order,
+                "Created": pkb.created_time
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
 # Main app
 st.markdown('<div class="main-header">📊 Dealer Analytics Dashboard</div>', unsafe_allow_html=True)
 
-# Sidebar for dealer selection
+# Sidebar for navigation
 st.sidebar.title("📊 Analytics Dashboard")
+st.sidebar.markdown("---")
+
+# Menu navigation
+menu_options = {
+    "🏠 Home": "home",
+    "👥 Prospect Data": "prospect",
+    "🔧 PKB Data": "pkb"
+}
+
+selected_menu = st.sidebar.selectbox(
+    "Navigation",
+    options=list(menu_options.keys()),
+    index=0
+)
+
+current_page = menu_options[selected_menu]
+
 st.sidebar.markdown("---")
 
 # Get dealers
@@ -191,36 +298,36 @@ if st.sidebar.button("🔄 Refresh Data"):
 st.sidebar.markdown("---")
 st.sidebar.info("🔗 **Admin Panel**: http://localhost:8502")
 
-# Main content
-if selected_dealer_id:
+def render_home_page(dealer_id):
+    """Render the home analytics page"""
     # Get analytics data
-    analytics = get_prospect_analytics(selected_dealer_id)
-    
+    analytics = get_prospect_analytics(dealer_id)
+
     # Key metrics
     st.subheader("📈 Key Metrics")
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         st.metric(
             label="Total Prospects",
             value=analytics['total_prospects'],
             delta=None
         )
-    
+
     with col2:
         st.metric(
             label="Recent (7 days)",
             value=analytics['recent_prospects'],
             delta=None
         )
-    
+
     with col3:
         st.metric(
             label="Active Prospects",
             value=analytics['active_prospects'],
             delta=None
         )
-    
+
     with col4:
         success_rate = 85  # Placeholder
         st.metric(
@@ -228,21 +335,21 @@ if selected_dealer_id:
             value=f"{success_rate}%",
             delta="5%"
         )
-    
+
     st.markdown("---")
-    
+
     # Charts section
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.subheader("📅 Daily Prospect Trends")
         if analytics['daily_counts']:
             df_daily = pd.DataFrame(analytics['daily_counts'])
             df_daily['date'] = pd.to_datetime(df_daily['date'])
-            
+
             fig_line = px.line(
-                df_daily, 
-                x='date', 
+                df_daily,
+                x='date',
                 y='count',
                 title="Daily Prospect Count",
                 markers=True
@@ -255,21 +362,21 @@ if selected_dealer_id:
             st.plotly_chart(fig_line, use_container_width=True)
         else:
             st.info("No daily data available")
-    
+
     with col2:
         st.subheader("📊 Status Distribution")
         if analytics['status_distribution']:
             df_status = pd.DataFrame(analytics['status_distribution'])
-            
+
             # Map status codes to labels
             status_labels = {
                 '1': 'New',
-                '2': 'In Progress', 
+                '2': 'In Progress',
                 '3': 'Completed',
                 '4': 'Cancelled'
             }
             df_status['status_label'] = df_status['status'].map(status_labels)
-            
+
             fig_pie = px.pie(
                 df_status,
                 values='count',
@@ -279,12 +386,12 @@ if selected_dealer_id:
             st.plotly_chart(fig_pie, use_container_width=True)
         else:
             st.info("No status data available")
-    
+
     # Unit distribution chart
     st.subheader("🏍️ Unit Type Distribution")
     if analytics['unit_distribution']:
         df_units = pd.DataFrame(analytics['unit_distribution'])
-        
+
         fig_bar = px.bar(
             df_units,
             x='unit',
@@ -301,12 +408,12 @@ if selected_dealer_id:
         st.plotly_chart(fig_bar, use_container_width=True)
     else:
         st.info("No unit data available")
-    
+
     # Recent activity
     st.markdown("---")
     st.subheader("🕒 Recent Data Fetch Activity")
 
-    recent_logs = get_recent_fetch_logs(selected_dealer_id)
+    recent_logs = get_recent_fetch_logs(dealer_id)
     if recent_logs and len(recent_logs) > 0:
         df_logs = pd.DataFrame(recent_logs)
 
@@ -343,6 +450,148 @@ if selected_dealer_id:
             st.metric("Recent Success", "0/0")
         with col3:
             st.metric("Avg Duration", "N/A")
+
+def render_prospect_data_page(dealer_id):
+    """Render the prospect data table page"""
+    st.subheader("👥 Prospect Data")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search by name, phone, or prospect ID...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'prospect_page' not in st.session_state:
+        st.session_state.prospect_page = 1
+
+    # Get data
+    data, total_count = get_prospect_data_table(dealer_id, st.session_state.prospect_page, page_size, search_term)
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.prospect_page}")
+
+    if data:
+        # Display data table
+        df = pd.DataFrame(data)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+        # Pagination controls
+        total_pages = (total_count + page_size - 1) // page_size
+
+        if total_pages > 1:
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+            with col1:
+                if st.button("⏮️ First") and st.session_state.prospect_page > 1:
+                    st.session_state.prospect_page = 1
+                    st.rerun()
+
+            with col2:
+                if st.button("⏪ Previous") and st.session_state.prospect_page > 1:
+                    st.session_state.prospect_page -= 1
+                    st.rerun()
+
+            with col3:
+                st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.prospect_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+            with col4:
+                if st.button("Next ⏩") and st.session_state.prospect_page < total_pages:
+                    st.session_state.prospect_page += 1
+                    st.rerun()
+
+            with col5:
+                if st.button("Last ⏭️") and st.session_state.prospect_page < total_pages:
+                    st.session_state.prospect_page = total_pages
+                    st.rerun()
+    else:
+        st.warning("No prospect data found for the selected dealer.")
+
+def render_pkb_data_page(dealer_id):
+    """Render the PKB data table page"""
+    st.subheader("🔧 PKB (Service Record) Data")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search by work order, owner name, or plate number...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'pkb_page' not in st.session_state:
+        st.session_state.pkb_page = 1
+
+    # Get data
+    data, total_count = get_pkb_data_table(dealer_id, st.session_state.pkb_page, page_size, search_term)
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.pkb_page}")
+
+    if data:
+        # Display data table
+        df = pd.DataFrame(data)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+        # Pagination controls
+        total_pages = (total_count + page_size - 1) // page_size
+
+        if total_pages > 1:
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+            with col1:
+                if st.button("⏮️ First") and st.session_state.pkb_page > 1:
+                    st.session_state.pkb_page = 1
+                    st.rerun()
+
+            with col2:
+                if st.button("⏪ Previous") and st.session_state.pkb_page > 1:
+                    st.session_state.pkb_page -= 1
+                    st.rerun()
+
+            with col3:
+                st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.pkb_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+            with col4:
+                if st.button("Next ⏩") and st.session_state.pkb_page < total_pages:
+                    st.session_state.pkb_page += 1
+                    st.rerun()
+
+            with col5:
+                if st.button("Last ⏭️") and st.session_state.pkb_page < total_pages:
+                    st.session_state.pkb_page = total_pages
+                    st.rerun()
+    else:
+        st.warning("No PKB data found for the selected dealer.")
+
+# Main content routing
+if selected_dealer_id:
+    if current_page == "home":
+        # Home page - existing analytics dashboard
+        render_home_page(selected_dealer_id)
+    elif current_page == "prospect":
+        # Prospect data page
+        render_prospect_data_page(selected_dealer_id)
+    elif current_page == "pkb":
+        # PKB data page
+        render_pkb_data_page(selected_dealer_id)
 
 # Footer
 st.markdown("---")
