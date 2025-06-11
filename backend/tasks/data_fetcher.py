@@ -1,13 +1,13 @@
 from celery import current_task
 from celery_app import celery_app
-from database import SessionLocal, Dealer, ProspectData, ProspectUnit, FetchLog, FetchConfiguration, PKBData, PKBService, PKBPart
+from database import SessionLocal, Dealer, ProspectData, ProspectUnit, FetchLog, FetchConfiguration, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO
 from datetime import datetime, timedelta, date
 import logging
 from typing import Dict, List, Any
 
 # Import our modular components
-from .api_clients import ProspectAPIClient, PKBAPIClient, initialize_default_api_configs
-from .dummy_data_generators import get_dummy_prospect_data, get_dummy_pkb_data, should_use_dummy_data
+from .api_clients import ProspectAPIClient, PKBAPIClient, PartsInboundAPIClient, initialize_default_api_configs
+from .dummy_data_generators import get_dummy_prospect_data, get_dummy_pkb_data, get_dummy_parts_inbound_data, should_use_dummy_data
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -70,8 +70,12 @@ def fetch_prospect_data(self, dealer_id: str, from_time: str = None, to_time: st
             raise ValueError(f"API returned error: {api_data.get('message', 'Unknown error')}")
         
         records_processed = 0
-        prospects_data = api_data.get("data", [])
-        
+        prospects_data = api_data.get("data") or []
+
+        # Ensure we have a list to iterate over
+        if not isinstance(prospects_data, list):
+            prospects_data = []
+
         for prospect in prospects_data:
             # Parse date
             tanggal_prospect = None
@@ -295,7 +299,11 @@ def fetch_pkb_data(self, dealer_id: str, from_time: str = None, to_time: str = N
             raise ValueError(f"PKB API returned error: {api_data.get('message', 'Unknown error')}")
 
         records_processed = 0
-        pkb_records = api_data.get("data", [])
+        pkb_records = api_data.get("data") or []
+
+        # Ensure we have a list to iterate over
+        if not isinstance(pkb_records, list):
+            pkb_records = []
 
         for pkb in pkb_records:
             # Check if PKB record already exists
@@ -452,6 +460,148 @@ def fetch_pkb_data(self, dealer_id: str, from_time: str = None, to_time: str = N
     finally:
         db.close()
 
+@celery_app.task(bind=True)
+def fetch_parts_inbound_data(self, dealer_id: str, from_time: str = None, to_time: str = None, no_po: str = ""):
+    """
+    Fetch Parts Inbound data for a specific dealer
+    """
+    db = SessionLocal()
+    start_time = datetime.utcnow()
 
+    try:
+        # Get dealer information
+        dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
+        if not dealer:
+            raise ValueError(f"Dealer {dealer_id} not found")
 
+        if not dealer.is_active:
+            logger.info(f"Dealer {dealer_id} is inactive, skipping Parts Inbound fetch")
+            return {"status": "skipped", "reason": "dealer_inactive"}
 
+        # Set default time range if not provided
+        if not from_time or not to_time:
+            today = date.today()
+            from_time = f"{today} 00:00:00"
+            to_time = f"{today} 23:59:59"
+
+        # Use API client for Parts Inbound data fetching
+        try:
+            # Check if dealer should use dummy data
+            if should_use_dummy_data(dealer_id):
+                logger.info(f"Using dummy Parts Inbound data for dealer {dealer_id}")
+                api_data = get_dummy_parts_inbound_data(dealer_id, from_time, to_time, no_po)
+            else:
+                # Use real API client
+                client = PartsInboundAPIClient()
+                api_data = client.fetch_data(dealer_id, from_time, to_time, dealer.api_key, dealer.secret_key, no_po)
+                logger.info(f"Parts Inbound API call successful for dealer {dealer_id}")
+        except Exception as api_error:
+            logger.warning(f"Parts Inbound API call failed for dealer {dealer_id}: {api_error}")
+            logger.info("Falling back to dummy Parts Inbound data for demonstration")
+            # Fallback to dummy data
+            api_data = get_dummy_parts_inbound_data(dealer_id, from_time, to_time, no_po)
+
+        # Process the response
+        if api_data.get("status") != 1:
+            raise ValueError(f"Parts Inbound API returned error: {api_data.get('message', 'Unknown error')}")
+
+        records_processed = 0
+        parts_inbound_records = api_data.get("data") or []
+
+        # Ensure we have a list to iterate over
+        if not isinstance(parts_inbound_records, list):
+            parts_inbound_records = []
+
+        for parts_inbound in parts_inbound_records:
+            # Check if Parts Inbound record already exists
+            existing_parts_inbound = db.query(PartsInboundData).filter(
+                PartsInboundData.dealer_id == dealer_id,
+                PartsInboundData.no_penerimaan == parts_inbound.get("noPenerimaan")
+            ).first()
+
+            if existing_parts_inbound:
+                # Update existing record
+                parts_inbound_record = existing_parts_inbound
+                parts_inbound_record.modified_time = parts_inbound.get("modifiedTime")
+                parts_inbound_record.fetched_at = datetime.utcnow()
+            else:
+                # Create new record
+                parts_inbound_record = PartsInboundData(
+                    dealer_id=dealer_id,
+                    no_penerimaan=parts_inbound.get("noPenerimaan"),
+                    tgl_penerimaan=parts_inbound.get("tglPenerimaan"),
+                    no_shipping_list=parts_inbound.get("noShippingList"),
+                    created_time=parts_inbound.get("createdTime"),
+                    modified_time=parts_inbound.get("modifiedTime")
+                )
+                db.add(parts_inbound_record)
+
+            # Handle PO items (only for new records to avoid duplicates)
+            if not existing_parts_inbound:
+                po_items = parts_inbound.get("po") or []
+                if not isinstance(po_items, list):
+                    po_items = []
+
+                for po_item in po_items:
+                    parts_inbound_po = PartsInboundPO(
+                        parts_inbound_data_id=parts_inbound_record.id,
+                        no_po=po_item.get("noPO"),
+                        jenis_order=po_item.get("jenisOrder"),
+                        id_warehouse=po_item.get("idWarehouse"),
+                        parts_number=po_item.get("partsNumber"),
+                        kuantitas=po_item.get("kuantitas"),
+                        uom=po_item.get("uom"),
+                        created_time=po_item.get("createdTime"),
+                        modified_time=po_item.get("modifiedTime")
+                    )
+                    db.add(parts_inbound_po)
+
+            records_processed += 1
+
+        # Commit all changes
+        db.commit()
+
+        # Log successful fetch
+        duration = int((datetime.utcnow() - start_time).total_seconds())
+        fetch_log = FetchLog(
+            dealer_id=dealer_id,
+            fetch_type="parts_inbound_data",
+            status="success",
+            records_fetched=records_processed,
+            fetch_duration_seconds=duration,
+            started_at=start_time,
+            completed_at=datetime.utcnow()
+        )
+        db.add(fetch_log)
+        db.commit()
+
+        logger.info(f"Successfully fetched {records_processed} Parts Inbound records for dealer {dealer_id}")
+
+        return {
+            "status": "success",
+            "dealer_id": dealer_id,
+            "records_processed": records_processed,
+            "duration_seconds": duration
+        }
+
+    except Exception as e:
+        # Log failed fetch
+        duration = int((datetime.utcnow() - start_time).total_seconds())
+        fetch_log = FetchLog(
+            dealer_id=dealer_id,
+            fetch_type="parts_inbound_data",
+            status="failed",
+            records_fetched=0,
+            error_message=str(e),
+            fetch_duration_seconds=duration,
+            started_at=start_time,
+            completed_at=datetime.utcnow()
+        )
+        db.add(fetch_log)
+        db.commit()
+
+        logger.error(f"Failed to fetch Parts Inbound data for dealer {dealer_id}: {e}")
+        raise
+
+    finally:
+        db.close()

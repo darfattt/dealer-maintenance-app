@@ -63,7 +63,7 @@ def render_single_dealer_jobs(dealers: List[Dict[str, Any]]):
 
         # Data type selection
         st.markdown("**📊 Select Data Type to Fetch:**")
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
         with col1:
             fetch_prospect = st.checkbox("🎯 Prospect Data", value=True, help="Fetch customer prospect data")
@@ -71,7 +71,10 @@ def render_single_dealer_jobs(dealers: List[Dict[str, Any]]):
         with col2:
             fetch_pkb = st.checkbox("🔧 PKB Data (Service Records)", value=False, help="Fetch service record data")
 
-        if not fetch_prospect and not fetch_pkb:
+        with col3:
+            fetch_parts_inbound = st.checkbox("📦 Parts Inbound", value=False, help="Fetch parts receiving data")
+
+        if not fetch_prospect and not fetch_pkb and not fetch_parts_inbound:
             st.warning("⚠️ Please select at least one data type to fetch")
 
         st.markdown("---")
@@ -81,8 +84,8 @@ def render_single_dealer_jobs(dealers: List[Dict[str, Any]]):
             run_single_job = st.form_submit_button("🔄 Run Data Fetch Job", use_container_width=True)
 
     if run_single_job:
-        if fetch_prospect or fetch_pkb:
-            execute_single_job(selected_dealer, from_date, to_date, fetch_prospect, fetch_pkb)
+        if fetch_prospect or fetch_pkb or fetch_parts_inbound:
+            execute_single_job(selected_dealer, from_date, to_date, fetch_prospect, fetch_pkb, fetch_parts_inbound)
         else:
             st.error("❌ Please select at least one data type to fetch")
 
@@ -125,7 +128,7 @@ def render_bulk_dealer_jobs(dealers: List[Dict[str, Any]]):
 
         # Data type selection for bulk jobs
         st.markdown("**📊 Select Data Types to Fetch for All Dealers:**")
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
         with col1:
             fetch_prospect_all = st.checkbox("🎯 Prospect Data", value=True, key="prospect_all", help="Fetch customer prospect data")
@@ -133,7 +136,10 @@ def render_bulk_dealer_jobs(dealers: List[Dict[str, Any]]):
         with col2:
             fetch_pkb_all = st.checkbox("🔧 PKB Data (Service Records)", value=False, key="pkb_all", help="Fetch service record data")
 
-        if not fetch_prospect_all and not fetch_pkb_all:
+        with col3:
+            fetch_parts_inbound_all = st.checkbox("📦 Parts Inbound", value=False, key="parts_inbound_all", help="Fetch parts receiving data")
+
+        if not fetch_prospect_all and not fetch_pkb_all and not fetch_parts_inbound_all:
             st.warning("⚠️ Please select at least one data type to fetch")
 
         st.markdown("---")
@@ -144,12 +150,12 @@ def render_bulk_dealer_jobs(dealers: List[Dict[str, Any]]):
             run_all_jobs = st.form_submit_button("🚀 Run Jobs for All Dealers", use_container_width=True)
 
     if run_all_jobs:
-        if fetch_prospect_all or fetch_pkb_all:
-            execute_bulk_jobs(active_dealers, from_date_all, to_date_all, fetch_prospect_all, fetch_pkb_all)
+        if fetch_prospect_all or fetch_pkb_all or fetch_parts_inbound_all:
+            execute_bulk_jobs(active_dealers, from_date_all, to_date_all, fetch_prospect_all, fetch_pkb_all, fetch_parts_inbound_all)
         else:
             st.error("❌ Please select at least one data type to fetch")
 
-def execute_single_job(dealer_id: str, from_date: date, to_date: date, fetch_prospect: bool, fetch_pkb: bool):
+def execute_single_job(dealer_id: str, from_date: date, to_date: date, fetch_prospect: bool, fetch_pkb: bool, fetch_parts_inbound: bool):
     """Execute a single dealer job"""
     if from_date <= to_date:
         from_time = f"{from_date} 00:00:00"
@@ -170,6 +176,13 @@ def execute_single_job(dealer_id: str, from_date: date, to_date: date, fetch_pro
                 result = run_manual_job(dealer_id, from_time, to_time, "pkb")
                 if result:
                     jobs_started.append(("PKB Data", result))
+
+        # Start Parts Inbound data job if selected
+        if fetch_parts_inbound:
+            with st.spinner("🔄 Starting Parts Inbound Data job..."):
+                result = run_manual_job(dealer_id, from_time, to_time, "parts_inbound")
+                if result:
+                    jobs_started.append(("Parts Inbound Data", result))
 
         if jobs_started:
             st.success(f"✅ {len(jobs_started)} job(s) started successfully!")
@@ -192,7 +205,7 @@ def execute_single_job(dealer_id: str, from_date: date, to_date: date, fetch_pro
     else:
         st.error("❌ From date must be before or equal to To date")
 
-def execute_bulk_jobs(active_dealers: List[Dict[str, Any]], from_date: date, to_date: date, fetch_prospect: bool, fetch_pkb: bool):
+def execute_bulk_jobs(active_dealers: List[Dict[str, Any]], from_date: date, to_date: date, fetch_prospect: bool, fetch_pkb: bool, fetch_parts_inbound: bool):
     """Execute jobs for all active dealers"""
     if from_date <= to_date:
         from_time = f"{from_date} 00:00:00"
@@ -213,6 +226,13 @@ def execute_bulk_jobs(active_dealers: List[Dict[str, Any]], from_date: date, to_
                 pkb_results = run_jobs_for_all_dealers(from_time, to_time, "pkb")
                 if pkb_results:
                     all_results.extend([(r, "PKB Data") for r in pkb_results])
+
+        # Execute Parts Inbound data jobs if selected
+        if fetch_parts_inbound:
+            with st.spinner(f"🔄 Starting Parts Inbound Data jobs for {len(active_dealers)} dealers..."):
+                parts_inbound_results = run_jobs_for_all_dealers(from_time, to_time, "parts_inbound")
+                if parts_inbound_results:
+                    all_results.extend([(r, "Parts Inbound Data") for r in parts_inbound_results])
 
         if all_results:
             st.success(f"✅ Started {len(all_results)} job(s)!")

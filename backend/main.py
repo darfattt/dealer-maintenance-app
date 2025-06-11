@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import get_db, create_tables, Dealer, FetchConfiguration, ProspectData, FetchLog, PKBData, PKBService, PKBPart, APIConfiguration
+from database import get_db, create_tables, Dealer, FetchConfiguration, ProspectData, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, APIConfiguration
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime, date
@@ -166,7 +166,8 @@ class ManualFetchRequest(BaseModel):
     dealer_id: str
     from_time: Optional[str] = None
     to_time: Optional[str] = None
-    fetch_type: Optional[str] = "prospect"  # prospect or pkb
+    fetch_type: Optional[str] = "prospect"  # prospect, pkb, or parts_inbound
+    no_po: Optional[str] = ""  # For parts_inbound filtering
 
 # API Endpoints
 
@@ -505,6 +506,14 @@ async def initialize_api_configurations(db: Session = Depends(get_db)):
             is_active=True,
             timeout_seconds=30,
             retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_parts_inbound_api",
+            base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            description="DGI API for Parts Inbound Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
         )
     ]
 
@@ -573,14 +582,20 @@ async def run_job(request: ManualFetchRequest, db: Session = Depends(get_db)):
     if request.fetch_type == "pkb":
         task_name = "tasks.data_fetcher.fetch_pkb_data"
         message = "PKB data fetch job started"
+        task_args = [request.dealer_id, request.from_time, request.to_time]
+    elif request.fetch_type == "parts_inbound":
+        task_name = "tasks.data_fetcher.fetch_parts_inbound_data"
+        message = "Parts Inbound data fetch job started"
+        task_args = [request.dealer_id, request.from_time, request.to_time, request.no_po]
     else:
         task_name = "tasks.data_fetcher.fetch_prospect_data"
         message = "Prospect data fetch job started"
+        task_args = [request.dealer_id, request.from_time, request.to_time]
 
     # Trigger Celery task
     task = celery_app.send_task(
         task_name,
-        args=[request.dealer_id, request.from_time, request.to_time]
+        args=task_args
     )
 
     return {

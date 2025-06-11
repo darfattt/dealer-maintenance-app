@@ -241,3 +241,83 @@ def get_dummy_pkb_data(dealer_id: str, from_time: str, to_time: str) -> Dict[str
         "message": None,
         "data": pkb_records
     }
+
+def get_dummy_parts_inbound_data(dealer_id: str, from_time: str, to_time: str, no_po: str = "") -> Dict[str, Any]:
+    """Generate dummy Parts Inbound data for demonstration"""
+
+    # Only generate dummy data for specific dealer
+    if not should_use_dummy_data(dealer_id):
+        return {
+            "status": 0,
+            "message": f"No dummy data available for dealer {dealer_id}. Please configure real API credentials.",
+            "data": []
+        }
+
+    # Parse time range
+    try:
+        start_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+        end_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+    except:
+        start_date = datetime.now() - timedelta(days=1)
+        end_date = datetime.now()
+
+    # Generate multiple Parts Inbound records for the date range
+    parts_inbound_records = []
+    current_date = start_date
+
+    parts_numbers = [
+        "272A0KCJ660", "372A0KCJ660", "15400-KVB-901", "06435-KVB-000",
+        "91201-KVB-003", "42450-KVB-000", "35010-KVB-000", "17220-KVB-000"
+    ]
+
+    warehouses = ["WH123", "WH124", "WH125", "WH126", "WH127"]
+    jenis_orders = ["1", "2", "3"]  # Different order types
+    uoms = ["pcs", "set", "unit", "box"]
+
+    while current_date <= end_date:
+        # Generate 1-2 Parts Inbound records per day
+        for _ in range(random.randint(1, 2)):
+            receipt_num = random.randint(1, 999)
+
+            parts_inbound_record = {
+                "noPenerimaan": f"RCV/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{receipt_num:04d}",
+                "tglPenerimaan": current_date.strftime("%d/%m/%Y"),
+                "noShippingList": f"SPL/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{receipt_num:04d}",
+                "dealerId": dealer_id,
+                "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "po": []
+            }
+
+            # Generate PO items for this receipt
+            num_po_items = random.randint(1, 4)
+            for po_idx in range(num_po_items):
+                po_number = f"PO{dealer_id}{current_date.strftime('%y%m')}{random.randint(1000, 9999)}"
+
+                # Filter by noPO if specified
+                if no_po and no_po not in po_number:
+                    continue
+
+                po_item = {
+                    "noPO": po_number,
+                    "jenisOrder": random.choice(jenis_orders),
+                    "idWarehouse": random.choice(warehouses),
+                    "partsNumber": random.choice(parts_numbers),
+                    "kuantitas": random.randint(10, 500),
+                    "uom": random.choice(uoms),
+                    "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                    "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+                }
+                parts_inbound_record["po"].append(po_item)
+
+            # Only add record if it has PO items (in case of noPO filter)
+            if parts_inbound_record["po"]:
+                parts_inbound_records.append(parts_inbound_record)
+
+        current_date += timedelta(days=1)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": parts_inbound_records
+    }

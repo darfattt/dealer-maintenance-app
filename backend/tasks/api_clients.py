@@ -105,6 +105,35 @@ class PKBAPIClient:
             response.raise_for_status()
             return response.json()
 
+class PartsInboundAPIClient:
+    """Client for Parts Inbound API calls"""
+
+    def __init__(self):
+        self.config = APIConfigManager.get_api_config("dgi_parts_inbound_api") or APIConfigManager.get_default_config()
+        self.endpoint = "/pinb/read"
+
+    def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str, no_po: str = "") -> Dict[str, Any]:
+        """Fetch Parts Inbound data from DGI API"""
+        # Generate token using token manager
+        token_manager = DGITokenManager(api_key, secret_key)
+        headers = token_manager.get_headers()
+
+        payload = {
+            "fromTime": from_time,
+            "toTime": to_time,
+            "dealerId": dealer_id,
+            "noPO": no_po
+        }
+
+        url = f"{self.config['base_url']}{self.endpoint}"
+
+        logger.info(f"Calling Parts Inbound API for dealer {dealer_id} at {url}")
+
+        with httpx.Client(timeout=self.config['timeout_seconds']) as client:
+            response = client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+
 def initialize_default_api_configs():
     """Initialize default API configurations in database"""
     db = SessionLocal()
@@ -126,9 +155,17 @@ def initialize_default_api_configs():
                 retry_attempts=3
             ),
             APIConfiguration(
-                config_name="dgi_pkb_api", 
+                config_name="dgi_pkb_api",
                 base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for PKB (Service Record) Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_parts_inbound_api",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for Parts Inbound Data",
                 is_active=True,
                 timeout_seconds=30,
                 retry_attempts=3

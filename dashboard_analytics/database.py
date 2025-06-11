@@ -34,6 +34,7 @@ class Dealer(Base):
     prospect_data = relationship("ProspectData", back_populates="dealer")
     fetch_logs = relationship("FetchLog", back_populates="dealer")
     pkb_data = relationship("PKBData", back_populates="dealer")
+    parts_inbound_data = relationship("PartsInboundData", back_populates="dealer")
 
 class FetchConfiguration(Base):
     __tablename__ = "fetch_configurations"
@@ -224,6 +225,39 @@ class PKBPart(Base):
 
     # Relationships
     pkb_data = relationship("PKBData", back_populates="parts")
+
+class PartsInboundData(Base):
+    __tablename__ = "parts_inbound_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    no_penerimaan = Column(String(100), nullable=False, index=True)
+    tgl_penerimaan = Column(String(20))
+    no_shipping_list = Column(String(100))
+    created_time = Column(String(50))
+    modified_time = Column(String(50))
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="parts_inbound_data")
+    po_items = relationship("PartsInboundPO", back_populates="parts_inbound_data", cascade="all, delete-orphan")
+
+class PartsInboundPO(Base):
+    __tablename__ = "parts_inbound_po"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    parts_inbound_data_id = Column(UUID(as_uuid=True), ForeignKey("parts_inbound_data.id", ondelete="CASCADE"))
+    no_po = Column(String(100))
+    jenis_order = Column(String(10))
+    id_warehouse = Column(String(50))
+    parts_number = Column(String(100))
+    kuantitas = Column(Integer)
+    uom = Column(String(20))
+    created_time = Column(String(50))
+    modified_time = Column(String(50))
+
+    # Relationships
+    parts_inbound_data = relationship("PartsInboundData", back_populates="po_items")
 
 class APIConfiguration(Base):
     __tablename__ = "api_configurations"
