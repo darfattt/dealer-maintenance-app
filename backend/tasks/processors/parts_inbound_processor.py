@@ -3,6 +3,7 @@ Parts Inbound data processor - handles Parts Inbound data fetching and processin
 """
 from datetime import datetime
 from typing import Dict, Any
+from sqlalchemy import text
 
 from database import Dealer, PartsInboundData, PartsInboundPO
 from ..api_clients import PartsInboundAPIClient
@@ -41,13 +42,30 @@ class PartsInboundDataProcessor(BaseDataProcessor):
         """Process Parts Inbound records and save to database"""
         records_processed = 0
         parts_inbound_records = self.ensure_list_data(api_data.get("data"))
+
+        # Ensure database session is in good state
+        try:
+            db.execute(text("SELECT 1"))
+        except Exception as session_error:
+            self.logger.warning(f"Database session issue, attempting to recover: {session_error}")
+            # Try to rollback and continue
+            try:
+                db.rollback()
+            except Exception:
+                pass
         
         for parts_inbound in parts_inbound_records:
             # Check if Parts Inbound record already exists
-            existing_parts_inbound = db.query(PartsInboundData).filter(
-                PartsInboundData.dealer_id == dealer_id,
-                PartsInboundData.no_penerimaan == parts_inbound.get("noPenerimaan")
-            ).first()
+            existing_parts_inbound = None
+            try:
+                existing_parts_inbound = db.query(PartsInboundData).filter(
+                    PartsInboundData.dealer_id == dealer_id,
+                    PartsInboundData.no_penerimaan == parts_inbound.get("noPenerimaan")
+                ).first()
+            except Exception as query_error:
+                self.logger.warning(f"Error querying existing Parts Inbound record: {query_error}")
+                # Continue with creating new record if query fails
+                existing_parts_inbound = None
             
             if existing_parts_inbound:
                 # Update existing record
@@ -65,7 +83,9 @@ class PartsInboundDataProcessor(BaseDataProcessor):
                     modified_time=parts_inbound.get("modifiedTime")
                 )
                 db.add(parts_inbound_record)
-            
+                # Flush to get the ID for relationships
+                db.flush()
+
             # Handle PO items (only for new records to avoid duplicates)
             if not existing_parts_inbound:
                 po_items = self.ensure_list_data(parts_inbound.get("po"))

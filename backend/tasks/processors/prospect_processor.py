@@ -3,6 +3,7 @@ Prospect data processor - handles prospect data fetching and processing
 """
 from datetime import datetime
 from typing import Dict, Any
+from sqlalchemy import text
 
 from database import Dealer, ProspectData, ProspectUnit, FetchConfiguration
 from ..api_clients import ProspectAPIClient
@@ -39,6 +40,17 @@ class ProspectDataProcessor(BaseDataProcessor):
         """Process prospect records and save to database"""
         records_processed = 0
         prospects_data = self.ensure_list_data(api_data.get("data"))
+
+        # Ensure database session is in good state
+        try:
+            db.execute(text("SELECT 1"))
+        except Exception as session_error:
+            self.logger.warning(f"Database session issue, attempting to recover: {session_error}")
+            # Try to rollback and continue
+            try:
+                db.rollback()
+            except Exception:
+                pass
         
         for prospect in prospects_data:
             # Parse dates and times
@@ -49,10 +61,16 @@ class ProspectDataProcessor(BaseDataProcessor):
             modified_time = self._parse_datetime(prospect.get("modifiedTime"))
             
             # Check if prospect already exists
-            existing_prospect = db.query(ProspectData).filter(
-                ProspectData.dealer_id == dealer_id,
-                ProspectData.id_prospect == prospect.get("idProspect")
-            ).first()
+            existing_prospect = None
+            try:
+                existing_prospect = db.query(ProspectData).filter(
+                    ProspectData.dealer_id == dealer_id,
+                    ProspectData.id_prospect == prospect.get("idProspect")
+                ).first()
+            except Exception as query_error:
+                self.logger.warning(f"Error querying existing prospect: {query_error}")
+                # Continue with creating new record if query fails
+                existing_prospect = None
             
             if existing_prospect:
                 # Update existing record
@@ -98,14 +116,16 @@ class ProspectDataProcessor(BaseDataProcessor):
                     modified_time=modified_time
                 )
                 db.add(prospect_record)
-            
+                # Flush to get the ID for relationships
+                db.flush()
+
             # Handle units (only for new records to avoid duplicates)
             if not existing_prospect:
                 units = self.ensure_list_data(prospect.get("unit"))
                 for unit in units:
                     unit_created_time = self._parse_datetime(unit.get("createdTime"))
                     unit_modified_time = self._parse_datetime(unit.get("modifiedTime"))
-                    
+
                     prospect_unit = ProspectUnit(
                         prospect_data_id=prospect_record.id,
                         kode_tipe_unit=unit.get("kodeTipeUnit"),
@@ -118,13 +138,17 @@ class ProspectDataProcessor(BaseDataProcessor):
             records_processed += 1
         
         # Update fetch configuration
-        fetch_config = db.query(FetchConfiguration).filter(
-            FetchConfiguration.dealer_id == dealer_id,
-            FetchConfiguration.is_active == True
-        ).first()
-        
-        if fetch_config:
-            fetch_config.last_fetch_at = datetime.utcnow()
+        try:
+            fetch_config = db.query(FetchConfiguration).filter(
+                FetchConfiguration.dealer_id == dealer_id,
+                FetchConfiguration.is_active == True
+            ).first()
+
+            if fetch_config:
+                fetch_config.last_fetch_at = datetime.utcnow()
+        except Exception as config_error:
+            self.logger.warning(f"Error updating fetch configuration: {config_error}")
+            # Continue without updating fetch config if query fails
         
         return records_processed
     

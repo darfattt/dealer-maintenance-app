@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, date
 from typing import Dict, Any, Optional
 import logging
+from sqlalchemy import text
 
 from database import SessionLocal, Dealer, FetchLog
 
@@ -79,48 +80,94 @@ class BaseDataProcessor(ABC):
     
     def execute(self, dealer_id: str, from_time: str = None, to_time: str = None, **kwargs) -> Dict[str, Any]:
         """Main execution method - template pattern"""
-        db = SessionLocal()
+        db = None
         start_time = datetime.utcnow()
-        
+
         try:
+            # Create database session with retry logic
+            db = self._create_db_session()
+
             # Get dealer information
             dealer = self.get_dealer_info(db, dealer_id)
-            
+
             # Set default time range
             from_time, to_time = self.set_default_time_range(from_time, to_time)
-            
+
             # Fetch API data
             api_data = self.fetch_api_data(dealer, from_time, to_time, **kwargs)
-            
+
             # Validate response
             self.validate_api_response(api_data)
-            
+
             # Process records
             records_processed = self.process_records(db, dealer_id, api_data)
-            
+
             # Commit all changes
             db.commit()
-            
+
             # Log successful fetch
             duration = int((datetime.utcnow() - start_time).total_seconds())
             self.log_fetch_result(db, dealer_id, "success", records_processed, duration, start_time)
-            
+
             self.logger.info(f"Successfully fetched {records_processed} {self.fetch_type} records for dealer {dealer_id}")
-            
+
             return {
                 "status": "success",
                 "dealer_id": dealer_id,
                 "records_processed": records_processed,
                 "duration_seconds": duration
             }
-            
+
         except Exception as e:
-            # Log failed fetch
+            # Rollback on error
+            if db:
+                try:
+                    db.rollback()
+                except Exception as rollback_error:
+                    self.logger.error(f"Error during rollback: {rollback_error}")
+
+            # Log failed fetch with a new session if needed
             duration = int((datetime.utcnow() - start_time).total_seconds())
-            self.log_fetch_result(db, dealer_id, "failed", 0, duration, start_time, str(e))
-            
+            self._log_error_safely(dealer_id, duration, start_time, str(e))
+
             self.logger.error(f"Failed to fetch {self.fetch_type} data for dealer {dealer_id}: {e}")
             raise
-            
+
         finally:
-            db.close()
+            if db:
+                try:
+                    db.close()
+                except Exception as close_error:
+                    self.logger.error(f"Error closing database session: {close_error}")
+
+    def _create_db_session(self):
+        """Create database session with retry logic"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                db = SessionLocal()
+                # Test the connection
+                db.execute(text("SELECT 1"))
+                return db
+            except Exception as e:
+                self.logger.warning(f"Database connection attempt {attempt + 1} failed: {e}")
+                if attempt == max_retries - 1:
+                    raise
+                # Wait before retry
+                import time
+                time.sleep(1)
+
+    def _log_error_safely(self, dealer_id: str, duration: int, start_time: datetime, error_message: str):
+        """Log error with a separate database session"""
+        error_db = None
+        try:
+            error_db = SessionLocal()
+            self.log_fetch_result(error_db, dealer_id, "failed", 0, duration, start_time, error_message)
+        except Exception as log_error:
+            self.logger.error(f"Failed to log error to database: {log_error}")
+        finally:
+            if error_db:
+                try:
+                    error_db.close()
+                except Exception:
+                    pass

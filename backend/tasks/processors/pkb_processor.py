@@ -3,6 +3,7 @@ PKB data processor - handles PKB (Service Record) data fetching and processing
 """
 from datetime import datetime, date
 from typing import Dict, Any
+from sqlalchemy import text
 
 from database import Dealer, PKBData, PKBService, PKBPart
 from ..api_clients import PKBAPIClient
@@ -47,13 +48,30 @@ class PKBDataProcessor(BaseDataProcessor):
         """Process PKB records and save to database"""
         records_processed = 0
         pkb_records = self.ensure_list_data(api_data.get("data"))
+
+        # Ensure database session is in good state
+        try:
+            db.execute(text("SELECT 1"))
+        except Exception as session_error:
+            self.logger.warning(f"Database session issue, attempting to recover: {session_error}")
+            # Try to rollback and continue
+            try:
+                db.rollback()
+            except Exception:
+                pass
         
         for pkb in pkb_records:
             # Check if PKB record already exists
-            existing_pkb = db.query(PKBData).filter(
-                PKBData.dealer_id == dealer_id,
-                PKBData.no_work_order == pkb.get("noWorkOrder")
-            ).first()
+            existing_pkb = None
+            try:
+                existing_pkb = db.query(PKBData).filter(
+                    PKBData.dealer_id == dealer_id,
+                    PKBData.no_work_order == pkb.get("noWorkOrder")
+                ).first()
+            except Exception as query_error:
+                self.logger.warning(f"Error querying existing PKB record: {query_error}")
+                # Continue with creating new record if query fails
+                existing_pkb = None
             
             if existing_pkb:
                 # Update existing record
@@ -115,7 +133,9 @@ class PKBDataProcessor(BaseDataProcessor):
                     modified_time=pkb.get("modifiedTime")
                 )
                 db.add(pkb_record)
-            
+                # Flush to get the ID for relationships
+                db.flush()
+
             # Handle services (only for new records to avoid duplicates)
             if not existing_pkb:
                 services = self.ensure_list_data(pkb.get("services"))

@@ -12,7 +12,7 @@ celery_app = Celery(
     "dealer_dashboard",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["tasks.data_fetcher"]
+    include=["tasks.data_fetcher", "tasks.data_fetcher_router"]
 )
 
 # Celery configuration
@@ -33,7 +33,7 @@ celery_app.conf.update(
 celery_app.conf.beat_schedule = {
     # Default health check task
     'health-check': {
-        'task': 'tasks.data_fetcher.health_check',
+        'task': 'tasks.data_fetcher_router.health_check',
         'schedule': crontab(minute='*/5'),  # Every 5 minutes
     },
     # Dynamic schedules will be added by the scheduler
