@@ -1,0 +1,243 @@
+"""
+Dummy Data Generators for Testing
+Provides sample data for dealers that don't have real API access
+"""
+
+import random
+from datetime import datetime, timedelta
+from typing import Dict, List, Any
+
+# Special dealer ID that gets dummy data
+DUMMY_DATA_DEALER_ID = "12284"
+DUMMY_DATA_DEALER_UUID = "e3a18c82-c500-450f-b6e1-5c5fbe68bf41"
+
+def should_use_dummy_data(dealer_id: str) -> bool:
+    """Check if dealer should use dummy data"""
+    return dealer_id in [DUMMY_DATA_DEALER_ID, DUMMY_DATA_DEALER_UUID]
+
+def get_dummy_prospect_data(dealer_id: str, from_time: str, to_time: str) -> Dict[str, Any]:
+    """Generate dummy prospect data for demonstration"""
+    
+    # Only generate dummy data for specific dealer
+    if not should_use_dummy_data(dealer_id):
+        return {
+            "status": 0,
+            "message": f"No dummy data available for dealer {dealer_id}. Please configure real API credentials.",
+            "data": []
+        }
+    
+    # Parse time range
+    try:
+        start_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+        end_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+    except:
+        start_date = datetime.now() - timedelta(days=1)
+        end_date = datetime.now()
+
+    # Generate multiple prospects for the date range
+    prospects = []
+    current_date = start_date
+
+    names = ["Ahmad Wijaya", "Siti Nurhaliza", "Budi Santoso", "Dewi Sartika", "Eko Prasetyo"]
+    unit_types = ["PCX160", "VARIO125", "VARIO150", "BEAT", "SCOOPY"]
+
+    while current_date <= end_date:
+        # Generate 1-3 prospects per day
+        for i in range(random.randint(1, 3)):
+            prospect_id = f"PSP/{dealer_id}/{current_date.strftime('%y%m')}/{random.randint(1000, 9999)}"
+
+            prospect = {
+                "idProspect": prospect_id,
+                "sumberProspect": random.choice(["0001", "0002", "0003"]),
+                "tanggalProspect": current_date.strftime("%d/%m/%Y"),
+                "taggingProspect": random.choice(["Yes", "No"]),
+                "namaLengkap": random.choice(names),
+                "noKontak": f"081{random.randint(10000000, 99999999)}",
+                "noKtp": f"32{random.randint(10000000000000, 99999999999999)}",
+                "alamat": f"Jl. Sample No. {random.randint(1, 999)} RT 001, RW 002",
+                "kodePropinsi": "3100",
+                "kodeKota": "3101",
+                "kodeKecamatan": "317404",
+                "kodeKelurahan": "3174040001",
+                "kodePos": "14130",
+                "latitude": f"{random.uniform(-6.5, -6.0):.6f}",
+                "longitude": f"{random.uniform(106.5, 107.0):.6f}",
+                "alamatKantor": "",
+                "kodePropinsiKantor": "",
+                "kodeKotaKantor": "",
+                "kodeKecamatanKantor": "",
+                "kodeKelurahanKantor": "",
+                "kodePosKantor": "",
+                "kodePekerjaan": str(random.randint(1, 5)),
+                "noKontakKantor": f"021{random.randint(1000000, 9999999)}",
+                "tanggalAppointment": (current_date + timedelta(days=random.randint(1, 7))).strftime("%d/%m/%Y"),
+                "waktuAppointment": f"{random.randint(9, 17):02d}:{random.choice(['00', '30'])}",
+                "metodeFollowUp": str(random.randint(1, 3)),
+                "testRidePreference": str(random.randint(1, 2)),
+                "statusFollowUpProspecting": str(random.randint(1, 3)),
+                "statusProspect": str(random.randint(1, 4)),
+                "idSalesPeople": f"SP{random.randint(1000, 9999)}",
+                "idEvent": f"EV/E/K0Z/{dealer_id}/{current_date.strftime('%y%m')}/{random.randint(1, 100):03d}",
+                "dealerId": dealer_id,
+                "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "unit": [
+                    {
+                        "kodeTipeUnit": random.choice(unit_types),
+                        "salesProgramId": f"PRM/{random.randint(1000, 9999)}/{current_date.strftime('%y%m')}/001",
+                        "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                        "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+                    }
+                ]
+            }
+            prospects.append(prospect)
+
+        current_date += timedelta(days=1)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": prospects
+    }
+
+def get_dummy_pkb_data(dealer_id: str, from_time: str, to_time: str) -> Dict[str, Any]:
+    """Generate dummy PKB data for demonstration"""
+    
+    # Only generate dummy data for specific dealer
+    if not should_use_dummy_data(dealer_id):
+        return {
+            "status": 0,
+            "message": f"No dummy data available for dealer {dealer_id}. Please configure real API credentials.",
+            "data": []
+        }
+    
+    # Parse time range
+    try:
+        start_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+        end_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+    except:
+        start_date = datetime.now() - timedelta(days=1)
+        end_date = datetime.now()
+
+    # Generate multiple PKB records for the date range
+    pkb_records = []
+    current_date = start_date
+
+    names = ["DELIYA OKTAFIANI", "DWI SURAHMA PATLUH", "AHMAD WIJAYA", "SITI NURHALIZA", "BUDI SANTOSO"]
+    unit_types = ["AB", "PCX160", "VARIO125", "VARIO150", "BEAT"]
+    no_polisi_list = ["E 5807 YBG", "B 0040 DWI", "D 1234 ABC", "F 5678 XYZ", "H 9012 DEF"]
+
+    while current_date <= end_date:
+        # Generate 1-2 PKB records per day
+        for _ in range(random.randint(1, 2)):
+            work_order_num = random.randint(1, 999)
+            work_order_type = random.choice(["WO", "JR"])
+            
+            pkb_record = {
+                "noWorkOrder": f"{work_order_type}-{dealer_id}-{current_date.strftime('%y-%m')}-{work_order_num:05d}",
+                "noSAForm": f"SAF/{dealer_id}/{current_date.strftime('%y/%m')}/{work_order_num:05d}",
+                "tanggalServis": current_date.strftime("%d/%m/%Y"),
+                "waktuPKB": current_date.strftime("%d/%m/%Y %H:%M:%S") if random.choice([True, False]) else "",
+                "noPolisi": random.choice(no_polisi_list),
+                "noRangka": f"KFB117NK{random.randint(100000, 999999)}",
+                "noMesin": f"KFB1E1{random.randint(100000, 999999)}",
+                "kodeTipeUnit": random.choice(unit_types),
+                "tahunMotor": str(random.randint(2019, 2023)),
+                "informasiBensin": str(random.randint(0, 1)),
+                "kmTerakhir": random.randint(5000, 50000),
+                "tipeComingCustomer": "1",
+                "namaPemilik": random.choice(names),
+                "alamatPemilik": f"DUSUN SAMPLE RT {random.randint(1, 10):03d}/{random.randint(1, 10):03d}",
+                "kodePropinsiPemilik": "3200",
+                "kodeKotaPemilik": str(random.randint(3201, 3299)),
+                "kodeKecamatanPemilik": f"32{random.randint(10, 99)}{random.randint(10, 99)}",
+                "kodeKelurahanPemilik": f"32{random.randint(10, 99)}{random.randint(10, 99)}{random.randint(1000, 9999)}",
+                "kodePosPemilik": str(random.randint(40000, 49999)),
+                "alamatPembawa": f"DUSUN SAMPLE RT {random.randint(1, 10):03d}/{random.randint(1, 10):03d}",
+                "kodePropinsiPembawa": "3200",
+                "kodeKotaPembawa": str(random.randint(3201, 3299)),
+                "kodeKecamatanPembawa": f"32{random.randint(10, 99)}{random.randint(10, 99)}",
+                "kodeKelurahanPembawa": f"32{random.randint(10, 99)}{random.randint(10, 99)}{random.randint(1000, 9999)}",
+                "kodePosPembawa": str(random.randint(40000, 49999)),
+                "namaPembawa": random.choice(names),
+                "noTelpPembawa": f"08{random.randint(10000000000, 99999999999)}",
+                "hubunganDenganPemilik": "2",
+                "keluhanKonsumen": random.choice(["", "Mesin kasar", "Rem blong", "Lampu mati"]),
+                "rekomendasiSA": random.choice(["", "Ganti oli", "Service berkala", "Perbaikan rem"]),
+                "hondaIdSA": "",
+                "hondaIdMekanik": f"MK{random.randint(100000000, 999999999)}",
+                "saranMekanik": "",
+                "asalUnitEntry": "NP",
+                "idPIT": str(random.randint(1, 20)),
+                "jenisPIT": "1",
+                "waktuPendaftaran": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "waktuSelesai": (current_date + timedelta(hours=random.randint(1, 4))).strftime("%d/%m/%Y %H:%M:%S") if random.choice([True, False]) else "",
+                "totalFRT": f"{random.randint(0, 2):02d}:{random.randint(0, 59):02d}",
+                "setUpPembayaran": str(random.randint(0, 1)),
+                "catatanTambahan": "",
+                "konfirmasiPekerjaanTambahan": "0",
+                "noBukuClaimC2": str(random.randint(1000000, 9999999)) if random.choice([True, False]) else "",
+                "noWorkOrderJobReturn": f"JR-{dealer_id}-{current_date.strftime('%y-%m')}-{work_order_num:05d}" if work_order_type == "JR" else "",
+                "totalBiayaService": random.randint(0, 500000),
+                "waktuPekerjaan": f"{random.randint(0, 2):02d}:{random.randint(0, 59):02d}",
+                "statusWorkOrder": str(random.randint(1, 5)),
+                "dealerId": dealer_id,
+                "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "services": [],
+                "parts": []
+            }
+            
+            # Add random services
+            if random.choice([True, False]):
+                service_jobs = ["SL081", "SL082", "SL083", "SL084", "SL085"]
+                service_names = ["JASA PASANG 60000", "JASA SERVICE BERKALA", "JASA TUNE UP", "JASA GANTI OLI", "JASA PERBAIKAN REM"]
+                
+                for _ in range(random.randint(0, 2)):
+                    service = {
+                        "idJob": random.choice(service_jobs),
+                        "namaPekerjaan": random.choice(service_names),
+                        "jenisPekerjaan": random.choice(["LIGHT REPAIR", "HEAVY REPAIR", "MAINTENANCE"]),
+                        "biayaService": random.randint(50000, 200000),
+                        "promoIdJasa": "",
+                        "discServiceAmount": 0,
+                        "discServicePercentage": 0.0,
+                        "totalHargaServis": random.randint(50000, 200000),
+                        "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                        "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+                    }
+                    pkb_record["services"].append(service)
+            
+            # Add random parts
+            if random.choice([True, False]):
+                parts_numbers = ["35010K1TJF0", "15400K1TJF0", "06435K1TJF0", "91201K1TJF0", "42450K1TJF0"]
+                
+                for _ in range(random.randint(0, 3)):
+                    harga_parts = random.randint(50000, 2000000)
+                    ppn = int(harga_parts * 0.11)
+                    
+                    part = {
+                        "idJob": "",
+                        "partsNumber": random.choice(parts_numbers),
+                        "hargaParts": harga_parts,
+                        "promoIdParts": "",
+                        "discPartsAmount": 0,
+                        "discPartsPercentage": 0.0,
+                        "ppn": ppn,
+                        "totalHargaParts": harga_parts + ppn,
+                        "uangMuka": 0,
+                        "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                        "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                        "kuantitas": random.randint(1, 3)
+                    }
+                    pkb_record["parts"].append(part)
+            
+            pkb_records.append(pkb_record)
+
+        current_date += timedelta(days=1)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": pkb_records
+    }

@@ -1,20 +1,23 @@
 from celery import current_task
 from celery_app import celery_app
-from database import SessionLocal, Dealer, ProspectData, ProspectUnit, FetchLog, FetchConfiguration
+from database import SessionLocal, Dealer, ProspectData, ProspectUnit, FetchLog, FetchConfiguration, PKBData, PKBService, PKBPart
 from datetime import datetime, timedelta, date
-import httpx
-import os
 import logging
-import time
 from typing import Dict, List, Any
-import json
+
+# Import our modular components
+from .api_clients import ProspectAPIClient, PKBAPIClient, initialize_default_api_configs
+from .dummy_data_generators import get_dummy_prospect_data, get_dummy_pkb_data, should_use_dummy_data
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# API Configuration
-DGI_API_BASE_URL = os.getenv("DGI_API_BASE_URL", "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3")
+# Initialize API configurations on module load
+try:
+    initialize_default_api_configs()
+except Exception as e:
+    logger.warning(f"Failed to initialize API configs: {e}")
 
 @celery_app.task(bind=True)
 def health_check(self):
@@ -45,37 +48,21 @@ def fetch_prospect_data(self, dealer_id: str, from_time: str = None, to_time: st
             from_time = f"{today} 00:00:00"
             to_time = f"{today} 23:59:59"
         
-        # Prepare API request
-        headers = {
-            "DGI-API-KEY": dealer.api_key,
-            "DGI-API-Token": dealer.api_token,
-            "X-Request-Time": str(int(time.time())),
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "fromTime": from_time,
-            "toTime": to_time,
-            "dealerId": dealer_id,
-            "idProspect": "",
-            "idSalesPeople": ""
-        }
-        
-        # Make API request
-        url = f"{DGI_API_BASE_URL}/prsp/read"
-        
-        # Try real API first, fallback to dummy data if needed
+        # Use API client for data fetching
         try:
-            logger.info(f"Calling DGI API for dealer {dealer_id}")
-            with httpx.Client(timeout=30.0) as client:
-                response = client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                api_data = response.json()
-                logger.info(f"API call successful for dealer {dealer_id}")
+            # Check if dealer should use dummy data
+            if should_use_dummy_data(dealer_id):
+                logger.info(f"Using dummy data for dealer {dealer_id}")
+                api_data = get_dummy_prospect_data(dealer_id, from_time, to_time)
+            else:
+                # Use real API client
+                client = ProspectAPIClient()
+                api_data = client.fetch_data(dealer_id, from_time, to_time, dealer.api_key, dealer.secret_key)
+                logger.info(f"Prospect API call successful for dealer {dealer_id}")
         except Exception as api_error:
-            logger.warning(f"API call failed for dealer {dealer_id}: {api_error}")
-            logger.info("Using dummy data for demonstration")
-            # Use dummy data for demonstration
+            logger.warning(f"Prospect API call failed for dealer {dealer_id}: {api_error}")
+            logger.info("Falling back to dummy data for demonstration")
+            # Fallback to dummy data
             api_data = get_dummy_prospect_data(dealer_id, from_time, to_time)
         
         # Process the response
@@ -262,81 +249,209 @@ def fetch_prospect_data(self, dealer_id: str, from_time: str = None, to_time: st
     finally:
         db.close()
 
-def get_dummy_prospect_data(dealer_id: str, from_time: str, to_time: str) -> Dict[str, Any]:
-    """Generate dummy prospect data for demonstration"""
-    import random
-    from datetime import datetime, timedelta
+@celery_app.task(bind=True)
+def fetch_pkb_data(self, dealer_id: str, from_time: str = None, to_time: str = None):
+    """
+    Fetch PKB (Service Record) data for a specific dealer
+    """
+    db = SessionLocal()
+    start_time = datetime.utcnow()
 
-    # Parse time range
     try:
-        start_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
-        end_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
-    except:
-        start_date = datetime.now() - timedelta(days=1)
-        end_date = datetime.now()
+        # Get dealer information
+        dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
+        if not dealer:
+            raise ValueError(f"Dealer {dealer_id} not found")
 
-    # Generate multiple prospects for the date range
-    prospects = []
-    current_date = start_date
+        if not dealer.is_active:
+            logger.info(f"Dealer {dealer_id} is inactive, skipping PKB fetch")
+            return {"status": "skipped", "reason": "dealer_inactive"}
 
-    names = ["Ahmad Wijaya", "Siti Nurhaliza", "Budi Santoso", "Dewi Sartika", "Eko Prasetyo"]
-    unit_types = ["PCX160", "VARIO125", "VARIO150", "BEAT", "SCOOPY"]
+        # Set default time range if not provided
+        if not from_time or not to_time:
+            today = date.today()
+            from_time = f"{today} 01:01:00"
+            to_time = f"{today} 23:59:00"
 
-    while current_date <= end_date:
-        # Generate 1-3 prospects per day
-        for i in range(random.randint(1, 3)):
-            prospect_id = f"PSP/{dealer_id}/{current_date.strftime('%y%m')}/{random.randint(1000, 9999)}"
+        # Use API client for PKB data fetching
+        try:
+            # Check if dealer should use dummy data
+            if should_use_dummy_data(dealer_id):
+                logger.info(f"Using dummy PKB data for dealer {dealer_id}")
+                api_data = get_dummy_pkb_data(dealer_id, from_time, to_time)
+            else:
+                # Use real API client
+                client = PKBAPIClient()
+                api_data = client.fetch_data(dealer_id, from_time, to_time, dealer.api_key, dealer.secret_key)
+                logger.info(f"PKB API call successful for dealer {dealer_id}")
+        except Exception as api_error:
+            logger.warning(f"PKB API call failed for dealer {dealer_id}: {api_error}")
+            logger.info("Falling back to dummy PKB data for demonstration")
+            # Fallback to dummy data
+            api_data = get_dummy_pkb_data(dealer_id, from_time, to_time)
 
-            prospect = {
-                "idProspect": prospect_id,
-                "sumberProspect": random.choice(["0001", "0002", "0003"]),
-                "tanggalProspect": current_date.strftime("%d/%m/%Y"),
-                "taggingProspect": random.choice(["Yes", "No"]),
-                "namaLengkap": random.choice(names),
-                "noKontak": f"081{random.randint(10000000, 99999999)}",
-                "noKtp": f"32{random.randint(10000000000000, 99999999999999)}",
-                "alamat": f"Jl. Sample No. {random.randint(1, 999)} RT 001, RW 002",
-                "kodePropinsi": "3100",
-                "kodeKota": "3101",
-                "kodeKecamatan": "317404",
-                "kodeKelurahan": "3174040001",
-                "kodePos": "14130",
-                "latitude": f"{random.uniform(-6.5, -6.0):.6f}",
-                "longitude": f"{random.uniform(106.5, 107.0):.6f}",
-                "alamatKantor": "",
-                "kodePropinsiKantor": "",
-                "kodeKotaKantor": "",
-                "kodeKecamatanKantor": "",
-                "kodeKelurahanKantor": "",
-                "kodePosKantor": "",
-                "kodePekerjaan": str(random.randint(1, 5)),
-                "noKontakKantor": f"021{random.randint(1000000, 9999999)}",
-                "tanggalAppointment": (current_date + timedelta(days=random.randint(1, 7))).strftime("%d/%m/%Y"),
-                "waktuAppointment": f"{random.randint(9, 17):02d}:{random.choice(['00', '30'])}",
-                "metodeFollowUp": str(random.randint(1, 3)),
-                "testRidePreference": str(random.randint(1, 2)),
-                "statusFollowUpProspecting": str(random.randint(1, 3)),
-                "statusProspect": str(random.randint(1, 4)),
-                "idSalesPeople": f"SP{random.randint(1000, 9999)}",
-                "idEvent": f"EV/E/K0Z/{dealer_id}/{current_date.strftime('%y%m')}/{random.randint(1, 100):03d}",
-                "dealerId": dealer_id,
-                "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
-                "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
-                "unit": [
-                    {
-                        "kodeTipeUnit": random.choice(unit_types),
-                        "salesProgramId": f"PRM/{random.randint(1000, 9999)}/{current_date.strftime('%y%m')}/001",
-                        "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
-                        "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
-                    }
-                ]
-            }
-            prospects.append(prospect)
+        # Process the response
+        if api_data.get("status") != 1:
+            raise ValueError(f"PKB API returned error: {api_data.get('message', 'Unknown error')}")
 
-        current_date += timedelta(days=1)
+        records_processed = 0
+        pkb_records = api_data.get("data", [])
 
-    return {
-        "status": 1,
-        "message": None,
-        "data": prospects
-    }
+        for pkb in pkb_records:
+            # Check if PKB record already exists
+            existing_pkb = db.query(PKBData).filter(
+                PKBData.dealer_id == dealer_id,
+                PKBData.no_work_order == pkb.get("noWorkOrder")
+            ).first()
+
+            if existing_pkb:
+                # Update existing record
+                pkb_record = existing_pkb
+                pkb_record.modified_time = pkb.get("modifiedTime")
+                pkb_record.fetched_at = datetime.utcnow()
+            else:
+                # Create new record
+                pkb_record = PKBData(
+                    dealer_id=dealer_id,
+                    no_work_order=pkb.get("noWorkOrder"),
+                    no_sa_form=pkb.get("noSAForm"),
+                    tanggal_servis=pkb.get("tanggalServis"),
+                    waktu_pkb=pkb.get("waktuPKB"),
+                    no_polisi=pkb.get("noPolisi"),
+                    no_rangka=pkb.get("noRangka"),
+                    no_mesin=pkb.get("noMesin"),
+                    kode_tipe_unit=pkb.get("kodeTipeUnit"),
+                    tahun_motor=pkb.get("tahunMotor"),
+                    informasi_bensin=pkb.get("informasiBensin"),
+                    km_terakhir=pkb.get("kmTerakhir"),
+                    tipe_coming_customer=pkb.get("tipeComingCustomer"),
+                    nama_pemilik=pkb.get("namaPemilik"),
+                    alamat_pemilik=pkb.get("alamatPemilik"),
+                    kode_propinsi_pemilik=pkb.get("kodePropinsiPemilik"),
+                    kode_kota_pemilik=pkb.get("kodeKotaPemilik"),
+                    kode_kecamatan_pemilik=pkb.get("kodeKecamatanPemilik"),
+                    kode_kelurahan_pemilik=pkb.get("kodeKelurahanPemilik"),
+                    kode_pos_pemilik=pkb.get("kodePosPemilik"),
+                    alamat_pembawa=pkb.get("alamatPembawa"),
+                    kode_propinsi_pembawa=pkb.get("kodePropinsiPembawa"),
+                    kode_kota_pembawa=pkb.get("kodeKotaPembawa"),
+                    kode_kecamatan_pembawa=pkb.get("kodeKecamatanPembawa"),
+                    kode_kelurahan_pembawa=pkb.get("kodeKelurahanPembawa"),
+                    kode_pos_pembawa=pkb.get("kodePosPembawa"),
+                    nama_pembawa=pkb.get("namaPembawa"),
+                    no_telp_pembawa=pkb.get("noTelpPembawa"),
+                    hubungan_dengan_pemilik=pkb.get("hubunganDenganPemilik"),
+                    keluhan_konsumen=pkb.get("keluhanKonsumen"),
+                    rekomendasi_sa=pkb.get("rekomendasiSA"),
+                    honda_id_sa=pkb.get("hondaIdSA"),
+                    honda_id_mekanik=pkb.get("hondaIdMekanik"),
+                    saran_mekanik=pkb.get("saranMekanik"),
+                    asal_unit_entry=pkb.get("asalUnitEntry"),
+                    id_pit=pkb.get("idPIT"),
+                    jenis_pit=pkb.get("jenisPIT"),
+                    waktu_pendaftaran=pkb.get("waktuPendaftaran"),
+                    waktu_selesai=pkb.get("waktuSelesai"),
+                    total_frt=pkb.get("totalFRT"),
+                    set_up_pembayaran=pkb.get("setUpPembayaran"),
+                    catatan_tambahan=pkb.get("catatanTambahan"),
+                    konfirmasi_pekerjaan_tambahan=pkb.get("konfirmasiPekerjaanTambahan"),
+                    no_buku_claim_c2=pkb.get("noBukuClaimC2"),
+                    no_work_order_job_return=pkb.get("noWorkOrderJobReturn"),
+                    total_biaya_service=pkb.get("totalBiayaService"),
+                    waktu_pekerjaan=pkb.get("waktuPekerjaan"),
+                    status_work_order=pkb.get("statusWorkOrder"),
+                    created_time=pkb.get("createdTime"),
+                    modified_time=pkb.get("modifiedTime")
+                )
+                db.add(pkb_record)
+
+            # Handle services (only for new records to avoid duplicates)
+            if not existing_pkb:
+                for service in pkb.get("services", []):
+                    pkb_service = PKBService(
+                        pkb_data_id=pkb_record.id,
+                        id_job=service.get("idJob"),
+                        nama_pekerjaan=service.get("namaPekerjaan"),
+                        jenis_pekerjaan=service.get("jenisPekerjaan"),
+                        biaya_service=service.get("biayaService"),
+                        promo_id_jasa=service.get("promoIdJasa"),
+                        disc_service_amount=service.get("discServiceAmount"),
+                        disc_service_percentage=service.get("discServicePercentage"),
+                        total_harga_servis=service.get("totalHargaServis"),
+                        created_time=service.get("createdTime"),
+                        modified_time=service.get("modifiedTime")
+                    )
+                    db.add(pkb_service)
+
+                # Handle parts
+                for part in pkb.get("parts", []):
+                    pkb_part = PKBPart(
+                        pkb_data_id=pkb_record.id,
+                        id_job=part.get("idJob"),
+                        parts_number=part.get("partsNumber"),
+                        harga_parts=part.get("hargaParts"),
+                        promo_id_parts=part.get("promoIdParts"),
+                        disc_parts_amount=part.get("discPartsAmount"),
+                        disc_parts_percentage=part.get("discPartsPercentage"),
+                        ppn=part.get("ppn"),
+                        total_harga_parts=part.get("totalHargaParts"),
+                        uang_muka=part.get("uangMuka"),
+                        kuantitas=part.get("kuantitas"),
+                        created_time=part.get("createdTime"),
+                        modified_time=part.get("modifiedTime")
+                    )
+                    db.add(pkb_part)
+
+            records_processed += 1
+
+        # Commit all changes
+        db.commit()
+
+        # Log successful fetch
+        duration = int((datetime.utcnow() - start_time).total_seconds())
+        fetch_log = FetchLog(
+            dealer_id=dealer_id,
+            fetch_type="pkb_data",
+            status="success",
+            records_fetched=records_processed,
+            fetch_duration_seconds=duration,
+            started_at=start_time,
+            completed_at=datetime.utcnow()
+        )
+        db.add(fetch_log)
+        db.commit()
+
+        logger.info(f"Successfully fetched {records_processed} PKB records for dealer {dealer_id}")
+
+        return {
+            "status": "success",
+            "dealer_id": dealer_id,
+            "records_processed": records_processed,
+            "duration_seconds": duration
+        }
+
+    except Exception as e:
+        # Log failed fetch
+        duration = int((datetime.utcnow() - start_time).total_seconds())
+        fetch_log = FetchLog(
+            dealer_id=dealer_id,
+            fetch_type="pkb_data",
+            status="failed",
+            records_fetched=0,
+            error_message=str(e),
+            fetch_duration_seconds=duration,
+            started_at=start_time,
+            completed_at=datetime.utcnow()
+        )
+        db.add(fetch_log)
+        db.commit()
+
+        logger.error(f"Failed to fetch PKB data for dealer {dealer_id}: {e}")
+        raise
+
+    finally:
+        db.close()
+
+
+
+

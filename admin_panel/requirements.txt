@@ -7,6 +7,9 @@ pandas==2.1.4
 # HTTP Client (for API communication)
 requests==2.31.0
 
+# Database
+psycopg2-binary==2.9.9
+
 # Utilities
 python-dotenv==1.0.0
 pytz==2023.3

@@ -6,6 +6,8 @@ Handles all dealer-related operations: view, add, edit
 import streamlit as st
 import pandas as pd
 import time
+import requests
+import os
 from typing import Dict, List, Any
 from .api_utils import get_dealers, create_dealer, update_dealer
 
@@ -63,20 +65,47 @@ def render_view_dealers():
 def render_add_dealer():
     """Render the add dealer tab"""
     st.subheader("➕ Add New Dealer")
-    
+
+    # Token generation section (outside form)
+    st.markdown("**🔑 Token Generation Preview**")
+    st.info("💡 Enter API Key and Secret Key below, then use the form to add the dealer. Token generation will be available after saving.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        preview_api_key = st.text_input("Preview API Key", placeholder="API Key for DGI", key="preview_api_key")
+        if st.button("🔄 Generate Preview Token", help="Generate token preview"):
+            preview_secret_key = st.session_state.get('preview_secret_key', '')
+            if preview_api_key and preview_secret_key:
+                token_result = generate_api_token(preview_api_key, preview_secret_key)
+                if token_result:
+                    st.success("✅ Token generated successfully!")
+                    st.code(f"Token: {token_result['api_token'][:20]}...")
+                    st.info(f"Timestamp: {token_result['api_time']}")
+            else:
+                st.warning("⚠️ Please enter both API Key and Secret Key")
+
+    with col2:
+        preview_secret_key = st.text_input("Preview Secret Key", type="password", placeholder="Secret Key for DGI", key="preview_secret_key")
+        if st.button("⏰ Get Current Time", help="Get current Unix timestamp"):
+            import time
+            current_time = int(time.time())
+            st.info(f"Current timestamp: {current_time}")
+
+    st.markdown("---")
+
     with st.form("add_dealer_form"):
         col1, col2 = st.columns(2)
-        
+
         with col1:
             dealer_id = st.text_input("Dealer ID", placeholder="e.g., 00999")
             dealer_name = st.text_input("Dealer Name", placeholder="e.g., Default Dealer")
-        
+
         with col2:
             api_key = st.text_input("API Key", placeholder="API Key for DGI")
-            api_token = st.text_input("API Token", type="password", placeholder="API Token for DGI")
-        
+            secret_key = st.text_input("Secret Key", type="password", placeholder="Secret Key for DGI")
+
         is_active = st.checkbox("Active", value=True)
-        
+
         submitted = st.form_submit_button("➕ Add Dealer", use_container_width=True)
         
         if submitted:
@@ -85,7 +114,7 @@ def render_add_dealer():
                     "dealer_id": dealer_id,
                     "dealer_name": dealer_name,
                     "api_key": api_key if api_key else None,
-                    "api_token": api_token if api_token else None,
+                    "secret_key": secret_key if secret_key else None,
                     "is_active": is_active
                 }
                 
@@ -129,17 +158,45 @@ def render_edit_dealer():
         # Get current dealer data
         current_dealer = next(d for d in dealers if d['dealer_id'] == selected_dealer_id)
         
+        # Token generation section (outside form)
+        st.markdown("**🔑 Token Generation Preview**")
+        st.info("💡 Current saved credentials will be used for token generation. Update credentials in the form below if needed.")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Generate Preview Token", key="edit_generate_preview", help="Generate token using saved credentials"):
+                # Get current saved credentials
+                saved_api_key = current_dealer.get('api_key', '')
+                saved_secret_key = current_dealer.get('secret_key', '')
+
+                if saved_api_key and saved_secret_key:
+                    token_result = generate_api_token(saved_api_key, saved_secret_key)
+                    if token_result:
+                        st.success("✅ Token generated successfully!")
+                        st.code(f"Token: {token_result['api_token'][:20]}...")
+                        st.info(f"Timestamp: {token_result['api_time']}")
+                else:
+                    st.warning("⚠️ Please save API Key and Secret Key first using the form below")
+
+        with col2:
+            if st.button("⏰ Get Current Time", key="edit_current_time", help="Get current Unix timestamp"):
+                import time
+                current_time = int(time.time())
+                st.info(f"Current timestamp: {current_time}")
+       
+        st.markdown("---")
+
         with st.form("edit_dealer_form"):
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 edit_dealer_id = st.text_input("Dealer ID", value=current_dealer['dealer_id'], disabled=True)
                 edit_dealer_name = st.text_input("Dealer Name", value=current_dealer['dealer_name'])
-            
+
             with col2:
                 edit_api_key = st.text_input("API Key", value=current_dealer.get('api_key', ''))
-                edit_api_token = st.text_input("API Token", value=current_dealer.get('api_token', ''), type="password")
-            
+                edit_secret_key = st.text_input("Secret Key", value=current_dealer.get('secret_key', ''), type="password")
+
             edit_is_active = st.checkbox("Active", value=current_dealer.get('is_active', True))
             
             col1, col2 = st.columns(2)
@@ -154,7 +211,7 @@ def render_edit_dealer():
                     dealer_data = {
                         "dealer_name": edit_dealer_name,
                         "api_key": edit_api_key if edit_api_key else None,
-                        "api_token": edit_api_token if edit_api_token else None,
+                        "secret_key": edit_secret_key if edit_secret_key else None,
                         "is_active": edit_is_active
                     }
                     
@@ -168,3 +225,20 @@ def render_edit_dealer():
                         st.rerun()
                 else:
                     st.error("❌ Please fill in Dealer Name")
+
+def generate_api_token(api_key: str, secret_key: str) -> dict:
+    """Generate API token using backend service"""
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        response = requests.post(f"{backend_url}/generate-token", json={
+            "api_key": api_key,
+            "secret_key": secret_key
+        })
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"Failed to generate token: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error generating token: {e}")
+        return None

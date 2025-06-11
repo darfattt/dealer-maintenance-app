@@ -5,7 +5,8 @@ Handles system configuration and settings
 
 import streamlit as st
 import os
-from typing import Dict, Any
+import requests
+from typing import Dict, Any, List
 
 def render_configuration():
     """Render the configuration page"""
@@ -29,39 +30,87 @@ def render_configuration():
 def render_api_configuration():
     """Render API configuration settings"""
     st.subheader("🔧 API Configuration")
-    
-    # Current API settings (read-only for now)
+
+    # Get current API configurations
+    api_configs = get_api_configurations()
+
+    # DGI API Configuration Management
     with st.expander("📡 DGI API Configuration", expanded=True):
+        st.markdown("**Current API Configurations:**")
+
+        if api_configs:
+            for config in api_configs:
+                col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
+
+                with col1:
+                    st.text_input(
+                        f"Base URL ({config['config_name']})",
+                        value=config['base_url'],
+                        disabled=True,
+                        key=f"base_url_{config['config_name']}"
+                    )
+
+                with col2:
+                    st.text_input(
+                        "Description",
+                        value=config['description'],
+                        disabled=True,
+                        key=f"desc_{config['config_name']}"
+                    )
+
+                with col3:
+                    status_color = "🟢" if config['is_active'] else "🔴"
+                    st.write(f"{status_color} {'Active' if config['is_active'] else 'Inactive'}")
+
+                with col4:
+                    if st.button("✏️ Edit", key=f"edit_{config['config_name']}"):
+                        edit_api_configuration(config)
+        else:
+            st.info("No API configurations found. Default configuration will be used.")
+            if st.button("🔧 Initialize Default Configurations"):
+                initialize_api_configurations()
+
+        st.markdown("---")
+
+        # Add new configuration
+        st.markdown("**➕ Add New API Configuration**")
+        try:
+            render_add_api_config_form()
+        except Exception as e:
+            st.error(f"Error rendering add API config form: {e}")
+
+    # System Configuration
+    with st.expander("⚙️ System Settings"):
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.text_input(
-                "DGI API Endpoint", 
-                value="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/prsp/read", 
-                disabled=True,
-                help="Honda DGI API endpoint for prospect data"
-            )
-            
-            st.text_input(
-                "API Timeout (seconds)",
-                value="30",
-                disabled=True,
-                help="Request timeout for API calls"
-            )
-        
-        with col2:
-            st.text_input(
-                "Backend URL", 
-                value=os.getenv("BACKEND_URL", "http://localhost:8000"), 
+                "Backend URL",
+                value=os.getenv("BACKEND_URL", "http://localhost:8000"),
                 disabled=True,
                 help="Internal backend API URL"
             )
-            
+
             st.text_input(
-                "Retry Attempts",
+                "Default Timeout (seconds)",
+                value="30",
+                disabled=True,
+                help="Default timeout for API calls"
+            )
+
+        with col2:
+            st.text_input(
+                "Default Retry Attempts",
                 value="3",
                 disabled=True,
-                help="Number of retry attempts for failed API calls"
+                help="Default number of retry attempts for failed API calls"
+            )
+
+            st.text_input(
+                "Max Concurrent Jobs",
+                value="5",
+                disabled=True,
+                help="Maximum concurrent background jobs"
             )
     
     # API Health Check
@@ -244,7 +293,199 @@ def check_database_health():
     """Check database health"""
     try:
         import psycopg2
-        # This would need proper connection string parsing
-        st.info("🔍 Database health check - Feature coming soon!")
+        import os
+
+        # Database connection parameters
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "5432")
+        db_name = os.getenv("DB_NAME", "dealer_dashboard")
+        db_user = os.getenv("DB_USER", "dealer_user")
+        db_password = os.getenv("DB_PASSWORD", "dealer_password")
+
+        # Try to connect to database
+        conn = psycopg2.connect(
+            host=db_host,
+            port=db_port,
+            database=db_name,
+            user=db_user,
+            password=db_password
+        )
+
+        # Test query
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if result:
+            st.success("✅ Database connection is healthy")
+        else:
+            st.error("❌ Database query failed")
+
+    except ImportError:
+        st.error("❌ Database check failed: psycopg2 module not installed")
     except Exception as e:
         st.error(f"❌ Database check failed: {e}")
+
+# API Configuration Management Functions
+def get_api_configurations() -> List[Dict[str, Any]]:
+    """Get all API configurations from backend"""
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        response = requests.get(f"{backend_url}/api-configurations/")
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"Failed to fetch API configurations: {response.status_code}")
+            return []
+    except Exception as e:
+        st.error(f"Error fetching API configurations: {e}")
+        return []
+
+def initialize_api_configurations():
+    """Initialize default API configurations"""
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        response = requests.post(f"{backend_url}/api-configurations/initialize")
+        if response.status_code == 200:
+            st.success("✅ Default API configurations initialized successfully!")
+            st.rerun()
+        else:
+            st.error(f"Failed to initialize API configurations: {response.status_code}")
+    except Exception as e:
+        st.error(f"Error initializing API configurations: {e}")
+
+def edit_api_configuration(config: Dict[str, Any]):
+    """Edit an existing API configuration"""
+    st.subheader(f"✏️ Edit {config['config_name']}")
+
+    with st.form(f"edit_config_{config['config_name']}"):
+        new_base_url = st.text_input(
+            "Base URL",
+            value=config['base_url'],
+            help="Base URL for the API (e.g., https://dev-gvt-gateway.eksad.com/dgi-api/v1.3)"
+        )
+
+        new_description = st.text_area(
+            "Description",
+            value=config['description'],
+            help="Description of this API configuration"
+        )
+
+        new_timeout = st.number_input(
+            "Timeout (seconds)",
+            value=config.get('timeout_seconds', 30),
+            min_value=5,
+            max_value=300,
+            help="Request timeout in seconds"
+        )
+
+        new_retry_attempts = st.number_input(
+            "Retry Attempts",
+            value=config.get('retry_attempts', 3),
+            min_value=0,
+            max_value=10,
+            help="Number of retry attempts for failed requests"
+        )
+
+        new_is_active = st.checkbox(
+            "Active",
+            value=config['is_active'],
+            help="Whether this configuration is active"
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.form_submit_button("💾 Save Changes"):
+                update_api_configuration(config['id'], {
+                    'base_url': new_base_url,
+                    'description': new_description,
+                    'timeout_seconds': new_timeout,
+                    'retry_attempts': new_retry_attempts,
+                    'is_active': new_is_active
+                })
+
+        with col2:
+            if st.form_submit_button("❌ Cancel"):
+                st.rerun()
+
+def render_add_api_config_form():
+    """Render form to add new API configuration"""
+    with st.form("add_api_config"):
+        config_name = st.text_input(
+            "Configuration Name",
+            placeholder="e.g., dgi_prospect_api",
+            help="Unique name for this API configuration"
+        )
+
+        base_url = st.text_input(
+            "Base URL",
+            value="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            help="Base URL for the API"
+        )
+
+        description = st.text_area(
+            "Description",
+            placeholder="Description of this API configuration",
+            help="Brief description of what this API is used for"
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            timeout_seconds = st.number_input(
+                "Timeout (seconds)",
+                value=30,
+                min_value=5,
+                max_value=300
+            )
+
+        with col2:
+            retry_attempts = st.number_input(
+                "Retry Attempts",
+                value=3,
+                min_value=0,
+                max_value=10
+            )
+
+        is_active = st.checkbox("Active", value=True)
+
+        if st.form_submit_button("➕ Add Configuration"):
+            if config_name and base_url:
+                create_api_configuration({
+                    'config_name': config_name,
+                    'base_url': base_url,
+                    'description': description,
+                    'timeout_seconds': timeout_seconds,
+                    'retry_attempts': retry_attempts,
+                    'is_active': is_active
+                })
+            else:
+                st.error("Please fill in all required fields")
+
+def create_api_configuration(config_data: Dict[str, Any]):
+    """Create a new API configuration"""
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        response = requests.post(f"{backend_url}/api-configurations/", json=config_data)
+        if response.status_code == 200:
+            st.success("✅ API configuration created successfully!")
+            st.rerun()
+        else:
+            st.error(f"Failed to create API configuration: {response.status_code}")
+    except Exception as e:
+        st.error(f"Error creating API configuration: {e}")
+
+def update_api_configuration(config_id: str, config_data: Dict[str, Any]):
+    """Update an existing API configuration"""
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        response = requests.put(f"{backend_url}/api-configurations/{config_id}", json=config_data)
+        if response.status_code == 200:
+            st.success("✅ API configuration updated successfully!")
+            st.rerun()
+        else:
+            st.error(f"Failed to update API configuration: {response.status_code}")
+    except Exception as e:
+        st.error(f"Error updating API configuration: {e}")

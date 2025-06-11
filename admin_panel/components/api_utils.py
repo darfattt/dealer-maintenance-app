@@ -67,10 +67,10 @@ def update_dealer(dealer_id: str, dealer_data: Dict[str, Any]) -> Optional[Dict[
         st.error(f"Error updating dealer: {e}")
         return None
 
-def run_manual_job(dealer_id: str, from_time: Optional[str] = None, to_time: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def run_manual_job(dealer_id: str, from_time: Optional[str] = None, to_time: Optional[str] = None, fetch_type: str = "prospect") -> Optional[Dict[str, Any]]:
     """Trigger manual job execution"""
     try:
-        payload = {"dealer_id": dealer_id}
+        payload = {"dealer_id": dealer_id, "fetch_type": fetch_type}
         if from_time:
             payload["from_time"] = from_time
         if to_time:
@@ -97,19 +97,19 @@ def get_job_status(task_id: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         return None
 
-def run_jobs_for_all_dealers(from_time: Optional[str] = None, to_time: Optional[str] = None) -> List[Dict[str, Any]]:
+def run_jobs_for_all_dealers(from_time: Optional[str] = None, to_time: Optional[str] = None, fetch_type: str = "prospect") -> List[Dict[str, Any]]:
     """Run jobs for all active dealers"""
     try:
         dealers = get_dealers()
         active_dealers = [d for d in dealers if d.get('is_active', True)]
-        
+
         if not active_dealers:
             st.warning("No active dealers found")
             return []
-        
+
         results = []
         for dealer in active_dealers:
-            payload = {"dealer_id": dealer['dealer_id']}
+            payload = {"dealer_id": dealer['dealer_id'], "fetch_type": fetch_type}
             if from_time:
                 payload["from_time"] = from_time
             if to_time:

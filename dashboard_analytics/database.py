@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Date, Time, Integer, Text, ForeignKey
+from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Date, Time, Integer, Text, ForeignKey, Float, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -18,12 +18,13 @@ Base = declarative_base()
 
 class Dealer(Base):
     __tablename__ = "dealers"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     dealer_id = Column(String(10), unique=True, nullable=False, index=True)
     dealer_name = Column(String(255), nullable=False)
     api_key = Column(String(255))
     api_token = Column(String(255))
+    secret_key = Column(String(255))
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -32,6 +33,7 @@ class Dealer(Base):
     fetch_configurations = relationship("FetchConfiguration", back_populates="dealer")
     prospect_data = relationship("ProspectData", back_populates="dealer")
     fetch_logs = relationship("FetchLog", back_populates="dealer")
+    pkb_data = relationship("PKBData", back_populates="dealer")
 
 class FetchConfiguration(Base):
     __tablename__ = "fetch_configurations"
@@ -121,6 +123,120 @@ class FetchLog(Base):
     
     # Relationships
     dealer = relationship("Dealer", back_populates="fetch_logs")
+
+class PKBData(Base):
+    __tablename__ = "pkb_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    no_work_order = Column(String(100), nullable=False, index=True)
+    no_sa_form = Column(String(100))
+    tanggal_servis = Column(String(20))
+    waktu_pkb = Column(String(50))
+    no_polisi = Column(String(20))
+    no_rangka = Column(String(50))
+    no_mesin = Column(String(50))
+    kode_tipe_unit = Column(String(20))
+    tahun_motor = Column(String(10))
+    informasi_bensin = Column(String(10))
+    km_terakhir = Column(Integer)
+    tipe_coming_customer = Column(String(10))
+    nama_pemilik = Column(String(255))
+    alamat_pemilik = Column(Text)
+    kode_propinsi_pemilik = Column(String(10))
+    kode_kota_pemilik = Column(String(10))
+    kode_kecamatan_pemilik = Column(String(10))
+    kode_kelurahan_pemilik = Column(String(20))
+    kode_pos_pemilik = Column(String(10))
+    alamat_pembawa = Column(Text)
+    kode_propinsi_pembawa = Column(String(10))
+    kode_kota_pembawa = Column(String(10))
+    kode_kecamatan_pembawa = Column(String(10))
+    kode_kelurahan_pembawa = Column(String(20))
+    kode_pos_pembawa = Column(String(10))
+    nama_pembawa = Column(String(255))
+    no_telp_pembawa = Column(String(50))
+    hubungan_dengan_pemilik = Column(String(10))
+    keluhan_konsumen = Column(Text)
+    rekomendasi_sa = Column(Text)
+    honda_id_sa = Column(String(50))
+    honda_id_mekanik = Column(String(50))
+    saran_mekanik = Column(Text)
+    asal_unit_entry = Column(String(10))
+    id_pit = Column(String(20))
+    jenis_pit = Column(String(10))
+    waktu_pendaftaran = Column(String(50))
+    waktu_selesai = Column(String(50))
+    total_frt = Column(String(20))
+    set_up_pembayaran = Column(String(10))
+    catatan_tambahan = Column(Text)
+    konfirmasi_pekerjaan_tambahan = Column(String(10))
+    no_buku_claim_c2 = Column(String(50))
+    no_work_order_job_return = Column(String(100))
+    total_biaya_service = Column(Float)
+    waktu_pekerjaan = Column(String(20))
+    status_work_order = Column(String(10))
+    created_time = Column(String(50))
+    modified_time = Column(String(50))
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="pkb_data")
+    services = relationship("PKBService", back_populates="pkb_data", cascade="all, delete-orphan")
+    parts = relationship("PKBPart", back_populates="pkb_data", cascade="all, delete-orphan")
+
+class PKBService(Base):
+    __tablename__ = "pkb_services"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pkb_data_id = Column(UUID(as_uuid=True), ForeignKey("pkb_data.id", ondelete="CASCADE"))
+    id_job = Column(String(50))
+    nama_pekerjaan = Column(String(255))
+    jenis_pekerjaan = Column(String(100))
+    biaya_service = Column(Float)
+    promo_id_jasa = Column(String(50))
+    disc_service_amount = Column(Float)
+    disc_service_percentage = Column(Float)
+    total_harga_servis = Column(Float)
+    created_time = Column(String(50))
+    modified_time = Column(String(50))
+
+    # Relationships
+    pkb_data = relationship("PKBData", back_populates="services")
+
+class PKBPart(Base):
+    __tablename__ = "pkb_parts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pkb_data_id = Column(UUID(as_uuid=True), ForeignKey("pkb_data.id", ondelete="CASCADE"))
+    id_job = Column(String(50))
+    parts_number = Column(String(100))
+    harga_parts = Column(Float)
+    promo_id_parts = Column(String(50))
+    disc_parts_amount = Column(Float)
+    disc_parts_percentage = Column(Float)
+    ppn = Column(Float)
+    total_harga_parts = Column(Float)
+    uang_muka = Column(Float)
+    kuantitas = Column(Integer)
+    created_time = Column(String(50))
+    modified_time = Column(String(50))
+
+    # Relationships
+    pkb_data = relationship("PKBData", back_populates="parts")
+
+class APIConfiguration(Base):
+    __tablename__ = "api_configurations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    config_name = Column(String(100), unique=True, nullable=False, index=True)
+    base_url = Column(String(500), nullable=False)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    timeout_seconds = Column(Integer, default=30)
+    retry_attempts = Column(Integer, default=3)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 def get_db() -> Session:
     db = SessionLocal()

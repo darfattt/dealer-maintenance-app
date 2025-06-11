@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import get_db, create_tables, Dealer, FetchConfiguration, ProspectData, FetchLog
+from database import get_db, create_tables, Dealer, FetchConfiguration, ProspectData, FetchLog, PKBData, PKBService, PKBPart, APIConfiguration
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime, date
@@ -49,6 +49,14 @@ class DealerCreate(BaseModel):
     dealer_name: str
     api_key: Optional[str] = None
     api_token: Optional[str] = None
+    secret_key: Optional[str] = None
+
+class DealerUpdate(BaseModel):
+    dealer_name: Optional[str] = None
+    api_key: Optional[str] = None
+    api_token: Optional[str] = None
+    secret_key: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class DealerResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -56,6 +64,8 @@ class DealerResponse(BaseModel):
     id: str
     dealer_id: str
     dealer_name: str
+    api_key: Optional[str] = None
+    secret_key: Optional[str] = None
     is_active: bool
     created_at: datetime
 
@@ -98,10 +108,65 @@ class FetchLogResponse(BaseModel):
     fetch_duration_seconds: Optional[int]
     completed_at: datetime
 
+class PKBDataResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    dealer_id: str
+    no_work_order: str
+    no_sa_form: Optional[str]
+    tanggal_servis: Optional[str]
+    nama_pemilik: Optional[str]
+    no_polisi: Optional[str]
+    kode_tipe_unit: Optional[str]
+    status_work_order: Optional[str]
+    total_biaya_service: Optional[float]
+    fetched_at: datetime
+
+class APIConfigurationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    config_name: str
+    base_url: str
+    description: Optional[str]
+    is_active: bool
+    timeout_seconds: int
+    retry_attempts: int
+    created_at: datetime
+    updated_at: datetime
+
+class APIConfigurationCreate(BaseModel):
+    config_name: str
+    base_url: str
+    description: Optional[str] = None
+    is_active: bool = True
+    timeout_seconds: int = 30
+    retry_attempts: int = 3
+
+class APIConfigurationUpdate(BaseModel):
+    base_url: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    timeout_seconds: Optional[int] = None
+    retry_attempts: Optional[int] = None
+
+class TokenGenerationRequest(BaseModel):
+    api_key: str
+    secret_key: str
+    api_time: Optional[int] = None
+
+class TokenGenerationResponse(BaseModel):
+    api_token: str
+    api_time: int
+    timestamp: int
+    expires_in: int
+
 class ManualFetchRequest(BaseModel):
     dealer_id: str
     from_time: Optional[str] = None
     to_time: Optional[str] = None
+    fetch_type: Optional[str] = "prospect"  # prospect or pkb
 
 # API Endpoints
 
@@ -145,7 +210,7 @@ async def get_dealer(dealer_id: str, db: Session = Depends(get_db)):
     return dealer
 
 @app.put("/dealers/{dealer_id}", response_model=DealerResponse)
-async def update_dealer(dealer_id: str, dealer_update: DealerCreate, db: Session = Depends(get_db)):
+async def update_dealer(dealer_id: str, dealer_update: DealerUpdate, db: Session = Depends(get_db)):
     # Find existing dealer
     db_dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
     if not db_dealer:
@@ -286,6 +351,195 @@ async def get_prospect_analytics(dealer_id: str, db: Session = Depends(get_db)):
         ]
     }
 
+# PKB data endpoints
+@app.get("/pkb-data/", response_model=List[PKBDataResponse])
+async def get_pkb_data(
+    dealer_id: Optional[str] = None,
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    query = db.query(PKBData)
+
+    if dealer_id:
+        query = query.filter(PKBData.dealer_id == dealer_id)
+    if from_date:
+        # Parse tanggal_servis string to date for comparison
+        query = query.filter(PKBData.tanggal_servis.isnot(None))
+    if to_date:
+        query = query.filter(PKBData.tanggal_servis.isnot(None))
+
+    pkb_records = query.offset(skip).limit(limit).all()
+    for record in pkb_records:
+        convert_uuid_to_string(record)
+    return pkb_records
+
+@app.get("/pkb-data/analytics/{dealer_id}")
+async def get_pkb_analytics(dealer_id: str, db: Session = Depends(get_db)):
+    # Validate dealer exists
+    dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
+    if not dealer:
+        raise HTTPException(status_code=404, detail="Dealer not found")
+
+    # Get PKB data analytics
+    from sqlalchemy import func
+
+    # Count by status
+    status_counts = db.query(
+        PKBData.status_work_order,
+        func.count(PKBData.id).label('count')
+    ).filter(
+        PKBData.dealer_id == dealer_id,
+        PKBData.status_work_order.isnot(None)
+    ).group_by(
+        PKBData.status_work_order
+    ).all()
+
+    # Count by unit type
+    unit_counts = db.query(
+        PKBData.kode_tipe_unit,
+        func.count(PKBData.id).label('count')
+    ).filter(
+        PKBData.dealer_id == dealer_id,
+        PKBData.kode_tipe_unit.isnot(None)
+    ).group_by(
+        PKBData.kode_tipe_unit
+    ).all()
+
+    # Get total counts
+    total_pkb = db.query(func.count(PKBData.id)).filter(
+        PKBData.dealer_id == dealer_id
+    ).scalar()
+
+    # Average service cost
+    avg_service_cost = db.query(func.avg(PKBData.total_biaya_service)).filter(
+        PKBData.dealer_id == dealer_id,
+        PKBData.total_biaya_service.isnot(None)
+    ).scalar()
+
+    return {
+        "dealer_id": dealer_id,
+        "total_pkb": total_pkb,
+        "avg_service_cost": float(avg_service_cost) if avg_service_cost else 0,
+        "status_distribution": [
+            {"status": row.status_work_order, "count": row.count}
+            for row in status_counts
+        ],
+        "unit_distribution": [
+            {"unit": row.kode_tipe_unit, "count": row.count}
+            for row in unit_counts
+        ]
+    }
+
+# API Configuration endpoints
+@app.get("/api-configurations/", response_model=List[APIConfigurationResponse])
+async def get_api_configurations(db: Session = Depends(get_db)):
+    configs = db.query(APIConfiguration).all()
+    for config in configs:
+        convert_uuid_to_string(config)
+    return configs
+
+@app.post("/api-configurations/", response_model=APIConfigurationResponse)
+async def create_api_configuration(config: APIConfigurationCreate, db: Session = Depends(get_db)):
+    # Check if config name already exists
+    existing = db.query(APIConfiguration).filter(APIConfiguration.config_name == config.config_name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Configuration name already exists")
+
+    db_config = APIConfiguration(**config.dict())
+    db.add(db_config)
+    db.commit()
+    db.refresh(db_config)
+    convert_uuid_to_string(db_config)
+    return db_config
+
+@app.put("/api-configurations/{config_id}", response_model=APIConfigurationResponse)
+async def update_api_configuration(config_id: str, config: APIConfigurationUpdate, db: Session = Depends(get_db)):
+    db_config = db.query(APIConfiguration).filter(APIConfiguration.id == config_id).first()
+    if not db_config:
+        raise HTTPException(status_code=404, detail="API configuration not found")
+
+    update_data = config.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_config, field, value)
+
+    db_config.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_config)
+    convert_uuid_to_string(db_config)
+    return db_config
+
+@app.delete("/api-configurations/{config_id}")
+async def delete_api_configuration(config_id: str, db: Session = Depends(get_db)):
+    db_config = db.query(APIConfiguration).filter(APIConfiguration.id == config_id).first()
+    if not db_config:
+        raise HTTPException(status_code=404, detail="API configuration not found")
+
+    db.delete(db_config)
+    db.commit()
+    return {"message": "API configuration deleted successfully"}
+
+@app.post("/api-configurations/initialize")
+async def initialize_api_configurations(db: Session = Depends(get_db)):
+    # Check if configurations already exist
+    existing_count = db.query(APIConfiguration).count()
+    if existing_count > 0:
+        return {"message": "API configurations already exist", "count": existing_count}
+
+    # Create default configurations
+    default_configs = [
+        APIConfiguration(
+            config_name="dgi_prospect_api",
+            base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            description="DGI API for Prospect Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_pkb_api",
+            base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            description="DGI API for PKB (Service Record) Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        )
+    ]
+
+    for config in default_configs:
+        db.add(config)
+
+    db.commit()
+    return {"message": "Default API configurations initialized successfully", "count": len(default_configs)}
+
+# Token generation endpoint
+@app.post("/generate-token", response_model=TokenGenerationResponse)
+async def generate_dgi_token(request: TokenGenerationRequest):
+    """Generate DGI API token using API key and secret key"""
+    from utils.dgi_token_generator import generate_api_token
+
+    token_data = generate_api_token(
+        api_key=request.api_key,
+        secret_key=request.secret_key,
+        api_time=request.api_time
+    )
+
+    return TokenGenerationResponse(**token_data)
+
+@app.post("/refresh-token", response_model=TokenGenerationResponse)
+async def refresh_dgi_token(request: TokenGenerationRequest):
+    """Refresh DGI API token with current timestamp"""
+    from utils.dgi_token_generator import refresh_token
+
+    token_data = refresh_token(
+        api_key=request.api_key,
+        secret_key=request.secret_key
+    )
+
+    return TokenGenerationResponse(**token_data)
+
 # Fetch logs endpoints
 @app.get("/fetch-logs/", response_model=List[FetchLogResponse])
 async def get_fetch_logs(
@@ -315,16 +569,25 @@ async def run_job(request: ManualFetchRequest, db: Session = Depends(get_db)):
     if not dealer:
         raise HTTPException(status_code=404, detail="Dealer not found")
 
+    # Determine which task to run based on fetch_type
+    if request.fetch_type == "pkb":
+        task_name = "tasks.data_fetcher.fetch_pkb_data"
+        message = "PKB data fetch job started"
+    else:
+        task_name = "tasks.data_fetcher.fetch_prospect_data"
+        message = "Prospect data fetch job started"
+
     # Trigger Celery task
     task = celery_app.send_task(
-        "tasks.data_fetcher.fetch_prospect_data",
+        task_name,
         args=[request.dealer_id, request.from_time, request.to_time]
     )
 
     return {
-        "message": "Data fetch job started",
+        "message": message,
         "task_id": task.id,
         "dealer_id": request.dealer_id,
+        "fetch_type": request.fetch_type,
         "status": "running"
     }
 
