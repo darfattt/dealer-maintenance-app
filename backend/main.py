@@ -25,6 +25,7 @@ from controllers.prospect_controller import router as prospect_router
 from controllers.pkb_controller import router as pkb_router
 from controllers.parts_inbound_controller import router as parts_inbound_router
 from controllers.leasing_controller import router as leasing_router
+from controllers.document_handling_controller import router as document_handling_router
 from controllers.token_controller import router as token_router
 from controllers.logs_controller import router as logs_router
 from controllers.jobs_controller import router as jobs_router
@@ -66,6 +67,7 @@ app.include_router(prospect_router)                 # Prospect data and analytic
 app.include_router(pkb_router)                      # PKB data and analytics
 app.include_router(parts_inbound_router)            # Parts Inbound data and analytics
 app.include_router(leasing_router)                  # Leasing data and analytics
+app.include_router(document_handling_router)        # Document handling data and analytics
 app.include_router(token_router)                    # Token generation and management
 app.include_router(logs_router)                     # Logs and monitoring
 app.include_router(jobs_router)                     # Job execution and management
@@ -111,6 +113,7 @@ async def get_api_info():
             "pkb": "PKB (Service Record) data and analytics",
             "parts_inbound": "Parts Inbound data and analytics",
             "leasing": "Leasing requirement data and analytics",
+        "document_handling": "Document handling data and analytics",
             "token": "DGI API token generation and management",
             "logs": "Fetch logs and system monitoring",
             "jobs": "Manual job execution and status"
@@ -124,6 +127,7 @@ async def get_api_info():
             "pkb_data": "/pkb-data/",
             "parts_inbound_data": "/parts-inbound-data/",
             "leasing_data": "/leasing/",
+        "document_handling_data": "/document_handling/",
             "token_generation": "/token/generate",
             "job_execution": "/jobs/run",
             "logs": "/logs/fetch-logs/"

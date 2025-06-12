@@ -166,6 +166,43 @@ class LeasingAPIClient:
             response.raise_for_status()
             return response.json()
 
+
+class DocumentHandlingAPIClient:
+    """Client for Document Handling API calls"""
+
+    def __init__(self):
+        self.config = APIConfigManager.get_api_config("dgi_document_handling_api") or APIConfigManager.get_default_config()
+        self.endpoint = "/doch/read"
+
+    def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str,
+                   id_spk: str = "", id_customer: str = "") -> Dict[str, Any]:
+        """Fetch Document Handling data from DGI API"""
+        # Generate token using token manager
+        token_manager = DGITokenManager(api_key, secret_key)
+        headers = token_manager.get_headers()
+
+        payload = {
+            "fromTime": from_time,
+            "toTime": to_time
+        }
+
+        # Add optional parameters if provided
+        if dealer_id:
+            payload["dealerId"] = dealer_id
+        if id_spk:
+            payload["idSPK"] = id_spk
+        if id_customer:
+            payload["idCustomer"] = id_customer
+
+        url = f"{self.config['base_url']}{self.endpoint}"
+
+        logger.info(f"Calling Document Handling API for dealer {dealer_id} at {url}")
+
+        with httpx.Client(timeout=self.config['timeout_seconds']) as client:
+            response = client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+
 def initialize_default_api_configs():
     """Initialize default API configurations in database"""
     db = SessionLocal()
@@ -206,6 +243,14 @@ def initialize_default_api_configs():
                 config_name="dgi_leasing_api",
                 base_url="https://example.com/dgi-api/v1.3",
                 description="DGI API for Leasing Requirement Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_document_handling_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Document Handling Data",
                 is_active=True,
                 timeout_seconds=30,
                 retry_attempts=3

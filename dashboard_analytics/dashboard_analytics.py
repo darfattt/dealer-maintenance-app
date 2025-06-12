@@ -3,11 +3,12 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
+import time
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, and_, or_
 from sqlalchemy.orm import sessionmaker
-from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData
+from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit
 
 # Load environment variables
 load_dotenv()
@@ -350,6 +351,76 @@ def get_leasing_data_table(dealer_id, page=1, page_size=50, search_term=""):
     finally:
         db.close()
 
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_document_handling_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get Document Handling data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(DocumentHandlingData).filter(DocumentHandlingData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            # Join with units to search in chassis numbers
+            query = query.join(DocumentHandlingUnit, DocumentHandlingData.id == DocumentHandlingUnit.document_handling_data_id, isouter=True)
+            search_filter = or_(
+                DocumentHandlingData.id_so.ilike(f"%{search_term}%"),
+                DocumentHandlingData.id_spk.ilike(f"%{search_term}%"),
+                DocumentHandlingUnit.nomor_rangka.ilike(f"%{search_term}%"),
+                DocumentHandlingUnit.plat_nomor.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter).distinct()
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        document_records = query.order_by(DocumentHandlingData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries with unit details
+        data = []
+        for doc in document_records:
+            # Get units for this document
+            units = db.query(DocumentHandlingUnit).filter(
+                DocumentHandlingUnit.document_handling_data_id == doc.id
+            ).all()
+
+            # Get first unit for main display
+            first_unit = units[0] if units else None
+
+            data.append({
+                "id": str(doc.id),
+                "dealer_id": doc.dealer_id,
+                "dealer_name": doc.dealer.dealer_name if doc.dealer else "Unknown",
+                "id_so": doc.id_so,
+                "id_spk": doc.id_spk,
+                "created_time": doc.created_time,
+                "modified_time": doc.modified_time,
+                "fetched_at": doc.fetched_at.isoformat() if doc.fetched_at else None,
+                "unit_count": len(units),
+                "units": [
+                    {
+                        "id": str(unit.id),
+                        "nomor_rangka": unit.nomor_rangka,
+                        "nomor_faktur_stnk": unit.nomor_faktur_stnk,
+                        "status_faktur_stnk": unit.status_faktur_stnk,
+                        "nomor_stnk": unit.nomor_stnk,
+                        "plat_nomor": unit.plat_nomor,
+                        "nomor_bpkb": unit.nomor_bpkb,
+                        "nama_penerima_bpkb": unit.nama_penerima_bpkb,
+                        "nama_penerima_stnk": unit.nama_penerima_stnk,
+                        "tanggal_terima_stnk_oleh_konsumen": unit.tanggal_terima_stnk_oleh_konsumen,
+                        "tanggal_terima_bpkb_oleh_konsumen": unit.tanggal_terima_bpkb_oleh_konsumen
+                    } for unit in units
+                ]
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
 # Main app
 st.markdown('<div class="main-header">📊 Dealer Analytics Dashboard</div>', unsafe_allow_html=True)
 
@@ -363,7 +434,8 @@ menu_options = {
     "👥 Prospect Data": "prospect",
     "🔧 PKB Data": "pkb",
     "📦 Parts Inbound": "parts_inbound",
-    "💰 Leasing Data": "leasing"
+    "💰 Leasing Data": "leasing",
+    "📄 Document Handling": "doch_read"
 }
 
 selected_menu = st.sidebar.selectbox(
@@ -812,6 +884,90 @@ def render_leasing_data_page(dealer_id):
     else:
         st.warning("No Leasing data found for the selected dealer.")
 
+
+def render_document_handling_data_page(dealer_id):
+    """Render the Document Handling data table page"""
+    st.subheader("📄 Document Handling Data")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search SO ID, SPK ID, or chassis number...")
+
+    with col2:
+        page_size = st.selectbox("📄 Page Size", [10, 25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Get data with search and pagination
+    try:
+        data_result, total_count = get_document_handling_data_table(dealer_id, page=1, page_size=page_size, search_term=search_term)
+    except Exception as e:
+        st.error(f"Error loading document handling data: {str(e)}")
+        return
+
+    if data_result and len(data_result) > 0:
+        # Display summary
+        st.info(f"📊 Total records: {total_count} | Showing page 1")
+        st.markdown(f"**Records on this page:** {len(data_result)}")
+
+        # Create DataFrame for display
+        display_data = []
+        for record in data_result:
+            # Get first unit for main display - safe access
+            units = record.get('units', [])
+            first_unit = units[0] if units and len(units) > 0 else {}
+
+            display_data.append({
+                "SO ID": record.get('id_so', ''),
+                "SPK ID": record.get('id_spk', ''),
+                "Units": record.get('unit_count', 0),
+                "Chassis Number": first_unit.get('nomor_rangka', '') if first_unit else '',
+                "STNK Status": first_unit.get('status_faktur_stnk', '') if first_unit else '',
+                "Plate Number": first_unit.get('plat_nomor', '') if first_unit else '',
+                "BPKB Receiver": first_unit.get('nama_penerima_bpkb', '') if first_unit else '',
+                "STNK Received": first_unit.get('tanggal_terima_stnk_oleh_konsumen', '') if first_unit else '',
+                "Created": record.get('created_time', ''),
+                "Fetched": record.get('fetched_at', '')[:19] if record.get('fetched_at') else ''
+            })
+
+        if display_data:
+            df = pd.DataFrame(display_data)
+
+            # Display the table
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "SO ID": st.column_config.TextColumn("SO ID", width="medium"),
+                    "SPK ID": st.column_config.TextColumn("SPK ID", width="medium"),
+                    "Units": st.column_config.NumberColumn("Units", width="small"),
+                    "Chassis Number": st.column_config.TextColumn("Chassis Number", width="medium"),
+                    "STNK Status": st.column_config.TextColumn("STNK Status", width="small"),
+                    "Plate Number": st.column_config.TextColumn("Plate Number", width="medium"),
+                    "BPKB Receiver": st.column_config.TextColumn("BPKB Receiver", width="medium"),
+                    "STNK Received": st.column_config.TextColumn("STNK Received", width="medium"),
+                    "Created": st.column_config.TextColumn("Created", width="medium"),
+                    "Fetched": st.column_config.TextColumn("Fetched", width="medium")
+                }
+            )
+
+            # Pagination info
+            st.markdown(f"Showing {len(display_data)} records")
+
+            # Auto-refresh option
+            if st.checkbox("🔄 Auto-refresh (30s)"):
+                time.sleep(30)
+                st.rerun()
+    else:
+        st.warning("No Document Handling data found for the selected dealer.")
+
 # Main content routing
 if selected_dealer_id:
     if current_page == "home":
@@ -829,6 +985,10 @@ if selected_dealer_id:
     elif current_page == "leasing":
         # Leasing data page
         render_leasing_data_page(selected_dealer_id)
+
+    elif current_page == "doch_read":
+        # Document handling data page
+        render_document_handling_data_page(selected_dealer_id)
 
 # Footer
 st.markdown("---")

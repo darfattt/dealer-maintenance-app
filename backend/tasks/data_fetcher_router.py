@@ -12,6 +12,7 @@ from .processors.prospect_processor import ProspectDataProcessor
 from .processors.pkb_processor import PKBDataProcessor
 from .processors.parts_inbound_processor import PartsInboundDataProcessor
 from .processors.leasing_processor import LeasingDataProcessor
+from .processors.document_handling_processor import DocumentHandlingDataProcessor
 from .api_clients import initialize_default_api_configs
 
 # Setup logging
@@ -33,7 +34,8 @@ class DataFetcherRouter:
             "prospect": ProspectDataProcessor(),
             "pkb": PKBDataProcessor(),
             "parts_inbound": PartsInboundDataProcessor(),
-            "leasing": LeasingDataProcessor()
+            "leasing": LeasingDataProcessor(),
+            "doch_read": DocumentHandlingDataProcessor()
         }
     
     def get_processor(self, fetch_type: str):
@@ -119,6 +121,22 @@ def fetch_leasing_data(self, dealer_id: str, from_time: str = None, to_time: str
         raise
 
 
+@celery_app.task(bind=True)
+def fetch_document_handling_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                                id_spk: str = "", id_customer: str = ""):
+    """
+    Fetch document handling data for a specific dealer
+    """
+    try:
+        return router.execute_fetch("doch_read", dealer_id, from_time, to_time,
+                                  id_spk=id_spk, id_customer=id_customer)
+    except Exception as e:
+        logger.error(f"Document handling data fetch failed for dealer {dealer_id}: {e}")
+        if "inactive" in str(e):
+            return {"status": "skipped", "reason": "dealer_inactive"}
+        raise
+
+
 # Convenience functions for direct processor access (useful for testing)
 def get_prospect_processor() -> ProspectDataProcessor:
     """Get prospect processor instance"""
@@ -140,6 +158,11 @@ def get_leasing_processor() -> LeasingDataProcessor:
     return router.get_processor("leasing")
 
 
+def get_document_handling_processor() -> DocumentHandlingDataProcessor:
+    """Get document handling processor instance"""
+    return router.get_processor("doch_read")
+
+
 # Export the main tasks for backward compatibility
 __all__ = [
     'health_check',
@@ -147,9 +170,11 @@ __all__ = [
     'fetch_pkb_data',
     'fetch_parts_inbound_data',
     'fetch_leasing_data',
+    'fetch_document_handling_data',
     'router',
     'get_prospect_processor',
     'get_pkb_processor',
     'get_parts_inbound_processor',
-    'get_leasing_processor'
+    'get_leasing_processor',
+    'get_document_handling_processor'
 ]

@@ -11,6 +11,7 @@ Architecture:
 - processors/pkb_processor.py: PKB data processing logic
 - processors/parts_inbound_processor.py: Parts Inbound data processing logic
 - processors/leasing_processor.py: Leasing requirement data processing logic
+- processors/document_handling_processor.py: Document handling data processing logic
 """
 
 # Import the new modular router
@@ -20,11 +21,13 @@ from .data_fetcher_router import (
     fetch_pkb_data,
     fetch_parts_inbound_data,
     fetch_leasing_data,
+    fetch_document_handling_data,
     router,
     get_prospect_processor,
     get_pkb_processor,
     get_parts_inbound_processor,
-    get_leasing_processor
+    get_leasing_processor,
+    get_document_handling_processor
 )
 
 # Re-export all the tasks for backward compatibility
@@ -34,9 +37,11 @@ __all__ = [
     'fetch_pkb_data',
     'fetch_parts_inbound_data',
     'fetch_leasing_data',
+    'fetch_document_handling_data',
     'router',
     'get_prospect_processor',
     'get_pkb_processor',
     'get_parts_inbound_processor',
-    'get_leasing_processor'
+    'get_leasing_processor',
+    'get_document_handling_processor'
 ]

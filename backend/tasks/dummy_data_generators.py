@@ -397,3 +397,94 @@ def get_dummy_leasing_data(dealer_id: str, from_time: str, to_time: str, id_spk:
         "message": None,
         "data": leasing_records
     }
+
+
+def get_dummy_document_handling_data(dealer_id: str, from_time: str, to_time: str, id_spk: str = "", id_customer: str = "") -> Dict[str, Any]:
+    """Generate dummy document handling data for testing"""
+
+    # Only generate for specific test dealers
+    if not should_use_dummy_data(dealer_id):
+        return {
+            "status": 0,
+            "message": f"No dummy data available for dealer {dealer_id}. Please configure real API credentials.",
+            "data": []
+        }
+
+    # Parse time range
+    try:
+        start_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+        end_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+    except:
+        start_date = datetime.now() - timedelta(days=1)
+        end_date = datetime.now()
+
+    # Generate realistic dummy data
+    dummy_data = []
+    current_date = start_date
+
+    # Generate 2-4 document handling records
+    while current_date <= end_date:
+        for i in range(random.randint(1, 2)):
+            # Generate SPK and SO IDs
+            spk_id = f"SPK/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(5)}"
+            so_id = f"SO/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(5)}"
+
+            # Filter by idSPK if provided
+            if id_spk and id_spk not in spk_id:
+                continue
+
+            # Generate units for this document (1-3 units per document)
+            units = []
+            for j in range(random.randint(1, 3)):
+                # Random vehicle data
+                chassis_numbers = [
+                    "MF139XJ5000001", "MF139XJ5000002", "MF139XJ5000003",
+                    "MH1FC1850LK000001", "MH1FC1850LK000002", "MH1FC1850LK000003"
+                ]
+
+                # Random status values
+                status_values = ["1", "2", "3", "4", "5"]
+
+                # Random names
+                names = ["Amir Nasution", "Siti Rahayu", "Budi Santoso", "Dewi Lestari", "Ahmad Fauzi"]
+
+                unit = {
+                    "nomorRangka": random.choice(chassis_numbers),
+                    "nomorFakturSTNK": f"FH/AA/{random.randint(1580000, 1590000)}/N",
+                    "tanggalPengajuanSTNKKeBiro": current_date.strftime("%d/%m/%Y"),
+                    "statusFakturSTNK": random.choice(status_values),
+                    "nomorSTNK": f"{random.randint(18500000, 18600000)}/MB",
+                    "tanggalPenerimaanSTNKDariBiro": (current_date + timedelta(days=5)).strftime("%d/%m/%Y"),
+                    "platNomor": f"AB{random.randint(1000, 9999)}XYZ",
+                    "nomorBPKB": f"{random.randint(18500000, 18600000)}/MB",
+                    "tanggalPenerimaanBPKBDariBiro": (current_date + timedelta(days=5)).strftime("%d/%m/%Y"),
+                    "tanggalTerimaSTNKOlehKonsumen": (current_date + timedelta(days=10)).strftime("%d/%m/%Y"),
+                    "tanggalTerimaBPKBOlehKonsumen": (current_date + timedelta(days=10)).strftime("%d/%m/%Y"),
+                    "namaPenerimaBPKB": random.choice(names),
+                    "namaPenerimaSTNK": random.choice(names),
+                    "jenisIdPenerimaBPKB": "1",
+                    "jenisIdPenerimaSTNK": "1",
+                    "noIdPenerimaBPKB": f"32010705060{random.randint(900000, 999999)}",
+                    "noIdPenerimaSTNK": f"32010705060{random.randint(900000, 999999)}",
+                    "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                    "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+                }
+                units.append(unit)
+
+            record = {
+                "idSO": so_id,
+                "idSPK": spk_id,
+                "dealerId": dealer_id,
+                "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "unit": units
+            }
+            dummy_data.append(record)
+
+        current_date += timedelta(days=1)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": dummy_data
+    }

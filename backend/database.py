@@ -44,6 +44,7 @@ class Dealer(Base):
     pkb_data = relationship("PKBData", back_populates="dealer")
     parts_inbound_data = relationship("PartsInboundData", back_populates="dealer")
     leasing_data = relationship("LeasingData", back_populates="dealer")
+    document_handling_data = relationship("DocumentHandlingData", back_populates="dealer")
 
 class FetchConfiguration(Base):
     __tablename__ = "fetch_configurations"
@@ -290,6 +291,51 @@ class LeasingData(Base):
 
     # Relationships
     dealer = relationship("Dealer", back_populates="leasing_data")
+
+
+class DocumentHandlingData(Base):
+    __tablename__ = "document_handling_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    id_so = Column(String(100), nullable=True, index=True)
+    id_spk = Column(String(100), nullable=True, index=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="document_handling_data")
+    units = relationship("DocumentHandlingUnit", back_populates="document_handling_data", cascade="all, delete-orphan")
+
+
+class DocumentHandlingUnit(Base):
+    __tablename__ = "document_handling_units"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_handling_data_id = Column(UUID(as_uuid=True), ForeignKey("document_handling_data.id"), nullable=False)
+    nomor_rangka = Column(String(100), nullable=True, index=True)
+    nomor_faktur_stnk = Column(String(100), nullable=True)
+    tanggal_pengajuan_stnk_ke_biro = Column(String(50), nullable=True)
+    status_faktur_stnk = Column(String(10), nullable=True)
+    nomor_stnk = Column(String(100), nullable=True)
+    tanggal_penerimaan_stnk_dari_biro = Column(String(50), nullable=True)
+    plat_nomor = Column(String(50), nullable=True)
+    nomor_bpkb = Column(String(100), nullable=True)
+    tanggal_penerimaan_bpkb_dari_biro = Column(String(50), nullable=True)
+    tanggal_terima_stnk_oleh_konsumen = Column(String(50), nullable=True)
+    tanggal_terima_bpkb_oleh_konsumen = Column(String(50), nullable=True)
+    nama_penerima_bpkb = Column(String(255), nullable=True)
+    nama_penerima_stnk = Column(String(255), nullable=True)
+    jenis_id_penerima_bpkb = Column(String(10), nullable=True)
+    jenis_id_penerima_stnk = Column(String(10), nullable=True)
+    no_id_penerima_bpkb = Column(String(100), nullable=True)
+    no_id_penerima_stnk = Column(String(100), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    document_handling_data = relationship("DocumentHandlingData", back_populates="units")
 
 class APIConfiguration(Base):
     __tablename__ = "api_configurations"
