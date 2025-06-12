@@ -17,7 +17,7 @@ st.set_page_config(
 # Import components
 from components.navigation import render_sidebar_navigation, render_page_header, render_breadcrumb
 from components.dealer_management import render_dealer_management
-from components.run_jobs import render_run_jobs
+# from components.run_jobs import render_run_jobs  # Hidden - use Job Queue instead
 from components.job_history import render_job_history
 from components.job_queue import render_job_queue
 from components.configuration import render_configuration
@@ -90,8 +90,9 @@ def main():
         if current_page == "🏢 Dealer Management":
             render_dealer_management()
 
-        elif current_page == "🚀 Run Jobs":
-            render_run_jobs()
+        # Run Jobs menu hidden - use Job Queue instead
+        # elif current_page == "🚀 Run Jobs":
+        #     render_run_jobs()
 
         elif current_page == "🔄 Job Queue":
             render_job_queue()

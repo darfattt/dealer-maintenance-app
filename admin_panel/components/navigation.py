@@ -8,7 +8,7 @@ from typing import Dict, Any
 
 # Page constants
 DEALER_MANAGEMENT = "🏢 Dealer Management"
-RUN_JOBS = "🚀 Run Jobs"
+# RUN_JOBS = "🚀 Run Jobs"  # Hidden - use Job Queue instead
 JOB_QUEUE = "🔄 Job Queue"
 JOB_HISTORY = "📋 Job History"
 CONFIGURATION = "⚙️ Configuration"
@@ -16,7 +16,7 @@ CONFIGURATION = "⚙️ Configuration"
 # Page mapping
 PAGES = {
     DEALER_MANAGEMENT: "dealer_management",
-    RUN_JOBS: "run_jobs",
+    # RUN_JOBS: "run_jobs",  # Hidden - use Job Queue instead
     JOB_QUEUE: "job_queue",
     JOB_HISTORY: "job_history",
     CONFIGURATION: "configuration"
@@ -29,14 +29,15 @@ def render_sidebar_navigation() -> str:
     
     # Initialize session state for page navigation
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = DEALER_MANAGEMENT
-    
+        st.session_state.current_page = JOB_QUEUE  # Default to Job Queue as primary interface
+
     # Navigation buttons
     if st.sidebar.button(DEALER_MANAGEMENT, use_container_width=True):
         st.session_state.current_page = DEALER_MANAGEMENT
 
-    if st.sidebar.button(RUN_JOBS, use_container_width=True):
-        st.session_state.current_page = RUN_JOBS
+    # Run Jobs menu hidden - use Job Queue instead
+    # if st.sidebar.button(RUN_JOBS, use_container_width=True):
+    #     st.session_state.current_page = RUN_JOBS
 
     if st.sidebar.button(JOB_QUEUE, use_container_width=True):
         st.session_state.current_page = JOB_QUEUE
@@ -61,17 +62,18 @@ def render_system_info():
     """Render system information in sidebar"""
     with st.sidebar.expander("ℹ️ System Info"):
         st.markdown("""
-        **Admin Panel v2.0**
+        **Admin Panel v2.1**
         - 🏢 Dealer Management
-        - 🚀 Job Execution
+        - 🔄 Sequential Job Queue
         - 📋 History Tracking
         - ⚙️ Configuration
-        
-        **Quick Actions:**
-        - Add new dealers
-        - Run bulk jobs
-        - Monitor performance
-        - View analytics
+
+        **Key Features:**
+        - Sequential job execution
+        - Real-time queue monitoring
+        - Professional job types
+        - Enhanced validation
+        - Background processing
         """)
 
 def get_page_config(page: str) -> Dict[str, Any]:
@@ -83,11 +85,11 @@ def get_page_config(page: str) -> Dict[str, Any]:
             "description": "Manage dealer accounts, API credentials, and status",
             "features": ["View Dealers", "Add Dealer", "Edit Dealer"]
         },
-        RUN_JOBS: {
-            "icon": "🚀",
-            "title": "Run Jobs",
-            "description": "Execute data fetch jobs for single or multiple dealers",
-            "features": ["Single Dealer Jobs", "Bulk Operations", "Real-time Monitoring"]
+        JOB_QUEUE: {
+            "icon": "🔄",
+            "title": "Job Queue",
+            "description": "Sequential job execution with real-time monitoring and professional job types",
+            "features": ["Sequential Processing", "Multiple Dealers", "Professional Job Types", "Real-time Status", "Background Processing"]
         },
         JOB_HISTORY: {
             "icon": "📋",
@@ -102,7 +104,7 @@ def get_page_config(page: str) -> Dict[str, Any]:
             "features": ["API Settings", "Database Config", "Notifications"]
         }
     }
-    
+
     return configs.get(page, {})
 
 def render_page_header(page: str):
@@ -143,17 +145,27 @@ def show_page_help(page: str, config: Dict[str, Any]):
             - API credentials are required for data fetching
             """)
         
-        elif page == RUN_JOBS:
+        elif page == JOB_QUEUE:
             st.markdown("""
             **How to use:**
-            1. **Single Dealer**: Run jobs for individual dealers
-            2. **All Dealers**: Execute jobs for all active dealers at once
-            3. **Monitor Progress**: Watch real-time job execution status
-            
+            1. **Select Dealers**: Choose multiple dealers from dropdown
+            2. **Select Job Types**: Pick Prospect, Manage WO - PKB, or Part Inbound - PINB
+            3. **Set Date Range**: Default yesterday to today with full day coverage
+            4. **Submit**: Jobs run sequentially to prevent database conflicts
+            5. **Monitor**: Real-time queue status and progress tracking
+
+            **Key Features:**
+            - **Sequential Processing**: Jobs run one by one (no database conflicts)
+            - **Professional Labels**: Clear job type names in UI
+            - **Required Validation**: All fields validated before submission
+            - **Background Processing**: Jobs continue when navigating pages
+            - **Real-time Updates**: Live queue status and job progress
+
             **Tips:**
-            - Only active dealers will be included in bulk operations
-            - Use appropriate date ranges for data fetching
-            - Check Job History for detailed execution logs
+            - Use auto-refresh for active monitoring
+            - Default date range covers recent data (yesterday to today)
+            - Jobs process in background - safe to navigate between pages
+            - Cancel queued jobs if needed (running jobs cannot be cancelled)
             """)
         
         elif page == JOB_HISTORY:
