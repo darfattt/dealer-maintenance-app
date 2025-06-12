@@ -33,10 +33,15 @@ class PartsInboundDataProcessor(BaseDataProcessor):
                 self.logger.info(f"Parts Inbound API call successful for dealer {dealer.dealer_id}")
                 return api_data
         except Exception as api_error:
-            self.logger.warning(f"Parts Inbound API call failed for dealer {dealer.dealer_id}: {api_error}")
-            self.logger.info("Falling back to dummy Parts Inbound data for demonstration")
-            # Fallback to dummy data
-            return get_dummy_parts_inbound_data(dealer.dealer_id, from_time, to_time, no_po)
+            self.logger.error(f"Parts Inbound API call failed for dealer {dealer.dealer_id}: {api_error}")
+            # Return error response instead of dummy data
+            return {
+                "status": 0,
+                "message": f"API call failed: {str(api_error)}",
+                "data": [],
+                "error_type": "api_error",
+                "dealer_id": dealer.dealer_id
+            }
     
     def process_records(self, db, dealer_id: str, api_data: Dict[str, Any]) -> int:
         """Process Parts Inbound records and save to database"""
