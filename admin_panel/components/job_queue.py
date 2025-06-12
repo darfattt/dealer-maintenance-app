@@ -10,6 +10,7 @@ from typing import Dict, Any, List
 from datetime import datetime, date, time, timedelta
 
 from .api_utils import BACKEND_URL
+from .job_types import get_job_type_options, get_codes_from_labels, code_to_label
 
 
 def combine_date_time(date_input, time_input):
@@ -77,13 +78,17 @@ def render_job_queue():
             help="Select one or more dealers (required)"
         )
 
-        # Multiple fetch types selection (required)
-        fetch_types = st.multiselect(
+        # Multiple fetch types selection (required) - using labels
+        job_type_labels = get_job_type_options()
+        selected_job_labels = st.multiselect(
             "Job Types *",
-            ["prospect", "pkb", "parts_inbound"],
-            default=["prospect"],
+            job_type_labels,
+            default=["Prospect"],  # Default to Prospect label
             help="Select one or more job types to add to queue (required)"
         )
+
+        # Convert labels to codes for API calls
+        fetch_types = get_codes_from_labels(selected_job_labels)
 
         # Date pickers for time range (required with defaults)
         col_date1, col_date2 = st.columns(2)
@@ -110,7 +115,7 @@ def render_job_queue():
             # Validate required fields
             if not selected_dealers:
                 st.error("❌ Please select at least one dealer (required)")
-            elif not fetch_types:
+            elif not selected_job_labels:
                 st.error("❌ Please select at least one job type (required)")
             elif not from_date:
                 st.error("❌ From Date is required")
@@ -180,7 +185,8 @@ def display_current_job(current_job: Dict[str, Any]):
         with col2:
             st.write(f"**Dealer:** {current_job['dealer_id']}")
         with col3:
-            st.write(f"**Type:** {current_job['fetch_type'].title()}")
+            job_label = code_to_label(current_job['fetch_type'])
+            st.write(f"**Type:** {job_label}")
         with col4:
             status_color = "🟢" if current_job['status'] == 'running' else "🔴"
             st.write(f"**Status:** {status_color} {current_job['status'].title()}")
@@ -202,13 +208,14 @@ def display_queued_jobs(queued_jobs: List[Dict[str, Any]]):
         return
     
     for i, job in enumerate(queued_jobs):
-        with st.expander(f"Job {i+1}: {job['fetch_type'].title()} - {job['dealer_id']} ({job['status']})"):
+        job_label = code_to_label(job['fetch_type'])
+        with st.expander(f"Job {i+1}: {job_label} - {job['dealer_id']} ({job['status']})"):
             col1, col2 = st.columns([3, 1])
-            
+
             with col1:
                 st.write(f"**Job ID:** {job['id']}")
                 st.write(f"**Dealer ID:** {job['dealer_id']}")
-                st.write(f"**Job Type:** {job['fetch_type'].title()}")
+                st.write(f"**Job Type:** {job_label}")
                 st.write(f"**Status:** {job['status'].title()}")
                 st.write(f"**Created:** {job.get('created_at', 'Unknown')}")
                 

@@ -8,6 +8,7 @@ import time
 from datetime import date, timedelta
 from typing import Dict, List, Any
 from .api_utils import get_dealers, run_manual_job, get_job_status, run_jobs_for_all_dealers
+from .job_types import code_to_label
 
 def render_run_jobs():
     """Render the run jobs page"""
@@ -66,13 +67,13 @@ def render_single_dealer_jobs(dealers: List[Dict[str, Any]]):
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            fetch_prospect = st.checkbox("🎯 Prospect Data", value=True, help="Fetch customer prospect data")
+            fetch_prospect = st.checkbox("🎯 Prospect", value=True, help="Fetch customer prospect data")
 
         with col2:
-            fetch_pkb = st.checkbox("🔧 PKB Data (Service Records)", value=False, help="Fetch service record data")
+            fetch_pkb = st.checkbox("🔧 Manage WO - PKB", value=False, help="Fetch service record data")
 
         with col3:
-            fetch_parts_inbound = st.checkbox("📦 Parts Inbound", value=False, help="Fetch parts receiving data")
+            fetch_parts_inbound = st.checkbox("📦 Part Inbound - PINB", value=False, help="Fetch parts receiving data")
 
         if not fetch_prospect and not fetch_pkb and not fetch_parts_inbound:
             st.warning("⚠️ Please select at least one data type to fetch")
@@ -131,13 +132,13 @@ def render_bulk_dealer_jobs(dealers: List[Dict[str, Any]]):
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            fetch_prospect_all = st.checkbox("🎯 Prospect Data", value=True, key="prospect_all", help="Fetch customer prospect data")
+            fetch_prospect_all = st.checkbox("🎯 Prospect", value=True, key="prospect_all", help="Fetch customer prospect data")
 
         with col2:
-            fetch_pkb_all = st.checkbox("🔧 PKB Data (Service Records)", value=False, key="pkb_all", help="Fetch service record data")
+            fetch_pkb_all = st.checkbox("🔧 Manage WO - PKB", value=False, key="pkb_all", help="Fetch service record data")
 
         with col3:
-            fetch_parts_inbound_all = st.checkbox("📦 Parts Inbound", value=False, key="parts_inbound_all", help="Fetch parts receiving data")
+            fetch_parts_inbound_all = st.checkbox("📦 Part Inbound - PINB", value=False, key="parts_inbound_all", help="Fetch parts receiving data")
 
         if not fetch_prospect_all and not fetch_pkb_all and not fetch_parts_inbound_all:
             st.warning("⚠️ Please select at least one data type to fetch")
@@ -165,24 +166,24 @@ def execute_single_job(dealer_id: str, from_date: date, to_date: date, fetch_pro
 
         # Start prospect data job if selected
         if fetch_prospect:
-            with st.spinner("🔄 Starting Prospect Data job..."):
+            with st.spinner("🔄 Starting Prospect job..."):
                 result = run_manual_job(dealer_id, from_time, to_time, "prospect")
                 if result:
-                    jobs_started.append(("Prospect Data", result))
+                    jobs_started.append((code_to_label("prospect"), result))
 
         # Start PKB data job if selected
         if fetch_pkb:
-            with st.spinner("🔄 Starting PKB Data job..."):
+            with st.spinner("🔄 Starting Manage WO - PKB job..."):
                 result = run_manual_job(dealer_id, from_time, to_time, "pkb")
                 if result:
-                    jobs_started.append(("PKB Data", result))
+                    jobs_started.append((code_to_label("pkb"), result))
 
         # Start Parts Inbound data job if selected
         if fetch_parts_inbound:
-            with st.spinner("🔄 Starting Parts Inbound Data job..."):
+            with st.spinner("🔄 Starting Part Inbound - PINB job..."):
                 result = run_manual_job(dealer_id, from_time, to_time, "parts_inbound")
                 if result:
-                    jobs_started.append(("Parts Inbound Data", result))
+                    jobs_started.append((code_to_label("parts_inbound"), result))
 
         if jobs_started:
             st.success(f"✅ {len(jobs_started)} job(s) started successfully!")
@@ -215,24 +216,24 @@ def execute_bulk_jobs(active_dealers: List[Dict[str, Any]], from_date: date, to_
 
         # Execute prospect data jobs if selected
         if fetch_prospect:
-            with st.spinner(f"🔄 Starting Prospect Data jobs for {len(active_dealers)} dealers..."):
+            with st.spinner(f"🔄 Starting Prospect jobs for {len(active_dealers)} dealers..."):
                 prospect_results = run_jobs_for_all_dealers(from_time, to_time, "prospect")
                 if prospect_results:
-                    all_results.extend([(r, "Prospect Data") for r in prospect_results])
+                    all_results.extend([(r, code_to_label("prospect")) for r in prospect_results])
 
         # Execute PKB data jobs if selected
         if fetch_pkb:
-            with st.spinner(f"🔄 Starting PKB Data jobs for {len(active_dealers)} dealers..."):
+            with st.spinner(f"🔄 Starting Manage WO - PKB jobs for {len(active_dealers)} dealers..."):
                 pkb_results = run_jobs_for_all_dealers(from_time, to_time, "pkb")
                 if pkb_results:
-                    all_results.extend([(r, "PKB Data") for r in pkb_results])
+                    all_results.extend([(r, code_to_label("pkb")) for r in pkb_results])
 
         # Execute Parts Inbound data jobs if selected
         if fetch_parts_inbound:
-            with st.spinner(f"🔄 Starting Parts Inbound Data jobs for {len(active_dealers)} dealers..."):
+            with st.spinner(f"🔄 Starting Part Inbound - PINB jobs for {len(active_dealers)} dealers..."):
                 parts_inbound_results = run_jobs_for_all_dealers(from_time, to_time, "parts_inbound")
                 if parts_inbound_results:
-                    all_results.extend([(r, "Parts Inbound Data") for r in parts_inbound_results])
+                    all_results.extend([(r, code_to_label("parts_inbound")) for r in parts_inbound_results])
 
         if all_results:
             st.success(f"✅ Started {len(all_results)} job(s)!")
