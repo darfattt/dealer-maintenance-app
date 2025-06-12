@@ -321,3 +321,79 @@ def get_dummy_parts_inbound_data(dealer_id: str, from_time: str, to_time: str, n
         "message": None,
         "data": parts_inbound_records
     }
+
+
+def get_dummy_leasing_data(dealer_id: str, from_time: str, to_time: str, id_spk: str = "") -> Dict[str, Any]:
+    """Generate dummy Leasing data for demonstration"""
+
+    # Only generate dummy data for specific dealer
+    if not should_use_dummy_data(dealer_id):
+        return {
+            "status": 0,
+            "message": f"No dummy data available for dealer {dealer_id}. Please configure real API credentials.",
+            "data": []
+        }
+
+    # Parse time range
+    try:
+        start_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+        end_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+    except:
+        start_date = datetime.now() - timedelta(days=1)
+        end_date = datetime.now()
+
+    # Generate multiple Leasing records for the date range
+    leasing_records = []
+    current_date = start_date
+
+    finance_companies = [
+        {"id": "FC/FIF01", "name": "Astra FIF"},
+        {"id": "FC/BAF01", "name": "BAF (Bussan Auto Finance)"},
+        {"id": "FC/WOM01", "name": "WOM Finance"},
+        {"id": "FC/OTO01", "name": "OTO Finance"},
+        {"id": "FC/MCF01", "name": "Mega Central Finance"}
+    ]
+
+    tenors = [12, 18, 24, 30, 36, 42, 48]
+    dp_amounts = [1500000, 2000000, 2500000, 3000000, 3500000, 4000000]
+    cicilan_amounts = [400000, 500000, 600000, 700000, 800000, 900000, 1000000]
+
+    while current_date <= end_date:
+        # Generate 1-2 Leasing records per day
+        for _ in range(random.randint(1, 2)):
+            doc_num = random.randint(1, 999)
+            spk_num = random.randint(1, 999)
+            finance_company = random.choice(finance_companies)
+
+            spk_id = f"SPK/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{spk_num:05d}"
+
+            # Filter by idSPK if specified
+            if id_spk and id_spk not in spk_id:
+                continue
+
+            leasing_record = {
+                "idDokumenPengajuan": f"{finance_company['id']}/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{doc_num:05d}",
+                "idSPK": spk_id,
+                "jumlahDP": random.choice(dp_amounts),
+                "tenor": random.choice(tenors),
+                "jumlahCicilan": random.choice(cicilan_amounts),
+                "tanggalPengajuan": current_date.strftime("%d/%m/%Y"),
+                "idFinanceCompany": finance_company["id"],
+                "namaFinanceCompany": finance_company["name"],
+                "idPOFinanceCompany": f"PO/{finance_company['id']}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{doc_num:04d}",
+                "tanggalPembuatanPO": current_date.strftime("%d/%m/%Y"),
+                "tanggalPengirimanPOFinanceCompany": (current_date + timedelta(days=random.randint(1, 3))).strftime("%d/%m/%Y"),
+                "dealerId": dealer_id,
+                "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+
+            leasing_records.append(leasing_record)
+
+        current_date += timedelta(days=1)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": leasing_records
+    }

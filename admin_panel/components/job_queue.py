@@ -108,8 +108,8 @@ def render_job_queue():
         with col_time2:
             to_time_input = st.time_input("To Time", value=time(23, 59))  # Default 23:59
 
-        # PO Number for Parts Inbound
-        no_po = st.text_input("PO Number (Parts Inbound only)", placeholder="Optional")
+        # Additional parameter field (PO Number for Parts Inbound, SPK ID for Leasing)
+        no_po = st.text_input("Additional Parameter", placeholder="PO Number (Parts Inbound) / SPK ID (Leasing) - Optional")
 
         if st.form_submit_button("🚀 Add Jobs to Queue"):
             # Validate required fields

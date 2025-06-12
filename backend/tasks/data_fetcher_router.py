@@ -11,6 +11,7 @@ from typing import Dict, Any
 from .processors.prospect_processor import ProspectDataProcessor
 from .processors.pkb_processor import PKBDataProcessor
 from .processors.parts_inbound_processor import PartsInboundDataProcessor
+from .processors.leasing_processor import LeasingDataProcessor
 from .api_clients import initialize_default_api_configs
 
 # Setup logging
@@ -31,7 +32,8 @@ class DataFetcherRouter:
         self.processors = {
             "prospect": ProspectDataProcessor(),
             "pkb": PKBDataProcessor(),
-            "parts_inbound": PartsInboundDataProcessor()
+            "parts_inbound": PartsInboundDataProcessor(),
+            "leasing": LeasingDataProcessor()
         }
     
     def get_processor(self, fetch_type: str):
@@ -102,6 +104,21 @@ def fetch_parts_inbound_data(self, dealer_id: str, from_time: str = None, to_tim
         raise
 
 
+@celery_app.task(bind=True)
+def fetch_leasing_data(self, dealer_id: str, from_time: str = None, to_time: str = None, id_spk: str = ""):
+    """
+    Fetch Leasing requirement data for a specific dealer
+    """
+    try:
+        return router.execute_fetch("leasing", dealer_id, from_time, to_time, id_spk=id_spk)
+    except Exception as e:
+        logger.error(f"Leasing data fetch failed for dealer {dealer_id}: {e}")
+        # Check if dealer is inactive
+        if "inactive" in str(e):
+            return {"status": "skipped", "reason": "dealer_inactive"}
+        raise
+
+
 # Convenience functions for direct processor access (useful for testing)
 def get_prospect_processor() -> ProspectDataProcessor:
     """Get prospect processor instance"""
@@ -118,14 +135,21 @@ def get_parts_inbound_processor() -> PartsInboundDataProcessor:
     return router.get_processor("parts_inbound")
 
 
+def get_leasing_processor() -> LeasingDataProcessor:
+    """Get Leasing processor instance"""
+    return router.get_processor("leasing")
+
+
 # Export the main tasks for backward compatibility
 __all__ = [
     'health_check',
-    'fetch_prospect_data', 
+    'fetch_prospect_data',
     'fetch_pkb_data',
     'fetch_parts_inbound_data',
+    'fetch_leasing_data',
     'router',
     'get_prospect_processor',
-    'get_pkb_processor', 
-    'get_parts_inbound_processor'
+    'get_pkb_processor',
+    'get_parts_inbound_processor',
+    'get_leasing_processor'
 ]

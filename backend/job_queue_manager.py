@@ -200,6 +200,9 @@ class JobQueueManager:
             elif job.fetch_type == "parts_inbound":
                 task_name = "tasks.data_fetcher_router.fetch_parts_inbound_data"
                 task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or ""]
+            elif job.fetch_type == "leasing":
+                task_name = "tasks.data_fetcher_router.fetch_leasing_data"
+                task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or ""]
             else:  # prospect
                 task_name = "tasks.data_fetcher_router.fetch_prospect_data"
                 task_args = [job.dealer_id, job.from_time, job.to_time]

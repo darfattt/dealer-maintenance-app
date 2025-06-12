@@ -8,8 +8,9 @@ from typing import Dict, List, Tuple
 # Job type mapping: code -> label
 JOB_TYPE_MAPPING = {
     "prospect": "Prospect",
-    "pkb": "Manage WO - PKB", 
-    "parts_inbound": "Part Inbound - PINB"
+    "pkb": "Manage WO - PKB",
+    "parts_inbound": "Part Inbound - PINB",
+    "leasing": "Handle Leasing Requirement"
 }
 
 # Reverse mapping: label -> code

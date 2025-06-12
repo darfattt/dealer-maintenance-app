@@ -157,6 +157,10 @@ async def run_job(request: ManualFetchRequest, db: Session = Depends(get_db)):
         task_name = "tasks.data_fetcher_router.fetch_parts_inbound_data"
         message = "Parts Inbound data fetch job started"
         task_args = [request.dealer_id, request.from_time, request.to_time, request.no_po]
+    elif request.fetch_type == "leasing":
+        task_name = "tasks.data_fetcher_router.fetch_leasing_data"
+        message = "Leasing data fetch job started"
+        task_args = [request.dealer_id, request.from_time, request.to_time, request.no_po]
     else:
         task_name = "tasks.data_fetcher_router.fetch_prospect_data"
         message = "Prospect data fetch job started"
@@ -261,6 +265,9 @@ async def run_bulk_jobs(
                 task_args = [dealer_id, from_time, to_time]
             elif fetch_type == "parts_inbound":
                 task_name = "tasks.data_fetcher_router.fetch_parts_inbound_data"
+                task_args = [dealer_id, from_time, to_time, ""]
+            elif fetch_type == "leasing":
+                task_name = "tasks.data_fetcher_router.fetch_leasing_data"
                 task_args = [dealer_id, from_time, to_time, ""]
             else:
                 task_name = "tasks.data_fetcher_router.fetch_prospect_data"

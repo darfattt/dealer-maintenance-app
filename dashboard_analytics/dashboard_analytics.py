@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, and_, or_
 from sqlalchemy.orm import sessionmaker
-from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO
+from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData
 
 # Load environment variables
 load_dotenv()
@@ -304,6 +304,52 @@ def get_parts_inbound_data_table(dealer_id, page=1, page_size=50, search_term=""
     finally:
         db.close()
 
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_leasing_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get Leasing data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(LeasingData).filter(LeasingData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            search_filter = or_(
+                LeasingData.id_dokumen_pengajuan.ilike(f"%{search_term}%"),
+                LeasingData.id_spk.ilike(f"%{search_term}%"),
+                LeasingData.nama_finance_company.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter)
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        leasing_records = query.order_by(LeasingData.tanggal_pengajuan.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries
+        data = []
+        for leasing in leasing_records:
+            data.append({
+                "ID Dokumen": leasing.id_dokumen_pengajuan,
+                "ID SPK": leasing.id_spk,
+                "Finance Company": leasing.nama_finance_company,
+                "Jumlah DP": f"Rp {leasing.jumlah_dp:,.0f}" if leasing.jumlah_dp else "N/A",
+                "Tenor": f"{leasing.tenor} bulan" if leasing.tenor else "N/A",
+                "Cicilan": f"Rp {leasing.jumlah_cicilan:,.0f}" if leasing.jumlah_cicilan else "N/A",
+                "Tanggal Pengajuan": leasing.tanggal_pengajuan,
+                "ID PO Finance": leasing.id_po_finance_company,
+                "Tanggal PO": leasing.tanggal_pembuatan_po,
+                "Created": leasing.created_time,
+                "Fetched": leasing.fetched_at.strftime('%Y-%m-%d %H:%M') if leasing.fetched_at else None
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
 # Main app
 st.markdown('<div class="main-header">📊 Dealer Analytics Dashboard</div>', unsafe_allow_html=True)
 
@@ -316,7 +362,8 @@ menu_options = {
     "🏠 Home": "home",
     "👥 Prospect Data": "prospect",
     "🔧 PKB Data": "pkb",
-    "📦 Parts Inbound": "parts_inbound"
+    "📦 Parts Inbound": "parts_inbound",
+    "💰 Leasing Data": "leasing"
 }
 
 selected_menu = st.sidebar.selectbox(
@@ -700,6 +747,71 @@ def render_parts_inbound_data_page(dealer_id):
     else:
         st.warning("No Parts Inbound data found for the selected dealer.")
 
+def render_leasing_data_page(dealer_id):
+    """Render the Leasing data table page"""
+    st.subheader("💰 Leasing Requirement Data")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search by document ID, SPK ID, or finance company...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'leasing_page' not in st.session_state:
+        st.session_state.leasing_page = 1
+
+    # Get data
+    data, total_count = get_leasing_data_table(dealer_id, st.session_state.leasing_page, page_size, search_term)
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.leasing_page}")
+
+    if data:
+        # Display data table
+        df = pd.DataFrame(data)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+        # Pagination controls
+        total_pages = (total_count + page_size - 1) // page_size
+
+        if total_pages > 1:
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+            with col1:
+                if st.button("⏮️ First") and st.session_state.leasing_page > 1:
+                    st.session_state.leasing_page = 1
+                    st.rerun()
+
+            with col2:
+                if st.button("⏪ Previous") and st.session_state.leasing_page > 1:
+                    st.session_state.leasing_page -= 1
+                    st.rerun()
+
+            with col3:
+                st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.leasing_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+            with col4:
+                if st.button("Next ⏩") and st.session_state.leasing_page < total_pages:
+                    st.session_state.leasing_page += 1
+                    st.rerun()
+
+            with col5:
+                if st.button("Last ⏭️") and st.session_state.leasing_page < total_pages:
+                    st.session_state.leasing_page = total_pages
+                    st.rerun()
+    else:
+        st.warning("No Leasing data found for the selected dealer.")
+
 # Main content routing
 if selected_dealer_id:
     if current_page == "home":
@@ -714,6 +826,9 @@ if selected_dealer_id:
     elif current_page == "parts_inbound":
         # Parts Inbound data page
         render_parts_inbound_data_page(selected_dealer_id)
+    elif current_page == "leasing":
+        # Leasing data page
+        render_leasing_data_page(selected_dealer_id)
 
 # Footer
 st.markdown("---")

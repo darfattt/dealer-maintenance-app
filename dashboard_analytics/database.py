@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Date, Time, Integer, Text, ForeignKey, Float, JSON
+from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Date, Time, Integer, Text, ForeignKey, Float, JSON, Numeric
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -35,6 +35,7 @@ class Dealer(Base):
     fetch_logs = relationship("FetchLog", back_populates="dealer")
     pkb_data = relationship("PKBData", back_populates="dealer")
     parts_inbound_data = relationship("PartsInboundData", back_populates="dealer")
+    leasing_data = relationship("LeasingData", back_populates="dealer")
 
 class FetchConfiguration(Base):
     __tablename__ = "fetch_configurations"
@@ -258,6 +259,29 @@ class PartsInboundPO(Base):
 
     # Relationships
     parts_inbound_data = relationship("PartsInboundData", back_populates="po_items")
+
+class LeasingData(Base):
+    __tablename__ = "leasing_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    id_dokumen_pengajuan = Column(String(100), nullable=True, index=True)
+    id_spk = Column(String(100), nullable=True, index=True)
+    jumlah_dp = Column(Numeric(15, 2), nullable=True)
+    tenor = Column(Integer, nullable=True)
+    jumlah_cicilan = Column(Numeric(15, 2), nullable=True)
+    tanggal_pengajuan = Column(String(50), nullable=True)
+    id_finance_company = Column(String(100), nullable=True)
+    nama_finance_company = Column(String(255), nullable=True)
+    id_po_finance_company = Column(String(100), nullable=True)
+    tanggal_pembuatan_po = Column(String(50), nullable=True)
+    tanggal_pengiriman_po_finance_company = Column(String(50), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="leasing_data")
 
 class APIConfiguration(Base):
     __tablename__ = "api_configurations"
