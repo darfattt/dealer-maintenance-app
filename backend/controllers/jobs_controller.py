@@ -3,16 +3,145 @@ Jobs controller for manual job execution and job status management
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from database import get_db, Dealer, FetchLog
-from models.schemas import ManualFetchRequest, JobResponse, JobStatusResponse, FetchLogResponse
+from models.schemas import ManualFetchRequest, JobResponse, JobStatusResponse, FetchLogResponse, BulkJobRequest
 from .base_controller import BaseController
 from celery_app import celery_app
+from job_queue_manager import add_job_to_queue, get_job_status as get_queue_job_status, get_queue_status, cancel_job as cancel_queue_job, clear_completed_jobs
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 
+# NEW: Queue-based job endpoints
+@router.post("/queue", response_model=Dict[str, Any])
+async def add_job_to_queue_endpoint(request: ManualFetchRequest, db: Session = Depends(get_db)):
+    """Add a job to the sequential queue (RECOMMENDED - prevents database conflicts)"""
+    # Validate dealer exists
+    BaseController.validate_dealer_exists(db, request.dealer_id, Dealer)
+
+    # Add job to queue
+    job_id = await add_job_to_queue(
+        dealer_id=request.dealer_id,
+        fetch_type=request.fetch_type,
+        from_time=request.from_time,
+        to_time=request.to_time,
+        no_po=request.no_po
+    )
+
+    BaseController.log_operation("ADD_JOB_TO_QUEUE", f"Added {request.fetch_type} job for dealer {request.dealer_id} to queue: {job_id}")
+
+    return {
+        "message": f"{request.fetch_type.title()} job added to queue",
+        "job_id": job_id,
+        "dealer_id": request.dealer_id,
+        "fetch_type": request.fetch_type,
+        "status": "queued"
+    }
+
+
+@router.get("/queue/status")
+async def get_queue_status_endpoint():
+    """Get overall queue status"""
+    status = await get_queue_status()
+    BaseController.log_operation("GET_QUEUE_STATUS", f"Queue status: {status['queue_length']} jobs queued, processing: {status['is_processing']}")
+    return status
+
+
+@router.get("/queue/{job_id}/status")
+async def get_queue_job_status_endpoint(job_id: str):
+    """Get status of a specific queued job"""
+    status = await get_queue_job_status(job_id)
+    if not status:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    BaseController.log_operation("GET_QUEUE_JOB_STATUS", f"Retrieved queue job status for {job_id}: {status['status']}")
+    return status
+
+
+@router.delete("/queue/{job_id}")
+async def cancel_queue_job_endpoint(job_id: str):
+    """Cancel a queued job"""
+    success = await cancel_queue_job(job_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Job not found or cannot be cancelled")
+
+    BaseController.log_operation("CANCEL_QUEUE_JOB", f"Cancelled queue job {job_id}")
+    return {"message": f"Job {job_id} cancelled", "job_id": job_id, "status": "cancelled"}
+
+
+@router.delete("/queue/completed")
+async def clear_completed_jobs_endpoint():
+    """Clear completed jobs from queue"""
+    cleared_count = await clear_completed_jobs()
+    BaseController.log_operation("CLEAR_COMPLETED_JOBS", f"Cleared {cleared_count} completed jobs")
+    return {"message": f"Cleared {cleared_count} completed jobs", "cleared_count": cleared_count}
+
+
+@router.post("/queue/bulk")
+async def add_bulk_jobs_to_queue(
+    request: BulkJobRequest,
+    db: Session = Depends(get_db)
+):
+    """Add multiple jobs to queue (RECOMMENDED for bulk operations)"""
+    # Validate all dealers exist
+    valid_dealers = []
+    invalid_dealers = []
+
+    for dealer_id in request.dealer_ids:
+        dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
+        if dealer:
+            valid_dealers.append(dealer_id)
+        else:
+            invalid_dealers.append(dealer_id)
+
+    if invalid_dealers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid dealer IDs: {', '.join(invalid_dealers)}"
+        )
+
+    # Add jobs to queue
+    queued_jobs = []
+    failed_jobs = []
+
+    for dealer_id in valid_dealers:
+        try:
+            job_id = await add_job_to_queue(
+                dealer_id=dealer_id,
+                fetch_type=request.fetch_type,
+                from_time=request.from_time,
+                to_time=request.to_time
+            )
+
+            queued_jobs.append({
+                "dealer_id": dealer_id,
+                "job_id": job_id,
+                "fetch_type": request.fetch_type,
+                "status": "queued"
+            })
+
+        except Exception as e:
+            failed_jobs.append({
+                "dealer_id": dealer_id,
+                "error": str(e)
+            })
+
+    BaseController.log_operation("ADD_BULK_JOBS_TO_QUEUE", f"Added {len(queued_jobs)} jobs to queue, {len(failed_jobs)} failed")
+
+    return {
+        "message": "Bulk jobs added to queue",
+        "total_dealers": len(request.dealer_ids),
+        "queued_jobs": len(queued_jobs),
+        "failed_jobs": len(failed_jobs),
+        "fetch_type": request.fetch_type,
+        "jobs": queued_jobs,
+        "failures": failed_jobs
+    }
+
+
+# LEGACY: Direct Celery execution (may cause database conflicts in parallel)
 @router.post("/run", response_model=JobResponse)
 async def run_job(request: ManualFetchRequest, db: Session = Depends(get_db)):
     """Execute a manual data fetch job"""

@@ -23,14 +23,18 @@ def get_dealers() -> List[Dict[str, Any]]:
         st.error(f"Error connecting to backend: {e}")
         return []
 
-def get_fetch_logs(dealer_id: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_fetch_logs(dealer_id: Optional[str] = None, fetch_type: Optional[str] = None, status: Optional[str] = None) -> List[Dict[str, Any]]:
     """Fetch job logs from API"""
     try:
         url = f"{BACKEND_URL}/fetch-logs/"
         params = {}
         if dealer_id:
             params['dealer_id'] = dealer_id
-        
+        if fetch_type:
+            params['fetch_type'] = fetch_type
+        if status:
+            params['status'] = status
+
         response = requests.get(url, params=params)
         if response.status_code == 200:
             return response.json()

@@ -19,6 +19,7 @@ from components.navigation import render_sidebar_navigation, render_page_header,
 from components.dealer_management import render_dealer_management
 from components.run_jobs import render_run_jobs
 from components.job_history import render_job_history
+from components.job_queue import render_job_queue
 from components.configuration import render_configuration
 
 # Custom CSS for better styling
@@ -88,16 +89,19 @@ def main():
     with st.container():
         if current_page == "🏢 Dealer Management":
             render_dealer_management()
-        
+
         elif current_page == "🚀 Run Jobs":
             render_run_jobs()
-        
+
+        elif current_page == "🔄 Job Queue":
+            render_job_queue()
+
         elif current_page == "📋 Job History":
             render_job_history()
-        
+
         elif current_page == "⚙️ Configuration":
             render_configuration()
-        
+
         else:
             st.error(f"Unknown page: {current_page}")
 

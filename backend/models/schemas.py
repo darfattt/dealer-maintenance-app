@@ -2,7 +2,7 @@
 Pydantic models for API request/response schemas
 """
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 
 
@@ -166,6 +166,33 @@ class JobStatusResponse(BaseModel):
     status: str
     result: Optional[dict] = None
     progress: str
+
+
+class QueueJobResponse(BaseModel):
+    job_id: str
+    dealer_id: str
+    fetch_type: str
+    status: str
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    celery_task_id: Optional[str] = None
+
+
+class QueueStatusResponse(BaseModel):
+    current_job: Optional[QueueJobResponse] = None
+    queue_length: int
+    queued_jobs: List[QueueJobResponse]
+    is_processing: bool
+
+
+class BulkJobRequest(BaseModel):
+    dealer_ids: List[str]
+    fetch_type: str = "prospect"
+    from_time: Optional[str] = None
+    to_time: Optional[str] = None
 
 
 # Fetch Log schemas

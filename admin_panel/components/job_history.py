@@ -111,7 +111,7 @@ def display_job_logs_table(logs: List[Dict[str, Any]], status_filter: str):
             return ''
         
         # Apply styling and display
-        styled_df = df[display_columns].style.applymap(style_status, subset=['status'])
+        styled_df = df[display_columns].style.map(style_status, subset=['status'])
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
         
         # Add pagination for large datasets

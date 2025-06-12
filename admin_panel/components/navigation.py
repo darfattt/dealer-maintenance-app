@@ -9,6 +9,7 @@ from typing import Dict, Any
 # Page constants
 DEALER_MANAGEMENT = "🏢 Dealer Management"
 RUN_JOBS = "🚀 Run Jobs"
+JOB_QUEUE = "🔄 Job Queue"
 JOB_HISTORY = "📋 Job History"
 CONFIGURATION = "⚙️ Configuration"
 
@@ -16,6 +17,7 @@ CONFIGURATION = "⚙️ Configuration"
 PAGES = {
     DEALER_MANAGEMENT: "dealer_management",
     RUN_JOBS: "run_jobs",
+    JOB_QUEUE: "job_queue",
     JOB_HISTORY: "job_history",
     CONFIGURATION: "configuration"
 }
@@ -32,13 +34,16 @@ def render_sidebar_navigation() -> str:
     # Navigation buttons
     if st.sidebar.button(DEALER_MANAGEMENT, use_container_width=True):
         st.session_state.current_page = DEALER_MANAGEMENT
-    
+
     if st.sidebar.button(RUN_JOBS, use_container_width=True):
         st.session_state.current_page = RUN_JOBS
-    
+
+    if st.sidebar.button(JOB_QUEUE, use_container_width=True):
+        st.session_state.current_page = JOB_QUEUE
+
     if st.sidebar.button(JOB_HISTORY, use_container_width=True):
         st.session_state.current_page = JOB_HISTORY
-    
+
     if st.sidebar.button(CONFIGURATION, use_container_width=True):
         st.session_state.current_page = CONFIGURATION
     

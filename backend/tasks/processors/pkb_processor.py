@@ -15,7 +15,7 @@ class PKBDataProcessor(BaseDataProcessor):
     """Processor for PKB (Service Record) data"""
     
     def __init__(self):
-        super().__init__("pkb_data")
+        super().__init__("pkb")
     
     def set_default_time_range(self, from_time: str, to_time: str) -> tuple[str, str]:
         """Set default time range for PKB data (different from base)"""

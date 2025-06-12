@@ -21,15 +21,33 @@ class BaseDataProcessor(ABC):
     
     def get_dealer_info(self, db, dealer_id: str) -> Dealer:
         """Get dealer information and validate"""
-        dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
-        if not dealer:
-            raise ValueError(f"Dealer {dealer_id} not found")
-        
-        if not dealer.is_active:
-            self.logger.info(f"Dealer {dealer_id} is inactive, skipping {self.fetch_type} fetch")
-            raise ValueError(f"Dealer {dealer_id} is inactive")
-        
-        return dealer
+        try:
+            # Ensure session is in good state
+            db.execute(text("SELECT 1"))
+
+            dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
+            if not dealer:
+                raise ValueError(f"Dealer {dealer_id} not found")
+
+            if not dealer.is_active:
+                self.logger.info(f"Dealer {dealer_id} is inactive, skipping {self.fetch_type} fetch")
+                raise ValueError(f"Dealer {dealer_id} is inactive")
+
+            return dealer
+        except Exception as e:
+            self.logger.error(f"Error getting dealer info for {dealer_id}: {e}")
+            # Try to rollback and retry with fresh session
+            try:
+                db.rollback()
+                dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
+                if not dealer:
+                    raise ValueError(f"Dealer {dealer_id} not found")
+                if not dealer.is_active:
+                    raise ValueError(f"Dealer {dealer_id} is inactive")
+                return dealer
+            except Exception as retry_error:
+                self.logger.error(f"Retry failed for dealer {dealer_id}: {retry_error}")
+                raise ValueError(f"Failed to get dealer info for {dealer_id}: {e}")
     
     def set_default_time_range(self, from_time: Optional[str], to_time: Optional[str]) -> tuple[str, str]:
         """Set default time range if not provided"""
@@ -119,12 +137,19 @@ class BaseDataProcessor(ABC):
             }
 
         except Exception as e:
-            # Rollback on error
+            # Rollback on error and close session
             if db:
                 try:
                     db.rollback()
+                    self.logger.info("Database transaction rolled back successfully")
                 except Exception as rollback_error:
                     self.logger.error(f"Error during rollback: {rollback_error}")
+                    # Force close the session if rollback fails
+                    try:
+                        db.close()
+                        db = None
+                    except Exception:
+                        pass
 
             # Log failed fetch with a new session if needed
             duration = int((datetime.utcnow() - start_time).total_seconds())
@@ -137,6 +162,7 @@ class BaseDataProcessor(ABC):
             if db:
                 try:
                     db.close()
+                    self.logger.debug("Database session closed successfully")
                 except Exception as close_error:
                     self.logger.error(f"Error closing database session: {close_error}")
 
@@ -146,11 +172,17 @@ class BaseDataProcessor(ABC):
         for attempt in range(max_retries):
             try:
                 db = SessionLocal()
-                # Test the connection
-                db.execute(text("SELECT 1"))
+                # Test the connection with a simple query
+                result = db.execute(text("SELECT 1"))
+                result.fetchone()  # Ensure the query actually executes
                 return db
             except Exception as e:
                 self.logger.warning(f"Database connection attempt {attempt + 1} failed: {e}")
+                try:
+                    if 'db' in locals():
+                        db.close()
+                except Exception:
+                    pass
                 if attempt == max_retries - 1:
                     raise
                 # Wait before retry
@@ -160,14 +192,36 @@ class BaseDataProcessor(ABC):
     def _log_error_safely(self, dealer_id: str, duration: int, start_time: datetime, error_message: str):
         """Log error with a separate database session"""
         error_db = None
-        try:
-            error_db = SessionLocal()
-            self.log_fetch_result(error_db, dealer_id, "failed", 0, duration, start_time, error_message)
-        except Exception as log_error:
-            self.logger.error(f"Failed to log error to database: {log_error}")
-        finally:
-            if error_db:
-                try:
-                    error_db.close()
-                except Exception:
-                    pass
+        max_retries = 2
+
+        for attempt in range(max_retries):
+            try:
+                error_db = SessionLocal()
+                # Test connection first
+                error_db.execute(text("SELECT 1")).fetchone()
+
+                # Log the error
+                self.log_fetch_result(error_db, dealer_id, "failed", 0, duration, start_time, error_message)
+                break  # Success, exit retry loop
+
+            except Exception as log_error:
+                self.logger.error(f"Failed to log error to database (attempt {attempt + 1}): {log_error}")
+                if error_db:
+                    try:
+                        error_db.rollback()
+                        error_db.close()
+                    except Exception:
+                        pass
+                    error_db = None
+
+                if attempt == max_retries - 1:
+                    self.logger.error(f"Giving up on error logging after {max_retries} attempts")
+                else:
+                    import time
+                    time.sleep(0.5)  # Brief wait before retry
+            finally:
+                if error_db and attempt == max_retries - 1:
+                    try:
+                        error_db.close()
+                    except Exception:
+                        pass
