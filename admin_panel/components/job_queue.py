@@ -7,7 +7,7 @@ import streamlit as st
 import requests
 import time
 from typing import Dict, Any, List
-from datetime import datetime, date
+from datetime import datetime, date, time, timedelta
 
 from .api_utils import BACKEND_URL
 
@@ -56,7 +56,8 @@ def render_job_queue():
     st.divider()
 
     # Add New Job Section
-    st.subheader("➕ Add New Job to Queue")
+    st.subheader("➕ Add Jobs to Queue")
+    st.info("📋 **Required fields marked with *** | Default: Yesterday to Today (00:00-23:59)**")
 
     # Get dealers list for dropdown
     dealers = get_dealers_list()
@@ -66,108 +67,82 @@ def render_job_queue():
     else:
         dealer_options = ["12284 - Sample Dealer", "00999 - Test Dealer"]  # Fallback options
 
-    col1, col2 = st.columns(2)
+    # Enhanced job form with multiple dealer selection
+    with st.form("job_form"):
+        # Multiple dealer selection (required)
+        selected_dealers = st.multiselect(
+            "Select Dealers *",
+            dealer_options,
+            default=[dealer_options[0]] if dealer_options else [],
+            help="Select one or more dealers (required)"
+        )
 
-    with col1:
-        # Enhanced single job form
-        st.write("**Single Job**")
-        with st.form("single_job_form"):
-            # Dealer selection dropdown
-            selected_dealer = st.selectbox("Select Dealer", dealer_options, key="single_dealer")
-            dealer_id = selected_dealer.split(" - ")[0]  # Extract dealer ID
+        # Multiple fetch types selection (required)
+        fetch_types = st.multiselect(
+            "Job Types *",
+            ["prospect", "pkb", "parts_inbound"],
+            default=["prospect"],
+            help="Select one or more job types to add to queue (required)"
+        )
 
-            # Multiple fetch types selection
-            fetch_types = st.multiselect(
-                "Job Types",
-                ["prospect", "pkb", "parts_inbound"],
-                default=["prospect"],
-                help="Select one or more job types to add to queue"
-            )
+        # Date pickers for time range (required with defaults)
+        col_date1, col_date2 = st.columns(2)
+        with col_date1:
+            # Default to yesterday
+            yesterday = date.today() - timedelta(days=1)
+            from_date = st.date_input("From Date *", value=yesterday)
+        with col_date2:
+            # Default to today
+            today = date.today()
+            to_date = st.date_input("To Date *", value=today)
 
-            # Date pickers for time range
-            col_date1, col_date2 = st.columns(2)
-            with col_date1:
-                from_date = st.date_input("From Date (optional)", value=None, key="single_from_date")
-            with col_date2:
-                to_date = st.date_input("To Date (optional)", value=None, key="single_to_date")
+        # Time inputs with default values
+        col_time1, col_time2 = st.columns(2)
+        with col_time1:
+            from_time_input = st.time_input("From Time", value=time(0, 0))  # Default 00:00
+        with col_time2:
+            to_time_input = st.time_input("To Time", value=time(23, 59))  # Default 23:59
 
-            # Time inputs for more precise control
-            col_time1, col_time2 = st.columns(2)
-            with col_time1:
-                from_time_input = st.time_input("From Time", value=None, key="single_from_time")
-            with col_time2:
-                to_time_input = st.time_input("To Time", value=None, key="single_to_time")
+        # PO Number for Parts Inbound
+        no_po = st.text_input("PO Number (Parts Inbound only)", placeholder="Optional")
 
-            # PO Number for Parts Inbound
-            no_po = st.text_input("PO Number (Parts Inbound only)", placeholder="Optional", key="single_po")
-
-            if st.form_submit_button("🚀 Add Jobs to Queue"):
-                # Combine date and time
-                from_datetime = combine_date_time(from_date, from_time_input)
-                to_datetime = combine_date_time(to_date, to_time_input)
-
-                # Add jobs for each selected fetch type
-                success_count = 0
-                for fetch_type in fetch_types:
-                    if add_single_job_to_queue(dealer_id, fetch_type, from_datetime, to_datetime, no_po):
-                        success_count += 1
-
-                if success_count > 0:
-                    st.success(f"✅ Added {success_count} job(s) to queue")
-                    st.rerun()
-
-    with col2:
-        # Enhanced bulk job form
-        st.write("**Bulk Jobs**")
-        with st.form("bulk_job_form"):
-            # Multiple dealer selection
-            selected_dealers = st.multiselect(
-                "Select Dealers",
-                dealer_options,
-                default=[dealer_options[0]] if dealer_options else [],
-                help="Select one or more dealers"
-            )
-
-            # Multiple fetch types selection
-            bulk_fetch_types = st.multiselect(
-                "Job Types",
-                ["prospect", "pkb", "parts_inbound"],
-                default=["prospect"],
-                help="Select one or more job types",
-                key="bulk_fetch_types"
-            )
-
-            # Date pickers for time range
-            col_bulk_date1, col_bulk_date2 = st.columns(2)
-            with col_bulk_date1:
-                bulk_from_date = st.date_input("From Date (optional)", value=None, key="bulk_from_date")
-            with col_bulk_date2:
-                bulk_to_date = st.date_input("To Date (optional)", value=None, key="bulk_to_date")
-
-            # Time inputs
-            col_bulk_time1, col_bulk_time2 = st.columns(2)
-            with col_bulk_time1:
-                bulk_from_time_input = st.time_input("From Time", value=None, key="bulk_from_time")
-            with col_bulk_time2:
-                bulk_to_time_input = st.time_input("To Time", value=None, key="bulk_to_time")
-
-            if st.form_submit_button("🚀 Add Bulk Jobs to Queue"):
+        if st.form_submit_button("🚀 Add Jobs to Queue"):
+            # Validate required fields
+            if not selected_dealers:
+                st.error("❌ Please select at least one dealer (required)")
+            elif not fetch_types:
+                st.error("❌ Please select at least one job type (required)")
+            elif not from_date:
+                st.error("❌ From Date is required")
+            elif not to_date:
+                st.error("❌ To Date is required")
+            elif from_date > to_date:
+                st.error("❌ From Date cannot be later than To Date")
+            else:
                 # Extract dealer IDs
                 dealer_ids = [dealer.split(" - ")[0] for dealer in selected_dealers]
 
                 # Combine date and time
-                bulk_from_datetime = combine_date_time(bulk_from_date, bulk_from_time_input)
-                bulk_to_datetime = combine_date_time(bulk_to_date, bulk_to_time_input)
+                from_datetime = combine_date_time(from_date, from_time_input)
+                to_datetime = combine_date_time(to_date, to_time_input)
 
                 # Add jobs for each combination of dealer and fetch type
                 total_jobs = 0
-                for fetch_type in bulk_fetch_types:
-                    if add_bulk_jobs_to_queue(dealer_ids, fetch_type, bulk_from_datetime, bulk_to_datetime):
-                        total_jobs += len(dealer_ids)
+                success_jobs = 0
 
-                if total_jobs > 0:
-                    st.success(f"✅ Added {total_jobs} job(s) to queue")
+                for dealer_id in dealer_ids:
+                    for fetch_type in fetch_types:
+                        total_jobs += 1
+                        if add_single_job_to_queue(dealer_id, fetch_type, from_datetime, to_datetime, no_po):
+                            success_jobs += 1
+
+                if success_jobs > 0:
+                    st.success(f"✅ Added {success_jobs}/{total_jobs} job(s) to queue")
+                    if success_jobs < total_jobs:
+                        st.warning(f"⚠️ {total_jobs - success_jobs} job(s) failed to add")
                     st.rerun()
+                else:
+                    st.error("❌ Failed to add any jobs to queue")
 
     # Simple auto-refresh - only when enabled
     if auto_refresh:
@@ -308,34 +283,7 @@ def add_single_job_to_queue(dealer_id: str, fetch_type: str, from_time: str = No
         return False
 
 
-def add_bulk_jobs_to_queue(dealer_ids: List[str], fetch_type: str, from_time: str = None, to_time: str = None) -> bool:
-    """Add bulk jobs to the queue"""
-    try:
-        data = {
-            "dealer_ids": dealer_ids,
-            "fetch_type": fetch_type,
-            "from_time": from_time,
-            "to_time": to_time
-        }
 
-        # Remove None values to avoid sending them to API
-        data = {k: v for k, v in data.items() if v is not None}
-
-        response = requests.post(f"{BACKEND_URL}/jobs/queue/bulk", json=data)
-
-        if response.status_code == 200:
-            result = response.json()
-            st.success(f"✅ Added {result['queued_jobs']} jobs to queue")
-            if result['failed_jobs'] > 0:
-                st.warning(f"⚠️ {result['failed_jobs']} jobs failed to queue")
-            return True
-        else:
-            st.error(f"Failed to add bulk jobs: {response.status_code} - {response.text}")
-            return False
-
-    except Exception as e:
-        st.error(f"Error adding bulk jobs to queue: {e}")
-        return False
 
 
 def cancel_job(job_id: str):
