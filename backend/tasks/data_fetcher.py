@@ -12,6 +12,7 @@ Architecture:
 - processors/parts_inbound_processor.py: Parts Inbound data processing logic
 - processors/leasing_processor.py: Leasing requirement data processing logic
 - processors/document_handling_processor.py: Document handling data processing logic
+- processors/unit_inbound_processor.py: Unit inbound from purchase order data processing logic
 """
 
 # Import the new modular router
@@ -22,12 +23,14 @@ from .data_fetcher_router import (
     fetch_parts_inbound_data,
     fetch_leasing_data,
     fetch_document_handling_data,
+    fetch_unit_inbound_data,
     router,
     get_prospect_processor,
     get_pkb_processor,
     get_parts_inbound_processor,
     get_leasing_processor,
-    get_document_handling_processor
+    get_document_handling_processor,
+    get_unit_inbound_processor
 )
 
 # Re-export all the tasks for backward compatibility
@@ -38,10 +41,12 @@ __all__ = [
     'fetch_parts_inbound_data',
     'fetch_leasing_data',
     'fetch_document_handling_data',
+    'fetch_unit_inbound_data',
     'router',
     'get_prospect_processor',
     'get_pkb_processor',
     'get_parts_inbound_processor',
     'get_leasing_processor',
-    'get_document_handling_processor'
+    'get_document_handling_processor',
+    'get_unit_inbound_processor'
 ]

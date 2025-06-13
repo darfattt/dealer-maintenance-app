@@ -13,6 +13,7 @@ from .processors.pkb_processor import PKBDataProcessor
 from .processors.parts_inbound_processor import PartsInboundDataProcessor
 from .processors.leasing_processor import LeasingDataProcessor
 from .processors.document_handling_processor import DocumentHandlingDataProcessor
+from .processors.unit_inbound_processor import UnitInboundDataProcessor
 from .api_clients import initialize_default_api_configs
 
 # Setup logging
@@ -35,7 +36,8 @@ class DataFetcherRouter:
             "pkb": PKBDataProcessor(),
             "parts_inbound": PartsInboundDataProcessor(),
             "leasing": LeasingDataProcessor(),
-            "doch_read": DocumentHandlingDataProcessor()
+            "doch_read": DocumentHandlingDataProcessor(),
+            "uinb_read": UnitInboundDataProcessor()
         }
     
     def get_processor(self, fetch_type: str):
@@ -137,6 +139,22 @@ def fetch_document_handling_data(self, dealer_id: str, from_time: str = None, to
         raise
 
 
+@celery_app.task(bind=True)
+def fetch_unit_inbound_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                           po_id: str = "", no_shipping_list: str = ""):
+    """
+    Fetch unit inbound data for a specific dealer
+    """
+    try:
+        return router.execute_fetch("uinb_read", dealer_id, from_time, to_time,
+                                  po_id=po_id, no_shipping_list=no_shipping_list)
+    except Exception as e:
+        logger.error(f"Unit inbound data fetch failed for dealer {dealer_id}: {e}")
+        if "inactive" in str(e):
+            return {"status": "skipped", "reason": "dealer_inactive"}
+        raise
+
+
 # Convenience functions for direct processor access (useful for testing)
 def get_prospect_processor() -> ProspectDataProcessor:
     """Get prospect processor instance"""
@@ -163,6 +181,11 @@ def get_document_handling_processor() -> DocumentHandlingDataProcessor:
     return router.get_processor("doch_read")
 
 
+def get_unit_inbound_processor() -> UnitInboundDataProcessor:
+    """Get unit inbound processor instance"""
+    return router.get_processor("uinb_read")
+
+
 # Export the main tasks for backward compatibility
 __all__ = [
     'health_check',
@@ -171,10 +194,12 @@ __all__ = [
     'fetch_parts_inbound_data',
     'fetch_leasing_data',
     'fetch_document_handling_data',
+    'fetch_unit_inbound_data',
     'router',
     'get_prospect_processor',
     'get_pkb_processor',
     'get_parts_inbound_processor',
     'get_leasing_processor',
-    'get_document_handling_processor'
+    'get_document_handling_processor',
+    'get_unit_inbound_processor'
 ]

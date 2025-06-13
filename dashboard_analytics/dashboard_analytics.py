@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, and_, or_
 from sqlalchemy.orm import sessionmaker
-from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit
+from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit
 
 # Load environment variables
 load_dotenv()
@@ -421,6 +421,81 @@ def get_document_handling_data_table(dealer_id, page=1, page_size=50, search_ter
     finally:
         db.close()
 
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_unit_inbound_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get Unit Inbound data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(UnitInboundData).filter(UnitInboundData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            # Join with units to search in chassis numbers and engine numbers
+            query = query.join(UnitInboundUnit, UnitInboundData.id == UnitInboundUnit.unit_inbound_data_id, isouter=True)
+            search_filter = or_(
+                UnitInboundData.no_shipping_list.ilike(f"%{search_term}%"),
+                UnitInboundData.no_invoice.ilike(f"%{search_term}%"),
+                UnitInboundUnit.no_rangka.ilike(f"%{search_term}%"),
+                UnitInboundUnit.no_mesin.ilike(f"%{search_term}%"),
+                UnitInboundUnit.po_id.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter).distinct()
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        shipment_records = query.order_by(UnitInboundData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries with unit details
+        data = []
+        for shipment in shipment_records:
+            # Get units for this shipment
+            units = db.query(UnitInboundUnit).filter(
+                UnitInboundUnit.unit_inbound_data_id == shipment.id
+            ).all()
+
+            # Get first unit for main display
+            first_unit = units[0] if units else None
+
+            data.append({
+                "id": str(shipment.id),
+                "dealer_id": shipment.dealer_id,
+                "dealer_name": shipment.dealer.dealer_name if shipment.dealer else "Unknown",
+                "no_shipping_list": shipment.no_shipping_list,
+                "tanggal_terima": shipment.tanggal_terima,
+                "main_dealer_id": shipment.main_dealer_id,
+                "no_invoice": shipment.no_invoice,
+                "status_shipping_list": shipment.status_shipping_list,
+                "created_time": shipment.created_time,
+                "modified_time": shipment.modified_time,
+                "fetched_at": shipment.fetched_at.isoformat() if shipment.fetched_at else None,
+                "unit_count": len(units),
+                "units": [
+                    {
+                        "id": str(unit.id),
+                        "kode_tipe_unit": unit.kode_tipe_unit,
+                        "kode_warna": unit.kode_warna,
+                        "kuantitas_terkirim": unit.kuantitas_terkirim,
+                        "kuantitas_diterima": unit.kuantitas_diterima,
+                        "no_mesin": unit.no_mesin,
+                        "no_rangka": unit.no_rangka,
+                        "status_rfs": unit.status_rfs,
+                        "po_id": unit.po_id,
+                        "kelengkapan_unit": unit.kelengkapan_unit,
+                        "no_goods_receipt": unit.no_goods_receipt,
+                        "doc_nrfs_id": unit.doc_nrfs_id
+                    } for unit in units
+                ]
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
 # Main app
 st.markdown('<div class="main-header">📊 Dealer Analytics Dashboard</div>', unsafe_allow_html=True)
 
@@ -435,7 +510,8 @@ menu_options = {
     "🔧 PKB Data": "pkb",
     "📦 Parts Inbound": "parts_inbound",
     "💰 Leasing Data": "leasing",
-    "📄 Document Handling": "doch_read"
+    "📄 Document Handling": "doch_read",
+    "🚚 Unit Inbound": "uinb_read"
 }
 
 selected_menu = st.sidebar.selectbox(
@@ -968,6 +1044,118 @@ def render_document_handling_data_page(dealer_id):
     else:
         st.warning("No Document Handling data found for the selected dealer.")
 
+
+def render_unit_inbound_data_page(dealer_id):
+    """Render the Unit Inbound data table page"""
+    st.subheader("🚚 Unit Inbound from Purchase Order")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search shipping list, invoice, PO ID, or chassis number...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'unit_inbound_page' not in st.session_state:
+        st.session_state.unit_inbound_page = 1
+
+    # Get data with error handling
+    try:
+        data, total_count = get_unit_inbound_data_table(dealer_id, st.session_state.unit_inbound_page, page_size, search_term)
+    except Exception as e:
+        st.error(f"Error loading unit inbound data: {str(e)}")
+        return
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.unit_inbound_page}")
+
+    if data:
+        # Create DataFrame for display
+        display_data = []
+        for record in data:
+            # Get first unit for main display - safe access
+            units = record.get('units', [])
+            first_unit = units[0] if units and len(units) > 0 else {}
+
+            display_data.append({
+                "Shipping List": record.get('no_shipping_list', ''),
+                "Receive Date": record.get('tanggal_terima', ''),
+                "Invoice": record.get('no_invoice', ''),
+                "Status": record.get('status_shipping_list', ''),
+                "Units": record.get('unit_count', 0),
+                "Unit Type": first_unit.get('kode_tipe_unit', '') if first_unit else '',
+                "Color": first_unit.get('kode_warna', '') if first_unit else '',
+                "Chassis No": first_unit.get('no_rangka', '') if first_unit else '',
+                "Engine No": first_unit.get('no_mesin', '') if first_unit else '',
+                "RFS Status": first_unit.get('status_rfs', '') if first_unit else '',
+                "PO ID": first_unit.get('po_id', '') if first_unit else '',
+                "Fetched": record.get('fetched_at', '')[:19] if record.get('fetched_at') else ''
+            })
+
+        if display_data:
+            df = pd.DataFrame(display_data)
+
+            # Display the table
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Shipping List": st.column_config.TextColumn("Shipping List", width="medium"),
+                    "Receive Date": st.column_config.TextColumn("Receive Date", width="small"),
+                    "Invoice": st.column_config.TextColumn("Invoice", width="medium"),
+                    "Status": st.column_config.TextColumn("Status", width="small"),
+                    "Units": st.column_config.NumberColumn("Units", width="small"),
+                    "Unit Type": st.column_config.TextColumn("Unit Type", width="small"),
+                    "Color": st.column_config.TextColumn("Color", width="small"),
+                    "Chassis No": st.column_config.TextColumn("Chassis No", width="medium"),
+                    "Engine No": st.column_config.TextColumn("Engine No", width="medium"),
+                    "RFS Status": st.column_config.TextColumn("RFS", width="small"),
+                    "PO ID": st.column_config.TextColumn("PO ID", width="medium"),
+                    "Fetched": st.column_config.TextColumn("Fetched", width="medium")
+                }
+            )
+
+            # Pagination controls
+            total_pages = (total_count + page_size - 1) // page_size
+
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First") and st.session_state.unit_inbound_page > 1:
+                        st.session_state.unit_inbound_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous") and st.session_state.unit_inbound_page > 1:
+                        st.session_state.unit_inbound_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.unit_inbound_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩") and st.session_state.unit_inbound_page < total_pages:
+                        st.session_state.unit_inbound_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️") and st.session_state.unit_inbound_page < total_pages:
+                        st.session_state.unit_inbound_page = total_pages
+                        st.rerun()
+    else:
+        st.warning("No Unit Inbound data found for the selected dealer.")
+
 # Main content routing
 if selected_dealer_id:
     if current_page == "home":
@@ -989,6 +1177,10 @@ if selected_dealer_id:
     elif current_page == "doch_read":
         # Document handling data page
         render_document_handling_data_page(selected_dealer_id)
+
+    elif current_page == "uinb_read":
+        # Unit inbound data page
+        render_unit_inbound_data_page(selected_dealer_id)
 
 # Footer
 st.markdown("---")

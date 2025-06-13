@@ -7,13 +7,13 @@ import random
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
 
-# Special dealer ID that gets dummy data
-DUMMY_DATA_DEALER_ID = "12284"
+# Special dealer IDs that get dummy data (only sample dealers)
+DUMMY_DATA_DEALER_IDS = ["12284"]
 DUMMY_DATA_DEALER_UUID = "e3a18c82-c500-450f-b6e1-5c5fbe68bf41"
 
 def should_use_dummy_data(dealer_id: str) -> bool:
     """Check if dealer should use dummy data"""
-    return dealer_id in [DUMMY_DATA_DEALER_ID, DUMMY_DATA_DEALER_UUID]
+    return dealer_id in DUMMY_DATA_DEALER_IDS or dealer_id == DUMMY_DATA_DEALER_UUID
 
 def get_dummy_prospect_data(dealer_id: str, from_time: str, to_time: str) -> Dict[str, Any]:
     """Generate dummy prospect data for demonstration"""
@@ -475,6 +475,106 @@ def get_dummy_document_handling_data(dealer_id: str, from_time: str, to_time: st
                 "idSO": so_id,
                 "idSPK": spk_id,
                 "dealerId": dealer_id,
+                "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "unit": units
+            }
+            dummy_data.append(record)
+
+        current_date += timedelta(days=1)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": dummy_data
+    }
+
+
+def get_dummy_unit_inbound_data(dealer_id: str, from_time: str, to_time: str, po_id: str = "", no_shipping_list: str = "") -> Dict[str, Any]:
+    """Generate dummy unit inbound data for testing"""
+
+    # Only generate for specific test dealers
+    if not should_use_dummy_data(dealer_id):
+        return {
+            "status": 0,
+            "message": f"No dummy data available for dealer {dealer_id}. Please configure real API credentials.",
+            "data": []
+        }
+
+    # Parse time range
+    try:
+        start_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+        end_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+    except ValueError:
+        start_date = datetime.now() - timedelta(days=1)
+        end_date = datetime.now()
+
+    # Generate realistic dummy data
+    dummy_data = []
+    current_date = start_date
+
+    # Generate 1-3 shipments per day
+    while current_date <= end_date:
+        for i in range(random.randint(1, 2)):
+            # Generate shipping list and invoice numbers
+            shipping_list_no = f"SL/B10/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(3)}"
+            invoice_no = f"IN/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(5)}"
+
+            # Filter by noShippingList if provided
+            if no_shipping_list and no_shipping_list not in shipping_list_no:
+                continue
+
+            # Generate PO ID
+            po_number = f"PO/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(3)}"
+
+            # Filter by poId if provided
+            if po_id and po_id not in po_number:
+                continue
+
+            # Generate units for this shipment (1-3 units per shipment)
+            units = []
+            for j in range(random.randint(1, 3)):
+                # Random unit data
+                unit_types = ["HP3", "HP5", "CB150R", "PCX160", "VARIO125", "BEAT125"]
+                colors = ["BK", "WH", "RD", "BL", "GY"]
+
+                # Random engine and chassis numbers
+                engine_no = f"JB{random.choice(['22', '55'])}E{random.randint(1000000, 9999999)}"
+                chassis_no = f"{random.choice(['JB', 'TB'])}22136K{random.randint(100000, 999999)}"
+
+                # Random status values
+                rfs_status = random.choice(["0", "1"])
+
+                # Goods receipt number
+                goods_receipt = f"{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{random.randint(100, 999)}"
+
+                # NRFS document (only if RFS status is 0)
+                nrfs_doc = f"NRFS/{dealer_id}/{current_date.strftime('%y%m')}/{str(j+1).zfill(3)}" if rfs_status == "0" else ""
+
+                unit = {
+                    "kodeTipeUnit": random.choice(unit_types),
+                    "kodeWarna": random.choice(colors),
+                    "kuantitasTerkirim": 1,
+                    "kuantitasDiterima": 1,
+                    "noMesin": engine_no,
+                    "noRangka": chassis_no,
+                    "statusRFS": rfs_status,
+                    "poId": po_number,
+                    "kelengkapanUnit": "Helm, Aki, Spion, BPPSG (Buku Pedoman Pemilik dan Servis Garansi), toolset/toolkit",
+                    "noGoodsReceipt": goods_receipt,
+                    "docNRFSId": nrfs_doc,
+                    "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                    "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+                }
+                units.append(unit)
+
+            record = {
+                "noShippingList": shipping_list_no,
+                "tanggalTerima": current_date.strftime("%d/%m/%Y"),
+                "mainDealerId": "B10",
+                "dealerId": dealer_id,
+                "noInvoice": invoice_no,
+                "statusShippingList": random.choice(["1", "2", "3"]),
                 "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
                 "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
                 "unit": units

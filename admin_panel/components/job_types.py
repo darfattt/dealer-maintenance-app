@@ -11,7 +11,8 @@ JOB_TYPE_MAPPING = {
     "pkb": "Manage WO - PKB",
     "parts_inbound": "Part Inbound - PINB",
     "leasing": "Handle Leasing Requirement",
-    "doch_read": "Manage Document Handling"
+    "doch_read": "Manage Document Handling",
+    "uinb_read": "Unit Inbound from Purchase Order"
 }
 
 # Reverse mapping: label -> code
