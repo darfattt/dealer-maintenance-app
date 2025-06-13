@@ -27,6 +27,7 @@ from controllers.parts_inbound_controller import router as parts_inbound_router
 from controllers.leasing_controller import router as leasing_router
 from controllers.document_handling_controller import router as document_handling_router
 from controllers.unit_inbound_controller import router as unit_inbound_router
+from controllers.delivery_process_controller import router as delivery_process_router
 from controllers.token_controller import router as token_router
 from controllers.logs_controller import router as logs_router
 from controllers.jobs_controller import router as jobs_router
@@ -70,6 +71,7 @@ app.include_router(parts_inbound_router)            # Parts Inbound data and ana
 app.include_router(leasing_router)                  # Leasing data and analytics
 app.include_router(document_handling_router)        # Document handling data and analytics
 app.include_router(unit_inbound_router)              # Unit inbound data and analytics
+app.include_router(delivery_process_router)         # Delivery process data and analytics
 app.include_router(token_router)                    # Token generation and management
 app.include_router(logs_router)                     # Logs and monitoring
 app.include_router(jobs_router)                     # Job execution and management
@@ -117,6 +119,7 @@ async def get_api_info():
             "leasing": "Leasing requirement data and analytics",
         "document_handling": "Document handling data and analytics",
         "unit_inbound": "Unit inbound from purchase order data and analytics",
+        "delivery_process": "Delivery process data and analytics",
             "token": "DGI API token generation and management",
             "logs": "Fetch logs and system monitoring",
             "jobs": "Manual job execution and status"
@@ -132,6 +135,7 @@ async def get_api_info():
             "leasing_data": "/leasing/",
         "document_handling_data": "/document_handling/",
         "unit_inbound_data": "/unit_inbound/",
+        "delivery_process_data": "/delivery_process/",
             "token_generation": "/token/generate",
             "job_execution": "/jobs/run",
             "logs": "/logs/fetch-logs/"

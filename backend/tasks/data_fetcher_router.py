@@ -14,6 +14,7 @@ from .processors.parts_inbound_processor import PartsInboundDataProcessor
 from .processors.leasing_processor import LeasingDataProcessor
 from .processors.document_handling_processor import DocumentHandlingDataProcessor
 from .processors.unit_inbound_processor import UnitInboundDataProcessor
+from .processors.delivery_process_processor import DeliveryProcessDataProcessor
 from .api_clients import initialize_default_api_configs
 
 # Setup logging
@@ -37,7 +38,8 @@ class DataFetcherRouter:
             "parts_inbound": PartsInboundDataProcessor(),
             "leasing": LeasingDataProcessor(),
             "doch_read": DocumentHandlingDataProcessor(),
-            "uinb_read": UnitInboundDataProcessor()
+            "uinb_read": UnitInboundDataProcessor(),
+            "bast_read": DeliveryProcessDataProcessor()
         }
     
     def get_processor(self, fetch_type: str):
@@ -142,17 +144,18 @@ def fetch_document_handling_data(self, dealer_id: str, from_time: str = None, to
 @celery_app.task(bind=True)
 def fetch_unit_inbound_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
                            po_id: str = "", no_shipping_list: str = ""):
-    """
-    Fetch unit inbound data for a specific dealer
-    """
-    try:
-        return router.execute_fetch("uinb_read", dealer_id, from_time, to_time,
-                                  po_id=po_id, no_shipping_list=no_shipping_list)
-    except Exception as e:
-        logger.error(f"Unit inbound data fetch failed for dealer {dealer_id}: {e}")
-        if "inactive" in str(e):
-            return {"status": "skipped", "reason": "dealer_inactive"}
-        raise
+    """Fetch unit inbound data for a specific dealer"""
+    return router.execute_fetch("uinb_read", dealer_id, from_time, to_time,
+                              po_id=po_id, no_shipping_list=no_shipping_list)
+
+
+@celery_app.task(bind=True)
+def fetch_delivery_process_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                               delivery_document_id: str = "", id_spk: str = "", id_customer: str = ""):
+    """Fetch delivery process data for a specific dealer"""
+    return router.execute_fetch("bast_read", dealer_id, from_time, to_time,
+                              delivery_document_id=delivery_document_id,
+                              id_spk=id_spk, id_customer=id_customer)
 
 
 # Convenience functions for direct processor access (useful for testing)
@@ -186,6 +189,11 @@ def get_unit_inbound_processor() -> UnitInboundDataProcessor:
     return router.get_processor("uinb_read")
 
 
+def get_delivery_process_processor() -> DeliveryProcessDataProcessor:
+    """Get delivery process processor instance"""
+    return router.get_processor("bast_read")
+
+
 # Export the main tasks for backward compatibility
 __all__ = [
     'health_check',
@@ -195,11 +203,13 @@ __all__ = [
     'fetch_leasing_data',
     'fetch_document_handling_data',
     'fetch_unit_inbound_data',
+    'fetch_delivery_process_data',
     'router',
     'get_prospect_processor',
     'get_pkb_processor',
     'get_parts_inbound_processor',
     'get_leasing_processor',
     'get_document_handling_processor',
-    'get_unit_inbound_processor'
+    'get_unit_inbound_processor',
+    'get_delivery_process_processor'
 ]

@@ -176,6 +176,38 @@ async def initialize_api_configurations(db: Session = Depends(get_db)):
             is_active=True,
             timeout_seconds=30,
             retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_leasing_api",
+            base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            description="DGI API for Leasing Requirement Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_document_handling_api",
+            base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            description="DGI API for Document Handling Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_unit_inbound_api",
+            base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            description="DGI API for Unit Inbound from Purchase Order Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_delivery_process_api",
+            base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            description="DGI API for Delivery Process Data (BAST)",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
         )
     ]
 
@@ -186,3 +218,83 @@ async def initialize_api_configurations(db: Session = Depends(get_db)):
     
     BaseController.log_operation("INIT_API_CONFIGS", f"Initialized {len(default_configs)} default API configurations")
     return {"message": "Default API configurations initialized successfully", "count": len(default_configs)}
+
+
+@router.post("/api-configurations/force-reinitialize", response_model=CountResponse)
+async def force_reinitialize_api_configurations(db: Session = Depends(get_db)):
+    """Force re-initialization of API configurations (deletes existing and recreates)"""
+    try:
+        # Delete all existing configurations
+        deleted_count = db.query(APIConfiguration).delete()
+
+        # Create default configurations
+        default_configs = [
+            APIConfiguration(
+                config_name="dgi_prospect_api",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for Prospect Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_pkb_api",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for PKB (Service Record) Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_parts_inbound_api",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for Parts Inbound Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_leasing_api",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for Leasing Requirement Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_document_handling_api",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for Document Handling Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_unit_inbound_api",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for Unit Inbound from Purchase Order Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_delivery_process_api",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for Delivery Process Data (BAST)",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            )
+        ]
+
+        for config in default_configs:
+            db.add(config)
+
+        db.commit()
+
+        BaseController.log_operation("FORCE_REINIT_API_CONFIGS", f"Force re-initialized {len(default_configs)} API configurations (deleted {deleted_count} existing)")
+        return {"message": f"API configurations force re-initialized successfully (deleted {deleted_count}, created {len(default_configs)})", "count": len(default_configs)}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to force re-initialize API configurations: {str(e)}")

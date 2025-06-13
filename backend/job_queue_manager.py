@@ -209,6 +209,9 @@ class JobQueueManager:
             elif job.fetch_type == "uinb_read":
                 task_name = "tasks.data_fetcher_router.fetch_unit_inbound_data"
                 task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or "", ""]
+            elif job.fetch_type == "bast_read":
+                task_name = "tasks.data_fetcher_router.fetch_delivery_process_data"
+                task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or "", "", ""]
             else:  # prospect
                 task_name = "tasks.data_fetcher_router.fetch_prospect_data"
                 task_args = [job.dealer_id, job.from_time, job.to_time]

@@ -67,8 +67,13 @@ def render_api_configuration():
                         edit_api_configuration(config)
         else:
             st.info("No API configurations found. Default configuration will be used.")
-            if st.button("🔧 Initialize Default Configurations"):
-                initialize_api_configurations()
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔧 Initialize Default Configurations"):
+                    initialize_api_configurations()
+            with col2:
+                if st.button("🔄 Force Re-initialize All"):
+                    force_reinitialize_api_configurations()
 
         st.markdown("---")
 
@@ -356,6 +361,21 @@ def initialize_api_configurations():
             st.error(f"Failed to initialize API configurations: {response.status_code}")
     except Exception as e:
         st.error(f"Error initializing API configurations: {e}")
+
+
+def force_reinitialize_api_configurations():
+    """Force re-initialize all API configurations"""
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        response = requests.post(f"{backend_url}/api-configurations/force-reinitialize")
+        if response.status_code == 200:
+            result = response.json()
+            st.success(f"✅ {result['message']}")
+            st.rerun()
+        else:
+            st.error(f"Failed to force re-initialize API configurations: {response.status_code}")
+    except Exception as e:
+        st.error(f"Error force re-initializing API configurations: {e}")
 
 def edit_api_configuration(config: Dict[str, Any]):
     """Edit an existing API configuration"""

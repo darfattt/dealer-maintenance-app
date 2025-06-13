@@ -4,6 +4,12 @@
 
 This comprehensive guide documents the complete implementation of a new job type in the Dealer Dashboard system, using the "Handle Leasing Requirement" job type as a reference. This guide serves as a template for implementing similar APIs and job types in the future.
 
+## 📚 **RELATED DOCUMENTATION**
+
+- **Quick Reference**: `QUICK_JOB_TYPE_CHECKLIST.md` - Condensed checklist for experienced developers
+- **API Configuration**: `API_CONFIGURATION_MANAGEMENT_GUIDE.md` - Detailed API configuration management
+- **Success Examples**: `DELIVERY_PROCESS_JOB_TYPE_SUCCESS.md` - Complete implementation example
+
 ## 🎯 **IMPLEMENTATION CHECKLIST**
 
 ### **Phase 1: Planning & Specification**
@@ -14,8 +20,9 @@ This comprehensive guide documents the complete implementation of a new job type
 
 ### **Phase 2: Core Implementation**
 - [ ] **Job Type Configuration**: Add to job_types.py mapping
+- [ ] **API Configuration**: Add to database initialization and controllers
 - [ ] **Database Structure**: Create table models and relationships
-- [ ] **API Client**: Implement API communication layer
+- [ ] **API Client**: Implement API communication layer with fallback
 - [ ] **Data Processor**: Create data processing and storage logic
 - [ ] **Backend Controller**: Implement REST API endpoints
 - [ ] **Task Integration**: Add Celery task and router integration
@@ -141,9 +148,110 @@ def initialize_default_api_configs():
 
 **Key Features:**
 - Token-based authentication
-- Configurable endpoints
+- Configurable endpoints with fallback
 - Error handling
 - Parameter support
+
+### **Step 3.1: API Configuration Management (CRITICAL)**
+
+**File: `backend/tasks/api_clients.py`**
+```python
+# Update initialize_default_api_configs function
+def initialize_default_api_configs():
+    """Initialize default API configurations in database"""
+    db = SessionLocal()
+    try:
+        # Check if configurations already exist
+        existing_configs = db.query(APIConfiguration).count()
+        if existing_configs > 0:
+            logger.info("API configurations already exist, skipping initialization")
+            return
+
+        # Create default configurations
+        configs = [
+            # ... existing configs
+            APIConfiguration(
+                config_name="dgi_leasing_api",  # ✅ NEW CONFIG
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+                description="DGI API for Leasing Requirement Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            )
+        ]
+
+        for config in configs:
+            db.add(config)
+
+        db.commit()
+        logger.info("Default API configurations initialized successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to initialize API configurations: {e}")
+        db.rollback()
+    finally:
+        db.close()
+```
+
+**File: `backend/controllers/configuration_controller.py`**
+```python
+@router.post("/api-configurations/initialize", response_model=CountResponse)
+async def initialize_api_configurations(db: Session = Depends(get_db)):
+    """Initialize default API configurations"""
+    # Add new job type configuration to default_configs list
+    default_configs = [
+        # ... existing configs
+        APIConfiguration(
+            config_name="dgi_leasing_api",  # ✅ NEW CONFIG
+            base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
+            description="DGI API for Leasing Requirement Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        )
+    ]
+
+@router.post("/api-configurations/force-reinitialize", response_model=CountResponse)
+async def force_reinitialize_api_configurations(db: Session = Depends(get_db)):
+    """Force re-initialization of API configurations (deletes existing and recreates)"""
+    # Include new job type in force re-initialization
+```
+
+**File: `admin_panel/components/configuration.py`**
+```python
+def force_reinitialize_api_configurations():
+    """Force re-initialize all API configurations"""
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        response = requests.post(f"{backend_url}/api-configurations/force-reinitialize")
+        if response.status_code == 200:
+            result = response.json()
+            st.success(f"✅ {result['message']}")
+            st.rerun()
+        else:
+            st.error(f"Failed to force re-initialize API configurations: {response.status_code}")
+    except Exception as e:
+        st.error(f"Error force re-initializing API configurations: {e}")
+```
+
+**⚠️ CRITICAL: API Configuration Requirements**
+
+1. **Database Configuration**: Each job type MUST have a corresponding API configuration in the database
+2. **Fallback Configuration**: API clients MUST use fallback configuration if database config is unavailable
+3. **Consistent URLs**: Use `https://dev-gvt-gateway.eksad.com/dgi-api/v1.3` for real endpoints
+4. **Force Re-initialization**: Use admin panel "🔄 Force Re-initialize All" button to update existing configurations
+
+**API Configuration Verification:**
+```bash
+# Check if API configuration exists
+curl "http://localhost:8000/api-configurations/" | grep "dgi_leasing_api"
+
+# Force re-initialize if missing
+curl -X POST "http://localhost:8000/api-configurations/force-reinitialize"
+
+# Verify in admin panel
+http://localhost:8502 → Configuration → API Configuration
+```
 
 ### **Step 4: Data Processor**
 
@@ -466,28 +574,59 @@ http://localhost:8501 → New data menu → Verify table display
 
 ## ⚠️ **COMMON PITFALLS & SOLUTIONS**
 
-### **Issue 1: Job Routing to Wrong Processor**
+### **Issue 1: API Configuration Not Available**
+**Symptoms**: `API configuration is not available` error when running jobs
+**Root Cause**: Missing or incomplete API configuration in database
+**Solution**:
+```bash
+# Method 1: Admin Panel (Recommended)
+http://localhost:8502 → Configuration → API Configuration → "🔄 Force Re-initialize All"
+
+# Method 2: API Endpoint
+curl -X POST "http://localhost:8000/api-configurations/force-reinitialize"
+
+# Method 3: Restart Backend (triggers auto-initialization)
+docker-compose restart backend
+```
+**Prevention**: Always update ALL API configuration initialization points:
+- `backend/tasks/api_clients.py` → `initialize_default_api_configs()`
+- `backend/controllers/configuration_controller.py` → both initialization endpoints
+- Ensure API client uses fallback: `self.config = APIConfigManager.get_api_config("config_name") or APIConfigManager.get_default_config()`
+
+### **Issue 2: Job Routing to Wrong Processor**
 **Symptoms**: Jobs default to prospect processor instead of new processor
 **Solution**: Update ALL routing points:
 - `backend/controllers/jobs_controller.py` (manual + bulk jobs)
 - `backend/job_queue_manager.py` (queue processing)
 - `backend/tasks/data_fetcher.py` (imports + exports)
 
-### **Issue 2: Import/Export Errors**
+### **Issue 3: Database Type Adaptation Errors**
+**Symptoms**: `can't adapt type 'dict'` or similar PostgreSQL errors
+**Root Cause**: Processor returning dictionary instead of integer count
+**Solution**: Ensure `process_records()` method returns integer count:
+```python
+# ❌ WRONG
+return {"processed": processed_count, "errors": error_count}
+
+# ✅ CORRECT
+return processed_count
+```
+
+### **Issue 4: Import/Export Errors**
 **Symptoms**: `ModuleNotFoundError` or missing task definitions
 **Solution**: Ensure consistent imports/exports across:
 - Task router defines the task
 - Data fetcher exports the task
 - Controllers import the correct task name
 
-### **Issue 3: Database Relationship Errors**
+### **Issue 5: Database Relationship Errors**
 **Symptoms**: Foreign key constraint errors
 **Solution**: Update BOTH database files:
 - `backend/database.py`
 - `dashboard_analytics/database.py`
 - Add relationship to Dealer model
 
-### **Issue 4: UI Not Showing New Job Type**
+### **Issue 6: UI Not Showing New Job Type**
 **Symptoms**: New job type doesn't appear in admin panel
 **Solution**:
 - Restart admin panel after updating job_types.py
@@ -497,7 +636,8 @@ http://localhost:8501 → New data menu → Verify table display
 ## 🎯 **SUCCESS CRITERIA**
 
 ### **✅ Implementation Complete When:**
-1. **Job Queue**: New job type appears and processes correctly
+1. **API Configuration**: Configuration exists in database and admin panel
+2. **Job Queue**: New job type appears and processes correctly
 2. **Backend Logs**: Show correct task routing (not defaulting to prospect)
 3. **Database**: New data table contains processed records
 4. **API Endpoints**: Return correct data with pagination/search

@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, and_, or_
 from sqlalchemy.orm import sessionmaker
-from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit
+from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail
 
 # Load environment variables
 load_dotenv()
@@ -496,6 +496,83 @@ def get_unit_inbound_data_table(dealer_id, page=1, page_size=50, search_term="")
     finally:
         db.close()
 
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_delivery_process_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get Delivery Process data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(DeliveryProcessData).filter(DeliveryProcessData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            # Join with details to search in SO, SPK, customer, etc.
+            query = query.join(DeliveryProcessDetail, DeliveryProcessData.id == DeliveryProcessDetail.delivery_process_data_id, isouter=True)
+            search_filter = or_(
+                DeliveryProcessData.delivery_document_id.ilike(f"%{search_term}%"),
+                DeliveryProcessData.id_driver.ilike(f"%{search_term}%"),
+                DeliveryProcessDetail.no_so.ilike(f"%{search_term}%"),
+                DeliveryProcessDetail.id_spk.ilike(f"%{search_term}%"),
+                DeliveryProcessDetail.id_customer.ilike(f"%{search_term}%"),
+                DeliveryProcessDetail.nama_penerima.ilike(f"%{search_term}%"),
+                DeliveryProcessDetail.no_rangka.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter).distinct()
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        delivery_records = query.order_by(DeliveryProcessData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries with delivery details
+        data = []
+        for delivery in delivery_records:
+            # Get details for this delivery
+            details = db.query(DeliveryProcessDetail).filter(
+                DeliveryProcessDetail.delivery_process_data_id == delivery.id
+            ).all()
+
+            # Get first detail for main display
+            first_detail = details[0] if details else None
+
+            data.append({
+                "id": str(delivery.id),
+                "dealer_id": delivery.dealer_id,
+                "dealer_name": delivery.dealer.dealer_name if delivery.dealer else "Unknown",
+                "delivery_document_id": delivery.delivery_document_id,
+                "tanggal_pengiriman": delivery.tanggal_pengiriman,
+                "id_driver": delivery.id_driver,
+                "status_delivery_document": delivery.status_delivery_document,
+                "created_time": delivery.created_time,
+                "modified_time": delivery.modified_time,
+                "fetched_at": delivery.fetched_at.isoformat() if delivery.fetched_at else None,
+                "detail_count": len(details),
+                "details": [
+                    {
+                        "id": str(detail.id),
+                        "no_so": detail.no_so,
+                        "id_spk": detail.id_spk,
+                        "no_mesin": detail.no_mesin,
+                        "no_rangka": detail.no_rangka,
+                        "id_customer": detail.id_customer,
+                        "waktu_pengiriman": detail.waktu_pengiriman,
+                        "checklist_kelengkapan": detail.checklist_kelengkapan,
+                        "lokasi_pengiriman": detail.lokasi_pengiriman,
+                        "latitude": detail.latitude,
+                        "longitude": detail.longitude,
+                        "nama_penerima": detail.nama_penerima,
+                        "no_kontak_penerima": detail.no_kontak_penerima
+                    } for detail in details
+                ]
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
 # Main app
 st.markdown('<div class="main-header">📊 Dealer Analytics Dashboard</div>', unsafe_allow_html=True)
 
@@ -511,7 +588,8 @@ menu_options = {
     "📦 Parts Inbound": "parts_inbound",
     "💰 Leasing Data": "leasing",
     "📄 Document Handling": "doch_read",
-    "🚚 Unit Inbound": "uinb_read"
+    "🚚 Unit Inbound": "uinb_read",
+    "🚛 Delivery Process": "bast_read"
 }
 
 selected_menu = st.sidebar.selectbox(
@@ -1156,6 +1234,126 @@ def render_unit_inbound_data_page(dealer_id):
     else:
         st.warning("No Unit Inbound data found for the selected dealer.")
 
+
+def render_delivery_process_data_page(dealer_id):
+    """Render the Delivery Process data table page"""
+    st.subheader("🚛 Delivery Process (BAST)")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search delivery document, SO, SPK, customer, or receiver name...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'delivery_process_page' not in st.session_state:
+        st.session_state.delivery_process_page = 1
+
+    # Get data with error handling
+    try:
+        data, total_count = get_delivery_process_data_table(dealer_id, st.session_state.delivery_process_page, page_size, search_term)
+    except Exception as e:
+        st.error(f"Error loading delivery process data: {str(e)}")
+        return
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.delivery_process_page}")
+
+    if data:
+        # Create DataFrame for display
+        display_data = []
+        for record in data:
+            # Get first detail for main display - safe access
+            details = record.get('details', [])
+            first_detail = details[0] if details and len(details) > 0 else {}
+
+            display_data.append({
+                "Delivery Doc": record.get('delivery_document_id', ''),
+                "Delivery Date": record.get('tanggal_pengiriman', ''),
+                "Driver": record.get('id_driver', ''),
+                "Status": record.get('status_delivery_document', ''),
+                "Details": record.get('detail_count', 0),
+                "SO Number": first_detail.get('no_so', '') if first_detail else '',
+                "SPK ID": first_detail.get('id_spk', '') if first_detail else '',
+                "Customer ID": first_detail.get('id_customer', '') if first_detail else '',
+                "Chassis No": first_detail.get('no_rangka', '') if first_detail else '',
+                "Receiver": first_detail.get('nama_penerima', '') if first_detail else '',
+                "Delivery Time": first_detail.get('waktu_pengiriman', '') if first_detail else '',
+                "Location": first_detail.get('lokasi_pengiriman', '')[:50] + "..." if first_detail and first_detail.get('lokasi_pengiriman') and len(first_detail.get('lokasi_pengiriman', '')) > 50 else first_detail.get('lokasi_pengiriman', '') if first_detail else '',
+                "Fetched": record.get('fetched_at', '')[:19] if record.get('fetched_at') else ''
+            })
+
+        if display_data:
+            df = pd.DataFrame(display_data)
+
+            # Display the table
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Delivery Doc": st.column_config.TextColumn("Delivery Doc", width="medium"),
+                    "Delivery Date": st.column_config.TextColumn("Delivery Date", width="small"),
+                    "Driver": st.column_config.TextColumn("Driver", width="small"),
+                    "Status": st.column_config.TextColumn("Status", width="small"),
+                    "Details": st.column_config.NumberColumn("Details", width="small"),
+                    "SO Number": st.column_config.TextColumn("SO Number", width="medium"),
+                    "SPK ID": st.column_config.TextColumn("SPK ID", width="medium"),
+                    "Customer ID": st.column_config.TextColumn("Customer ID", width="medium"),
+                    "Chassis No": st.column_config.TextColumn("Chassis No", width="medium"),
+                    "Receiver": st.column_config.TextColumn("Receiver", width="medium"),
+                    "Delivery Time": st.column_config.TextColumn("Time", width="small"),
+                    "Location": st.column_config.TextColumn("Location", width="large"),
+                    "Fetched": st.column_config.TextColumn("Fetched", width="medium")
+                }
+            )
+
+            # Pagination controls
+            total_pages = (total_count + page_size - 1) // page_size
+
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First") and st.session_state.delivery_process_page > 1:
+                        st.session_state.delivery_process_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous") and st.session_state.delivery_process_page > 1:
+                        st.session_state.delivery_process_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.delivery_process_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩") and st.session_state.delivery_process_page < total_pages:
+                        st.session_state.delivery_process_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️") and st.session_state.delivery_process_page < total_pages:
+                        st.session_state.delivery_process_page = total_pages
+                        st.rerun()
+
+            # Auto-refresh option
+            if st.checkbox("🔄 Auto-refresh (30s)"):
+                time.sleep(30)
+                st.rerun()
+    else:
+        st.warning("No Delivery Process data found for the selected dealer.")
+
+
 # Main content routing
 if selected_dealer_id:
     if current_page == "home":
@@ -1181,6 +1379,10 @@ if selected_dealer_id:
     elif current_page == "uinb_read":
         # Unit inbound data page
         render_unit_inbound_data_page(selected_dealer_id)
+
+    elif current_page == "bast_read":
+        # Delivery process data page
+        render_delivery_process_data_page(selected_dealer_id)
 
 # Footer
 st.markdown("---")

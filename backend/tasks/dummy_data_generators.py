@@ -588,3 +588,78 @@ def get_dummy_unit_inbound_data(dealer_id: str, from_time: str, to_time: str, po
         "message": None,
         "data": dummy_data
     }
+
+
+def get_dummy_delivery_process_data(dealer_id: str, from_time: str, to_time: str,
+                                   delivery_document_id: str = "", id_spk: str = "",
+                                   id_customer: str = "") -> Dict[str, Any]:
+    """Generate dummy delivery process data for testing"""
+
+    # Parse date range for realistic data generation
+    from_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+    to_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+
+    deliveries = []
+
+    # Generate 1-3 delivery documents
+    num_deliveries = random.randint(1, 3)
+
+    for i in range(num_deliveries):
+        # Generate random date within range
+        random_days = random.randint(0, (to_date - from_date).days)
+        delivery_date = from_date + timedelta(days=random_days)
+
+        delivery_doc_id = f"DO/{dealer_id}/{delivery_date.strftime('%d%m%y')}/{1000 + i}"
+
+        # Generate 1-2 delivery details per document
+        details = []
+        num_details = random.randint(1, 2)
+
+        for j in range(num_details):
+            detail = {
+                "noSO": f"SO/{dealer_id}/{delivery_date.strftime('%y')}/{delivery_date.strftime('%m')}/{str(j+1).zfill(5)}",
+                "idSPK": f"SPK/{dealer_id}/{delivery_date.strftime('%y')}/{delivery_date.strftime('%m')}/{str(j+1).zfill(5)}",
+                "noMesin": f"JB22E{random.randint(1000000, 9999999)}",
+                "noRangka": f"JB22136K{random.randint(100000, 999999)}",
+                "idCustomer": f"{dealer_id}/{delivery_date.strftime('%y')}/{delivery_date.strftime('%m')}/CUS/{str(j+1).zfill(5)}",
+                "waktuPengiriman": random.choice(["09.00", "10.30", "14.00", "15.30"]),
+                "checklistKelengkapan": random.choice([
+                    "Manual Book,Jaket,Kartu Service",
+                    "Manual Book,Helm,Toolkit,Kartu Service",
+                    "Manual Book,Jaket,Helm,Kartu Service,Toolkit"
+                ]),
+                "lokasiPengiriman": random.choice([
+                    "Jl. Sudirman No. 123 RT 001, RW 002",
+                    "Jl. Thamrin No. 456 RT 003, RW 004",
+                    "Jl. Gatot Subroto No. 789 RT 005, RW 006"
+                ]),
+                "latitude": f"{random.uniform(-7.5, -6.0):.6f}",
+                "longitude": f"{random.uniform(106.5, 107.5):.6f}",
+                "namaPenerima": random.choice([
+                    "Amir Nasution", "Budi Santoso", "Citra Dewi",
+                    "Dedi Kurniawan", "Eka Sari"
+                ]),
+                "noKontakPenerima": f"08{random.randint(10000000, 99999999)}",
+                "createdTime": delivery_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": delivery_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+            details.append(detail)
+
+        delivery = {
+            "deliveryDocumentId": delivery_doc_id,
+            "tanggalPengiriman": delivery_date.strftime("%d/%m/%Y"),
+            "idDriver": random.choice(["Honda ID", "Driver001", "Driver002"]),
+            "statusDeliveryDocument": random.choice(["1", "2", "3"]),  # 1=Pending, 2=Delivered, 3=Cancelled
+            "dealerId": dealer_id,
+            "createdTime": delivery_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": delivery_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "detail": details
+        }
+
+        deliveries.append(delivery)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": deliveries
+    }
