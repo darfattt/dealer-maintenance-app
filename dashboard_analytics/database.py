@@ -39,6 +39,8 @@ class Dealer(Base):
     document_handling_data = relationship("DocumentHandlingData", back_populates="dealer")
     unit_inbound_data = relationship("UnitInboundData", back_populates="dealer")
     delivery_process_data = relationship("DeliveryProcessData", back_populates="dealer")
+    billing_process_data = relationship("BillingProcessData", back_populates="dealer")
+    unit_invoice_data = relationship("UnitInvoiceData", back_populates="dealer")
 
 class FetchConfiguration(Base):
     __tablename__ = "fetch_configurations"
@@ -418,6 +420,73 @@ class DeliveryProcessDetail(Base):
 
     # Relationships
     delivery_process_data = relationship("DeliveryProcessData", back_populates="details")
+
+
+class BillingProcessData(Base):
+    """Billing process data from INV1 API"""
+    __tablename__ = "billing_process_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    id_invoice = Column(String(100), nullable=True, index=True)
+    id_spk = Column(String(100), nullable=True, index=True)
+    id_customer = Column(String(100), nullable=True, index=True)
+    amount = Column(Numeric(15, 2), nullable=True)
+    tipe_pembayaran = Column(String(10), nullable=True)
+    cara_bayar = Column(String(10), nullable=True)
+    status = Column(String(10), nullable=True)
+    note = Column(Text, nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="billing_process_data")
+
+
+class UnitInvoiceData(Base):
+    """Unit invoice data from MDINVH1 API"""
+    __tablename__ = "unit_invoice_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    no_invoice = Column(String(100), nullable=True, index=True)
+    tanggal_invoice = Column(String(50), nullable=True)
+    tanggal_jatuh_tempo = Column(String(50), nullable=True)
+    main_dealer_id = Column(String(10), nullable=True)
+    total_harga_sebelum_diskon = Column(Numeric(15, 2), nullable=True)
+    total_diskon_per_unit = Column(Numeric(15, 2), nullable=True)
+    potongan_per_invoice = Column(Numeric(15, 2), nullable=True)
+    total_ppn = Column(Numeric(15, 2), nullable=True)
+    total_harga = Column(Numeric(15, 2), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="unit_invoice_data")
+    units = relationship("UnitInvoiceUnit", back_populates="unit_invoice_data", cascade="all, delete-orphan")
+
+
+class UnitInvoiceUnit(Base):
+    """Individual units for unit invoice data"""
+    __tablename__ = "unit_invoice_units"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    unit_invoice_data_id = Column(UUID(as_uuid=True), ForeignKey("unit_invoice_data.id"), nullable=False)
+    kode_tipe_unit = Column(String(50), nullable=True)
+    kode_warna = Column(String(10), nullable=True)
+    kuantitas = Column(Integer, nullable=True)
+    no_mesin = Column(String(100), nullable=True)
+    no_rangka = Column(String(100), nullable=True)
+    harga_satuan_sebelum_diskon = Column(Numeric(15, 2), nullable=True)
+    diskon_per_unit = Column(Numeric(15, 2), nullable=True)
+    po_id = Column(String(100), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    unit_invoice_data = relationship("UnitInvoiceData", back_populates="units")
 
 
 class APIConfiguration(Base):

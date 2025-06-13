@@ -208,6 +208,22 @@ async def initialize_api_configurations(db: Session = Depends(get_db)):
             is_active=True,
             timeout_seconds=30,
             retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_billing_process_api",
+            base_url="https://example.com/dgi-api/v1.3",
+            description="DGI API for Billing Process Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_unit_invoice_api",
+            base_url="https://example.com/dgi-api/v1.3",
+            description="DGI API for Unit Invoice (MD to Dealer) Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
         )
     ]
 
@@ -281,6 +297,22 @@ async def force_reinitialize_api_configurations(db: Session = Depends(get_db)):
                 config_name="dgi_delivery_process_api",
                 base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for Delivery Process Data (BAST)",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_billing_process_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Billing Process Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_unit_invoice_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Unit Invoice (MD to Dealer) Data",
                 is_active=True,
                 timeout_seconds=30,
                 retry_attempts=3

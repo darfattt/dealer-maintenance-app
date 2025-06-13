@@ -366,6 +366,166 @@ class DeliveryProcessAPIClient:
             raise ValueError(f"API call failed: {e}")
 
 
+class BillingProcessAPIClient:
+    """Client for Billing Process (INV1) API calls"""
+
+    def __init__(self):
+        self.config = APIConfigManager.get_api_config("dgi_billing_process_api") or APIConfigManager.get_default_config()
+        self.endpoint = "/inv1/read"
+
+    def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str,
+                   id_spk: str = "", id_customer: str = "") -> Dict[str, Any]:
+        """Fetch Billing Process data from DGI API"""
+        try:
+            # Check if config is valid
+            if not self.config:
+                raise ValueError("API configuration is not available")
+
+            # Generate token using token manager
+            token_manager = DGITokenManager(api_key, secret_key)
+            headers = token_manager.get_headers()
+
+            payload = {
+                "fromTime": from_time,
+                "toTime": to_time,
+                "dealerId": dealer_id
+            }
+
+            # Add optional parameters if provided
+            if id_spk:
+                payload["idSPK"] = id_spk
+            if id_customer:
+                payload["idCustomer"] = id_customer
+
+            url = f"{self.config['base_url']}{self.endpoint}"
+
+            logger.info(f"Calling Billing Process API for dealer {dealer_id} at {url}")
+
+            with httpx.Client(timeout=self.config.get('timeout_seconds', 30)) as client:
+                logger.debug(f"Making POST request to {url}")
+                logger.debug(f"Headers: {headers}")
+                logger.debug(f"Payload: {payload}")
+
+                response = client.post(url, headers=headers, json=payload)
+                logger.debug(f"Response status: {response.status_code}")
+                logger.debug(f"Response headers: {dict(response.headers)}")
+
+                response.raise_for_status()
+
+                # Get response text first for debugging
+                response_text = response.text
+                logger.debug(f"Response text: {response_text[:500]}...")  # First 500 chars
+
+                # Get JSON response with validation
+                if not response_text:
+                    raise ValueError("API returned empty response")
+
+                try:
+                    json_response = response.json()
+                except Exception as json_error:
+                    raise ValueError(f"Failed to parse JSON response: {json_error}. Response text: {response_text[:200]}")
+
+                if json_response is None:
+                    raise ValueError("API returned None JSON response")
+
+                logger.debug(f"API response type: {type(json_response)}")
+                return json_response
+
+        except httpx.ConnectError as e:
+            logger.error(f"Billing Process API connection failed: {e}")
+            raise ValueError(f"Connection failed to {url}: {e}")
+        except httpx.TimeoutException as e:
+            logger.error(f"Billing Process API timeout: {e}")
+            raise ValueError(f"Request timeout to {url}: {e}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Billing Process API HTTP error: {e}")
+            raise ValueError(f"HTTP error {e.response.status_code}: {e}")
+        except Exception as e:
+            logger.error(f"Billing Process API call failed: {e}")
+            logger.error(f"Error type: {type(e)}")
+            raise ValueError(f"API call failed: {e}")
+
+
+class UnitInvoiceAPIClient:
+    """Client for Unit Invoice (MDINVH1) API calls"""
+
+    def __init__(self):
+        self.config = APIConfigManager.get_api_config("dgi_unit_invoice_api") or APIConfigManager.get_default_config()
+        self.endpoint = "/mdinvh1/read"
+
+    def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str,
+                   po_id: str = "", no_shipping_list: str = "") -> Dict[str, Any]:
+        """Fetch Unit Invoice data from DGI API"""
+        try:
+            # Check if config is valid
+            if not self.config:
+                raise ValueError("API configuration is not available")
+
+            # Generate token using token manager
+            token_manager = DGITokenManager(api_key, secret_key)
+            headers = token_manager.get_headers()
+
+            payload = {
+                "fromTime": from_time,
+                "toTime": to_time,
+                "dealerId": dealer_id
+            }
+
+            # Add optional parameters if provided
+            if po_id:
+                payload["poId"] = po_id
+            if no_shipping_list:
+                payload["noShippingList"] = no_shipping_list
+
+            url = f"{self.config['base_url']}{self.endpoint}"
+
+            logger.info(f"Calling Unit Invoice API for dealer {dealer_id} at {url}")
+
+            with httpx.Client(timeout=self.config.get('timeout_seconds', 30)) as client:
+                logger.debug(f"Making POST request to {url}")
+                logger.debug(f"Headers: {headers}")
+                logger.debug(f"Payload: {payload}")
+
+                response = client.post(url, headers=headers, json=payload)
+                logger.debug(f"Response status: {response.status_code}")
+                logger.debug(f"Response headers: {dict(response.headers)}")
+
+                response.raise_for_status()
+
+                # Get response text first for debugging
+                response_text = response.text
+                logger.debug(f"Response text: {response_text[:500]}...")  # First 500 chars
+
+                # Get JSON response with validation
+                if not response_text:
+                    raise ValueError("API returned empty response")
+
+                try:
+                    json_response = response.json()
+                except Exception as json_error:
+                    raise ValueError(f"Failed to parse JSON response: {json_error}. Response text: {response_text[:200]}")
+
+                if json_response is None:
+                    raise ValueError("API returned None JSON response")
+
+                logger.debug(f"API response type: {type(json_response)}")
+                return json_response
+
+        except httpx.ConnectError as e:
+            logger.error(f"Unit Invoice API connection failed: {e}")
+            raise ValueError(f"Connection failed to {url}: {e}")
+        except httpx.TimeoutException as e:
+            logger.error(f"Unit Invoice API timeout: {e}")
+            raise ValueError(f"Request timeout to {url}: {e}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Unit Invoice API HTTP error: {e}")
+            raise ValueError(f"HTTP error {e.response.status_code}: {e}")
+        except Exception as e:
+            logger.error(f"Unit Invoice API call failed: {e}")
+            logger.error(f"Error type: {type(e)}")
+            raise ValueError(f"API call failed: {e}")
+
+
 def initialize_default_api_configs():
     """Initialize default API configurations in database"""
     db = SessionLocal()
@@ -430,6 +590,22 @@ def initialize_default_api_configs():
                 config_name="dgi_delivery_process_api",
                 base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for Delivery Process Data (BAST)",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_billing_process_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Billing Process Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_unit_invoice_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Unit Invoice (MD to Dealer) Data",
                 is_active=True,
                 timeout_seconds=30,
                 retry_attempts=3

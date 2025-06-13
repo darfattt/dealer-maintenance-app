@@ -15,6 +15,8 @@ from .processors.leasing_processor import LeasingDataProcessor
 from .processors.document_handling_processor import DocumentHandlingDataProcessor
 from .processors.unit_inbound_processor import UnitInboundDataProcessor
 from .processors.delivery_process_processor import DeliveryProcessDataProcessor
+from .processors.billing_process_processor import BillingProcessDataProcessor
+from .processors.unit_invoice_processor import UnitInvoiceDataProcessor
 from .api_clients import initialize_default_api_configs
 
 # Setup logging
@@ -39,7 +41,9 @@ class DataFetcherRouter:
             "leasing": LeasingDataProcessor(),
             "doch_read": DocumentHandlingDataProcessor(),
             "uinb_read": UnitInboundDataProcessor(),
-            "bast_read": DeliveryProcessDataProcessor()
+            "bast_read": DeliveryProcessDataProcessor(),
+            "inv1_read": BillingProcessDataProcessor(),
+            "mdinvh1_read": UnitInvoiceDataProcessor()
         }
     
     def get_processor(self, fetch_type: str):
@@ -158,6 +162,22 @@ def fetch_delivery_process_data(self, dealer_id: str, from_time: str = None, to_
                               id_spk=id_spk, id_customer=id_customer)
 
 
+@celery_app.task(bind=True)
+def fetch_billing_process_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                              id_spk: str = "", id_customer: str = ""):
+    """Fetch billing process data for a specific dealer"""
+    return router.execute_fetch("inv1_read", dealer_id, from_time, to_time,
+                              id_spk=id_spk, id_customer=id_customer)
+
+
+@celery_app.task(bind=True)
+def fetch_unit_invoice_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                           po_id: str = "", no_shipping_list: str = ""):
+    """Fetch unit invoice data for a specific dealer"""
+    return router.execute_fetch("mdinvh1_read", dealer_id, from_time, to_time,
+                              po_id=po_id, no_shipping_list=no_shipping_list)
+
+
 # Convenience functions for direct processor access (useful for testing)
 def get_prospect_processor() -> ProspectDataProcessor:
     """Get prospect processor instance"""
@@ -194,6 +214,16 @@ def get_delivery_process_processor() -> DeliveryProcessDataProcessor:
     return router.get_processor("bast_read")
 
 
+def get_billing_process_processor() -> BillingProcessDataProcessor:
+    """Get billing process processor instance"""
+    return router.get_processor("inv1_read")
+
+
+def get_unit_invoice_processor() -> UnitInvoiceDataProcessor:
+    """Get unit invoice processor instance"""
+    return router.get_processor("mdinvh1_read")
+
+
 # Export the main tasks for backward compatibility
 __all__ = [
     'health_check',
@@ -204,6 +234,8 @@ __all__ = [
     'fetch_document_handling_data',
     'fetch_unit_inbound_data',
     'fetch_delivery_process_data',
+    'fetch_billing_process_data',
+    'fetch_unit_invoice_data',
     'router',
     'get_prospect_processor',
     'get_pkb_processor',
@@ -211,5 +243,7 @@ __all__ = [
     'get_leasing_processor',
     'get_document_handling_processor',
     'get_unit_inbound_processor',
-    'get_delivery_process_processor'
+    'get_delivery_process_processor',
+    'get_billing_process_processor',
+    'get_unit_invoice_processor'
 ]

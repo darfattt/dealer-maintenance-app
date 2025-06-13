@@ -663,3 +663,127 @@ def get_dummy_delivery_process_data(dealer_id: str, from_time: str, to_time: str
         "message": None,
         "data": deliveries
     }
+
+
+def get_dummy_billing_process_data(dealer_id: str, from_time: str, to_time: str,
+                                  id_spk: str = "", id_customer: str = "") -> Dict[str, Any]:
+    """Generate dummy billing process data for testing"""
+
+    # Parse date range for realistic data generation
+    from_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+    to_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+
+    invoices = []
+
+    # Generate 1-5 invoices
+    num_invoices = random.randint(1, 5)
+
+    for i in range(num_invoices):
+        # Generate random date within range
+        random_days = random.randint(0, (to_date - from_date).days)
+        invoice_date = from_date + timedelta(days=random_days)
+
+        invoice = {
+            "idInvoice": f"TJ/{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/{str(i+1).zfill(5)}",
+            "idSPK": f"SPK/{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/{str(i+1).zfill(5)}",
+            "idCustomer": f"{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/CUS/{str(i+1).zfill(5)}",
+            "amount": random.randint(15000000, 25000000),  # 15-25 million
+            "tipePembayaran": random.choice(["1", "2", "3"]),  # 1=Cash, 2=Credit, 3=Leasing
+            "caraBayar": random.choice(["1", "2", "3"]),  # 1=Full, 2=DP, 3=Installment
+            "status": random.choice(["1", "2", "3"]),  # 1=Pending, 2=Paid, 3=Cancelled
+            "note": random.choice([
+                "pembayaran penuh oleh konsumen",
+                "pembayaran dengan DP 30%",
+                "pembayaran kredit 24 bulan",
+                "pembayaran leasing"
+            ]),
+            "dealerId": dealer_id,
+            "createdTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S")
+        }
+
+        invoices.append(invoice)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": invoices
+    }
+
+
+def get_dummy_unit_invoice_data(dealer_id: str, from_time: str, to_time: str,
+                               po_id: str = "", no_shipping_list: str = "") -> Dict[str, Any]:
+    """Generate dummy unit invoice data for testing"""
+
+    # Parse date range for realistic data generation
+    from_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+    to_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+
+    invoices = []
+
+    # Generate 1-3 invoices
+    num_invoices = random.randint(1, 3)
+
+    for i in range(num_invoices):
+        # Generate random date within range
+        random_days = random.randint(0, (to_date - from_date).days)
+        invoice_date = from_date + timedelta(days=random_days)
+        due_date = invoice_date + timedelta(days=30)  # 30 days payment term
+
+        # Generate 1-3 units per invoice
+        units = []
+        num_units = random.randint(1, 3)
+        total_before_discount = 0
+        total_discount = 0
+
+        for j in range(num_units):
+            unit_price = random.choice([15000000, 18000000, 20000000, 22000000])  # Various unit prices
+            discount = random.randint(100000, 500000)  # 100k-500k discount
+            quantity = random.randint(1, 2)
+
+            unit = {
+                "kodeTipeUnit": random.choice(["HP3", "HP5", "CB150R", "PCX160"]),
+                "kodeWarna": random.choice(["BK", "WH", "RD", "BL"]),  # Black, White, Red, Blue
+                "kuantitas": quantity,
+                "noMesin": f"JB22E{random.randint(1000000, 9999999)}" if random.choice([True, False]) else "",
+                "noRangka": f"JB22136K{random.randint(100000, 999999)}" if random.choice([True, False]) else "",
+                "hargaSatuanSebelumDiskon": unit_price,
+                "diskonPerUnit": discount,
+                "poId": f"PO/{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/{str(i+1).zfill(3)}",
+                "createdTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+
+            units.append(unit)
+            total_before_discount += unit_price * quantity
+            total_discount += discount * quantity
+
+        # Calculate totals
+        invoice_discount = random.randint(500000, 1500000)  # Additional invoice discount
+        subtotal = total_before_discount - total_discount - invoice_discount
+        ppn = subtotal * 0.11  # 11% VAT
+        total = subtotal + ppn
+
+        invoice = {
+            "noInvoice": f"IN/{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/{str(i+1).zfill(5)}",
+            "tanggalInvoice": invoice_date.strftime("%d/%m/%Y"),
+            "tanggalJatuhTempo": due_date.strftime("%d/%m/%Y"),
+            "mainDealerId": "B10",  # Main dealer code
+            "dealerId": dealer_id,
+            "totalHargaSebelumDiskon": float(total_before_discount),
+            "totalDiskonPerUnit": float(total_discount),
+            "potonganPerInvoice": float(invoice_discount),
+            "totalPPN": float(ppn),
+            "totalHarga": float(total),
+            "createdTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "unit": units
+        }
+
+        invoices.append(invoice)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": invoices
+    }

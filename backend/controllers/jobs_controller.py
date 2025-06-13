@@ -173,6 +173,14 @@ async def run_job(request: ManualFetchRequest, db: Session = Depends(get_db)):
         task_name = "tasks.data_fetcher_router.fetch_delivery_process_data"
         message = "Delivery process data fetch job started"
         task_args = [request.dealer_id, request.from_time, request.to_time, request.no_po, "", ""]
+    elif request.fetch_type == "inv1_read":
+        task_name = "tasks.data_fetcher_router.fetch_billing_process_data"
+        message = "Billing process data fetch job started"
+        task_args = [request.dealer_id, request.from_time, request.to_time, request.no_po, ""]
+    elif request.fetch_type == "mdinvh1_read":
+        task_name = "tasks.data_fetcher_router.fetch_unit_invoice_data"
+        message = "Unit invoice data fetch job started"
+        task_args = [request.dealer_id, request.from_time, request.to_time, request.no_po, ""]
     else:
         task_name = "tasks.data_fetcher_router.fetch_prospect_data"
         message = "Prospect data fetch job started"

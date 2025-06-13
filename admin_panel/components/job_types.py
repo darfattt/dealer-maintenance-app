@@ -13,7 +13,9 @@ JOB_TYPE_MAPPING = {
     "leasing": "Handle Leasing Requirement",
     "doch_read": "Manage Document Handling",
     "uinb_read": "Unit Inbound from Purchase Order",
-    "bast_read": "Manage Delivery Process"
+    "bast_read": "Manage Delivery Process",
+    "inv1_read": "Manage Billing Process",
+    "mdinvh1_read": "Unit Invoice (MD to Dealer)"
 }
 
 # Reverse mapping: label -> code

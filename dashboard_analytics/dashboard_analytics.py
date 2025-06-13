@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, and_, or_
 from sqlalchemy.orm import sessionmaker
-from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail
+from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail, BillingProcessData, UnitInvoiceData, UnitInvoiceUnit
 
 # Load environment variables
 load_dotenv()
@@ -589,7 +589,9 @@ menu_options = {
     "💰 Leasing Data": "leasing",
     "📄 Document Handling": "doch_read",
     "🚚 Unit Inbound": "uinb_read",
-    "🚛 Delivery Process": "bast_read"
+    "🚛 Delivery Process": "bast_read",
+    "💳 Billing Process": "inv1_read",
+    "📋 Unit Invoice": "mdinvh1_read"
 }
 
 selected_menu = st.sidebar.selectbox(
@@ -1354,6 +1356,365 @@ def render_delivery_process_data_page(dealer_id):
         st.warning("No Delivery Process data found for the selected dealer.")
 
 
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_billing_process_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get Billing Process data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(BillingProcessData).filter(BillingProcessData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            search_filter = or_(
+                BillingProcessData.id_invoice.ilike(f"%{search_term}%"),
+                BillingProcessData.id_spk.ilike(f"%{search_term}%"),
+                BillingProcessData.id_customer.ilike(f"%{search_term}%"),
+                BillingProcessData.note.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter)
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        billing_records = query.order_by(BillingProcessData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries
+        data = []
+        for billing in billing_records:
+            data.append({
+                "id": str(billing.id),
+                "dealer_id": billing.dealer_id,
+                "dealer_name": billing.dealer.dealer_name if billing.dealer else "Unknown",
+                "id_invoice": billing.id_invoice,
+                "id_spk": billing.id_spk,
+                "id_customer": billing.id_customer,
+                "amount": float(billing.amount) if billing.amount else 0.0,
+                "tipe_pembayaran": billing.tipe_pembayaran,
+                "cara_bayar": billing.cara_bayar,
+                "status": billing.status,
+                "note": billing.note,
+                "created_time": billing.created_time,
+                "modified_time": billing.modified_time,
+                "fetched_at": billing.fetched_at.isoformat() if billing.fetched_at else None
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
+
+def render_billing_process_data_page(dealer_id):
+    """Render the Billing Process data table page"""
+    st.subheader("💳 Billing Process")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search invoice, SPK, customer, or notes...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'billing_process_page' not in st.session_state:
+        st.session_state.billing_process_page = 1
+
+    # Get data with error handling
+    try:
+        data, total_count = get_billing_process_data_table(dealer_id, st.session_state.billing_process_page, page_size, search_term)
+    except Exception as e:
+        st.error(f"Error loading billing process data: {str(e)}")
+        return
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.billing_process_page}")
+
+    if data:
+        # Create DataFrame for display
+        display_data = []
+        for record in data:
+            display_data.append({
+                "Invoice ID": record.get('id_invoice', ''),
+                "SPK ID": record.get('id_spk', ''),
+                "Customer ID": record.get('id_customer', ''),
+                "Amount": f"Rp {record.get('amount', 0):,.0f}",
+                "Payment Type": record.get('tipe_pembayaran', ''),
+                "Payment Method": record.get('cara_bayar', ''),
+                "Status": record.get('status', ''),
+                "Note": record.get('note', '')[:50] + "..." if record.get('note') and len(record.get('note', '')) > 50 else record.get('note', ''),
+                "Created": record.get('created_time', ''),
+                "Fetched": record.get('fetched_at', '')[:19] if record.get('fetched_at') else ''
+            })
+
+        if display_data:
+            df = pd.DataFrame(display_data)
+
+            # Display the table
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Invoice ID": st.column_config.TextColumn("Invoice ID", width="medium"),
+                    "SPK ID": st.column_config.TextColumn("SPK ID", width="medium"),
+                    "Customer ID": st.column_config.TextColumn("Customer ID", width="medium"),
+                    "Amount": st.column_config.TextColumn("Amount", width="medium"),
+                    "Payment Type": st.column_config.TextColumn("Payment Type", width="small"),
+                    "Payment Method": st.column_config.TextColumn("Payment Method", width="small"),
+                    "Status": st.column_config.TextColumn("Status", width="small"),
+                    "Note": st.column_config.TextColumn("Note", width="large"),
+                    "Created": st.column_config.TextColumn("Created", width="medium"),
+                    "Fetched": st.column_config.TextColumn("Fetched", width="medium")
+                }
+            )
+
+            # Pagination controls
+            total_pages = (total_count + page_size - 1) // page_size
+
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First") and st.session_state.billing_process_page > 1:
+                        st.session_state.billing_process_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous") and st.session_state.billing_process_page > 1:
+                        st.session_state.billing_process_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.billing_process_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩") and st.session_state.billing_process_page < total_pages:
+                        st.session_state.billing_process_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️") and st.session_state.billing_process_page < total_pages:
+                        st.session_state.billing_process_page = total_pages
+                        st.rerun()
+
+            # Auto-refresh option
+            if st.checkbox("🔄 Auto-refresh (30s)"):
+                time.sleep(30)
+                st.rerun()
+    else:
+        st.warning("No Billing Process data found for the selected dealer.")
+
+
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_unit_invoice_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get Unit Invoice data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(UnitInvoiceData).filter(UnitInvoiceData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            # Join with units to search in unit data
+            query = query.join(UnitInvoiceUnit, UnitInvoiceData.id == UnitInvoiceUnit.unit_invoice_data_id, isouter=True)
+            search_filter = or_(
+                UnitInvoiceData.no_invoice.ilike(f"%{search_term}%"),
+                UnitInvoiceData.main_dealer_id.ilike(f"%{search_term}%"),
+                UnitInvoiceUnit.po_id.ilike(f"%{search_term}%"),
+                UnitInvoiceUnit.kode_tipe_unit.ilike(f"%{search_term}%"),
+                UnitInvoiceUnit.no_mesin.ilike(f"%{search_term}%"),
+                UnitInvoiceUnit.no_rangka.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter).distinct()
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        invoice_records = query.order_by(UnitInvoiceData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries with unit details
+        data = []
+        for invoice in invoice_records:
+            # Get units for this invoice
+            units = db.query(UnitInvoiceUnit).filter(
+                UnitInvoiceUnit.unit_invoice_data_id == invoice.id
+            ).all()
+
+            # Get first unit for main display
+            first_unit = units[0] if units else None
+
+            data.append({
+                "id": str(invoice.id),
+                "dealer_id": invoice.dealer_id,
+                "dealer_name": invoice.dealer.dealer_name if invoice.dealer else "Unknown",
+                "no_invoice": invoice.no_invoice,
+                "tanggal_invoice": invoice.tanggal_invoice,
+                "tanggal_jatuh_tempo": invoice.tanggal_jatuh_tempo,
+                "main_dealer_id": invoice.main_dealer_id,
+                "total_harga_sebelum_diskon": float(invoice.total_harga_sebelum_diskon) if invoice.total_harga_sebelum_diskon else 0.0,
+                "total_diskon_per_unit": float(invoice.total_diskon_per_unit) if invoice.total_diskon_per_unit else 0.0,
+                "potongan_per_invoice": float(invoice.potongan_per_invoice) if invoice.potongan_per_invoice else 0.0,
+                "total_ppn": float(invoice.total_ppn) if invoice.total_ppn else 0.0,
+                "total_harga": float(invoice.total_harga) if invoice.total_harga else 0.0,
+                "created_time": invoice.created_time,
+                "modified_time": invoice.modified_time,
+                "fetched_at": invoice.fetched_at.isoformat() if invoice.fetched_at else None,
+                "unit_count": len(units),
+                "units": [
+                    {
+                        "id": str(unit.id),
+                        "kode_tipe_unit": unit.kode_tipe_unit,
+                        "kode_warna": unit.kode_warna,
+                        "kuantitas": unit.kuantitas,
+                        "no_mesin": unit.no_mesin,
+                        "no_rangka": unit.no_rangka,
+                        "harga_satuan_sebelum_diskon": float(unit.harga_satuan_sebelum_diskon) if unit.harga_satuan_sebelum_diskon else 0.0,
+                        "diskon_per_unit": float(unit.diskon_per_unit) if unit.diskon_per_unit else 0.0,
+                        "po_id": unit.po_id
+                    } for unit in units
+                ]
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
+
+def render_unit_invoice_data_page(dealer_id):
+    """Render the Unit Invoice data table page"""
+    st.subheader("📋 Unit Invoice (MD to Dealer)")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search invoice, PO, unit type, chassis, or engine number...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'unit_invoice_page' not in st.session_state:
+        st.session_state.unit_invoice_page = 1
+
+    # Get data with error handling
+    try:
+        data, total_count = get_unit_invoice_data_table(dealer_id, st.session_state.unit_invoice_page, page_size, search_term)
+    except Exception as e:
+        st.error(f"Error loading unit invoice data: {str(e)}")
+        return
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.unit_invoice_page}")
+
+    if data:
+        # Create DataFrame for display
+        display_data = []
+        for record in data:
+            # Get first unit for main display - safe access
+            units = record.get('units', [])
+            first_unit = units[0] if units and len(units) > 0 else {}
+
+            display_data.append({
+                "Invoice No": record.get('no_invoice', ''),
+                "Invoice Date": record.get('tanggal_invoice', ''),
+                "Due Date": record.get('tanggal_jatuh_tempo', ''),
+                "Main Dealer": record.get('main_dealer_id', ''),
+                "Units": record.get('unit_count', 0),
+                "Unit Type": first_unit.get('kode_tipe_unit', '') if first_unit else '',
+                "Color": first_unit.get('kode_warna', '') if first_unit else '',
+                "Quantity": first_unit.get('kuantitas', '') if first_unit else '',
+                "PO ID": first_unit.get('po_id', '') if first_unit else '',
+                "Before Discount": f"Rp {record.get('total_harga_sebelum_diskon', 0):,.0f}",
+                "Discount": f"Rp {record.get('total_diskon_per_unit', 0):,.0f}",
+                "PPN": f"Rp {record.get('total_ppn', 0):,.0f}",
+                "Total": f"Rp {record.get('total_harga', 0):,.0f}",
+                "Fetched": record.get('fetched_at', '')[:19] if record.get('fetched_at') else ''
+            })
+
+        if display_data:
+            df = pd.DataFrame(display_data)
+
+            # Display the table
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Invoice No": st.column_config.TextColumn("Invoice No", width="medium"),
+                    "Invoice Date": st.column_config.TextColumn("Invoice Date", width="small"),
+                    "Due Date": st.column_config.TextColumn("Due Date", width="small"),
+                    "Main Dealer": st.column_config.TextColumn("Main Dealer", width="small"),
+                    "Units": st.column_config.NumberColumn("Units", width="small"),
+                    "Unit Type": st.column_config.TextColumn("Unit Type", width="small"),
+                    "Color": st.column_config.TextColumn("Color", width="small"),
+                    "Quantity": st.column_config.NumberColumn("Qty", width="small"),
+                    "PO ID": st.column_config.TextColumn("PO ID", width="medium"),
+                    "Before Discount": st.column_config.TextColumn("Before Discount", width="medium"),
+                    "Discount": st.column_config.TextColumn("Discount", width="medium"),
+                    "PPN": st.column_config.TextColumn("PPN", width="medium"),
+                    "Total": st.column_config.TextColumn("Total", width="medium"),
+                    "Fetched": st.column_config.TextColumn("Fetched", width="medium")
+                }
+            )
+
+            # Pagination controls
+            total_pages = (total_count + page_size - 1) // page_size
+
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First") and st.session_state.unit_invoice_page > 1:
+                        st.session_state.unit_invoice_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous") and st.session_state.unit_invoice_page > 1:
+                        st.session_state.unit_invoice_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.unit_invoice_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩") and st.session_state.unit_invoice_page < total_pages:
+                        st.session_state.unit_invoice_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️") and st.session_state.unit_invoice_page < total_pages:
+                        st.session_state.unit_invoice_page = total_pages
+                        st.rerun()
+
+            # Auto-refresh option
+            if st.checkbox("🔄 Auto-refresh (30s)"):
+                time.sleep(30)
+                st.rerun()
+    else:
+        st.warning("No Unit Invoice data found for the selected dealer.")
+
+
 # Main content routing
 if selected_dealer_id:
     if current_page == "home":
@@ -1383,6 +1744,14 @@ if selected_dealer_id:
     elif current_page == "bast_read":
         # Delivery process data page
         render_delivery_process_data_page(selected_dealer_id)
+
+    elif current_page == "inv1_read":
+        # Billing process data page
+        render_billing_process_data_page(selected_dealer_id)
+
+    elif current_page == "mdinvh1_read":
+        # Unit invoice data page
+        render_unit_invoice_data_page(selected_dealer_id)
 
 # Footer
 st.markdown("---")
