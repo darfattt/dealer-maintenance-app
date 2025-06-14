@@ -19,7 +19,14 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://dealer_user:dealer_pass@l
 # Create database connection
 @st.cache_resource
 def get_database_connection():
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={
+            "options": "-csearch_path=dealer_integration,public"
+        },
+        pool_pre_ping=True,
+        echo=False
+    )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     return SessionLocal
 

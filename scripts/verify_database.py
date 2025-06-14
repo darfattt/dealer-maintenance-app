@@ -39,8 +39,9 @@ def check_table_structure(cursor, table_name, expected_columns):
     """Check if table has expected columns"""
     cursor.execute("""
         SELECT column_name, data_type, is_nullable, column_default
-        FROM information_schema.columns 
-        WHERE table_name = %s 
+        FROM information_schema.columns
+        WHERE table_name = %s
+        AND table_schema = 'dealer_integration'
         ORDER BY ordinal_position
     """, (table_name,))
     
@@ -115,8 +116,9 @@ def check_migration_tracking(cursor):
     # Check if migration table exists
     cursor.execute("""
         SELECT EXISTS (
-            SELECT 1 FROM information_schema.tables 
+            SELECT 1 FROM information_schema.tables
             WHERE table_name = 'schema_migrations'
+            AND table_schema = 'dealer_integration'
         )
     """)
     
@@ -158,6 +160,9 @@ def main():
         
         conn = psycopg2.connect(**db_config, cursor_factory=RealDictCursor)
         cursor = conn.cursor()
+
+        # Set search path to use dealer_integration schema
+        cursor.execute("SET search_path TO dealer_integration, public")
         
         # Run checks
         checks_passed = 0

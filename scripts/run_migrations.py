@@ -109,6 +109,9 @@ def main():
         conn = psycopg2.connect(**db_config)
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cursor = conn.cursor()
+
+        # Set search path to use dealer_integration schema
+        cursor.execute("SET search_path TO dealer_integration, public")
         
     except Exception as e:
         print(f"❌ Failed to connect to database: {str(e)}")
