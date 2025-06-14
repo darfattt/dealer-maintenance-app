@@ -3,14 +3,17 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Dealers table
 CREATE TABLE IF NOT EXISTS dealers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    dealer_id VARCHAR(10) UNIQUE NOT NULL,
+    id UUID NOT NULL DEFAULT uuid_generate_v4(),
+    dealer_id VARCHAR(10) NOT NULL,
     dealer_name VARCHAR(255) NOT NULL,
-    api_key VARCHAR(255),
-    api_token VARCHAR(255),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    api_key VARCHAR(255) NULL,
+    api_token VARCHAR(255) NULL,
+    is_active BOOLEAN NULL DEFAULT true,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    secret_key VARCHAR(255) NULL,
+    CONSTRAINT dealers_dealer_id_key UNIQUE (dealer_id),
+    CONSTRAINT dealers_pkey PRIMARY KEY (id)
 );
 
 -- Data fetch configurations
@@ -90,9 +93,11 @@ CREATE TABLE IF NOT EXISTS fetch_logs (
     completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default dealer
-INSERT INTO dealers (dealer_id, dealer_name, api_key, api_token)
-VALUES ('00999', 'Default Dealer', '6c796097-a453-420f-9a19-155a2a24513e', '81d7fd22c95ba5385e05563a515868905d20419df06190ab035cf8be307a1e0c')
+-- Insert default dealers
+INSERT INTO dealers (id, dealer_id, dealer_name, api_key, api_token, secret_key, is_active, created_at, updated_at)
+VALUES
+    (uuid_generate_v4(), '00999', 'Default Dealer', '6c796097-a453-420f-9a19-155a2a24513e', '81d7fd22c95ba5385e05563a515868905d20419df06190ab035cf8be307a1e0c', 'default-secret-key-2024', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('e3a18c82-c500-450f-b6e1-5c5fbe68bf41', '12284', 'Sample Dealer', 'sample-api-key-12284', 'sample-api-token-12284', 'sample-secret-key-12284', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (dealer_id) DO NOTHING;
 
 -- Create indexes for better performance

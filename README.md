@@ -252,14 +252,67 @@ http://localhost:8502
 # Admin panel should still work
 ```
 
+## 🗄️ Database Structure & Migrations
+
+### **Latest Dealers Table Structure**
+```sql
+CREATE TABLE dealers (
+    id UUID NOT NULL DEFAULT uuid_generate_v4(),
+    dealer_id VARCHAR(10) NOT NULL,
+    dealer_name VARCHAR(255) NOT NULL,
+    api_key VARCHAR(255) NULL,
+    api_token VARCHAR(255) NULL,
+    secret_key VARCHAR(255) NULL,  -- NEW FIELD
+    is_active BOOLEAN NULL DEFAULT true,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT dealers_dealer_id_key UNIQUE (dealer_id),
+    CONSTRAINT dealers_pkey PRIMARY KEY (id)
+);
+```
+
+### **Sample Dealer Data**
+The system includes a sample dealer for testing:
+- **Dealer ID**: `12284`
+- **UUID**: `e3a18c82-c500-450f-b6e1-5c5fbe68bf41`
+- **Name**: `Sample Dealer`
+- **Purpose**: Testing and development
+
+### **Database Migration**
+
+#### **New Installation**
+```bash
+# Use Docker Compose (includes latest schema)
+docker-compose up -d
+
+# Or manual setup with updated init.sql
+psql -U dealer_user -d dealer_dashboard -f docker/init.sql
+```
+
+#### **Existing Installation**
+```bash
+# Run migration script (recommended)
+python scripts/run_migrations.py
+
+# Or manual migration
+psql -U dealer_user -d dealer_dashboard -f docker/migrations/001_add_secret_key_and_sample_dealer.sql
+```
+
+#### **Migration Features**
+- ✅ **Safe Updates**: Preserves existing data
+- ✅ **Automatic Tracking**: Prevents duplicate migrations
+- ✅ **Verification**: Confirms successful changes
+- ✅ **Rollback Safe**: Non-destructive operations
+
 ## 🔄 Migration from Monolithic
 
 If migrating from the original single dashboard:
 
 1. **Backup Data**: Export existing data
-2. **Deploy Split Services**: Use provided scripts
-3. **Update Bookmarks**: New URLs for each service
-4. **Train Users**: Different URLs for different functions
+2. **Run Database Migration**: Update schema with new fields
+3. **Deploy Split Services**: Use provided scripts
+4. **Update Bookmarks**: New URLs for each service
+5. **Train Users**: Different URLs for different functions
 
 ## 🚀 Deployment Options
 
