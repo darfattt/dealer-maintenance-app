@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, and_, or_
 from sqlalchemy.orm import sessionmaker
-from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail, BillingProcessData, UnitInvoiceData, UnitInvoiceUnit, PartsSalesData, PartsSalesPart, DPHLOData, DPHLOPart
+from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail, BillingProcessData, UnitInvoiceData, UnitInvoiceUnit, PartsSalesData, PartsSalesPart, DPHLOData, DPHLOPart, WorkshopInvoiceData, WorkshopInvoiceNJB, WorkshopInvoiceNSC, UnpaidHLOData, UnpaidHLOPart, PartsInvoiceData, PartsInvoicePart
 
 # Load environment variables
 load_dotenv()
@@ -593,7 +593,10 @@ menu_options = {
     "💳 Billing Process": "inv1_read",
     "📋 Unit Invoice": "mdinvh1_read",
     "🛒 Parts Sales": "prsl_read",
-    "🔧 DP HLO": "dphlo_read"
+    "🔧 DP HLO": "dphlo_read",
+    "🔨 Workshop Invoice": "inv2_read",
+    "📋 Unpaid HLO": "unpaidhlo_read",
+    "📄 Parts Invoice": "mdinvh3_read"
 }
 
 selected_menu = st.sidebar.selectbox(
@@ -2020,6 +2023,30 @@ def render_dp_hlo_data_page(dealer_id):
         st.warning("No DP HLO data found for the selected dealer.")
 
 
+def render_workshop_invoice_data_page(dealer_id):
+    """Render the Workshop Invoice data page"""
+    st.subheader("🔨 Workshop Invoice")
+    st.markdown(f"**Dealer:** {dealer_id}")
+    st.info("Workshop Invoice data page - Implementation coming soon!")
+    st.markdown("This page will display workshop invoice data (NJB & NSC) from the INV2 API.")
+
+
+def render_unpaid_hlo_data_page(dealer_id):
+    """Render the Unpaid HLO data page"""
+    st.subheader("📋 Unpaid HLO")
+    st.markdown(f"**Dealer:** {dealer_id}")
+    st.info("Unpaid HLO data page - Implementation coming soon!")
+    st.markdown("This page will display unpaid HLO data from the UNPAIDHLO API.")
+
+
+def render_parts_invoice_data_page(dealer_id):
+    """Render the Parts Invoice data page"""
+    st.subheader("📄 Parts Invoice")
+    st.markdown(f"**Dealer:** {dealer_id}")
+    st.info("Parts Invoice data page - Implementation coming soon!")
+    st.markdown("This page will display parts invoice data from the MDINVH3 API.")
+
+
 # Main content routing
 if selected_dealer_id:
     if current_page == "home":
@@ -2065,6 +2092,18 @@ if selected_dealer_id:
     elif current_page == "dphlo_read":
         # DP HLO data page
         render_dp_hlo_data_page(selected_dealer_id)
+
+    elif current_page == "inv2_read":
+        # Workshop invoice data page
+        render_workshop_invoice_data_page(selected_dealer_id)
+
+    elif current_page == "unpaidhlo_read":
+        # Unpaid HLO data page
+        render_unpaid_hlo_data_page(selected_dealer_id)
+
+    elif current_page == "mdinvh3_read":
+        # Parts invoice data page
+        render_parts_invoice_data_page(selected_dealer_id)
 
 # Footer
 st.markdown("---")

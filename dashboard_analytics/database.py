@@ -43,6 +43,9 @@ class Dealer(Base):
     unit_invoice_data = relationship("UnitInvoiceData", back_populates="dealer")
     parts_sales_data = relationship("PartsSalesData", back_populates="dealer")
     dp_hlo_data = relationship("DPHLOData", back_populates="dealer")
+    workshop_invoice_data = relationship("WorkshopInvoiceData", back_populates="dealer")
+    unpaid_hlo_data = relationship("UnpaidHLOData", back_populates="dealer")
+    parts_invoice_data = relationship("PartsInvoiceData", back_populates="dealer")
 
 class FetchConfiguration(Base):
     __tablename__ = "fetch_configurations"
@@ -572,6 +575,171 @@ class DPHLOPart(Base):
 
     # Relationships
     dp_hlo_data = relationship("DPHLOData", back_populates="parts")
+
+
+class WorkshopInvoiceData(Base):
+    """Workshop Invoice data from INV2 API (NJB & NSC)"""
+    __tablename__ = "workshop_invoice_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    no_work_order = Column(String(100), nullable=True, index=True)
+    no_njb = Column(String(100), nullable=True, index=True)
+    tanggal_njb = Column(String(50), nullable=True)
+    total_harga_njb = Column(Numeric(15, 2), nullable=True)
+    no_nsc = Column(String(100), nullable=True, index=True)
+    tanggal_nsc = Column(String(50), nullable=True)
+    total_harga_nsc = Column(Numeric(15, 2), nullable=True)
+    honda_id_sa = Column(String(100), nullable=True)
+    honda_id_mekanik = Column(String(100), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="workshop_invoice_data")
+    njb_services = relationship("WorkshopInvoiceNJB", back_populates="workshop_invoice_data", cascade="all, delete-orphan")
+    nsc_parts = relationship("WorkshopInvoiceNSC", back_populates="workshop_invoice_data", cascade="all, delete-orphan")
+
+
+class WorkshopInvoiceNJB(Base):
+    """NJB (Nota Jasa Bengkel) services for workshop invoice"""
+    __tablename__ = "workshop_invoice_njb"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workshop_invoice_data_id = Column(UUID(as_uuid=True), ForeignKey("workshop_invoice_data.id"), nullable=False)
+    id_job = Column(String(100), nullable=True, index=True)
+    harga_servis = Column(Numeric(15, 2), nullable=True)
+    promo_id_jasa = Column(String(100), nullable=True)
+    disc_service_amount = Column(Numeric(15, 2), nullable=True)
+    disc_service_percentage = Column(String(20), nullable=True)
+    total_harga_servis = Column(Numeric(15, 2), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    workshop_invoice_data = relationship("WorkshopInvoiceData", back_populates="njb_services")
+
+
+class WorkshopInvoiceNSC(Base):
+    """NSC (Nota Suku Cadang) parts for workshop invoice"""
+    __tablename__ = "workshop_invoice_nsc"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workshop_invoice_data_id = Column(UUID(as_uuid=True), ForeignKey("workshop_invoice_data.id"), nullable=False)
+    id_job = Column(String(100), nullable=True, index=True)
+    parts_number = Column(String(100), nullable=True, index=True)
+    kuantitas = Column(Integer, nullable=True)
+    harga_parts = Column(Numeric(15, 2), nullable=True)
+    promo_id_parts = Column(String(100), nullable=True)
+    disc_parts_amount = Column(Numeric(15, 2), nullable=True)
+    disc_parts_percentage = Column(String(20), nullable=True)
+    ppn = Column(Numeric(15, 2), nullable=True)
+    total_harga_parts = Column(Numeric(15, 2), nullable=True)
+    uang_muka = Column(Numeric(15, 2), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    workshop_invoice_data = relationship("WorkshopInvoiceData", back_populates="nsc_parts")
+
+
+class UnpaidHLOData(Base):
+    """Unpaid HLO data from UNPAIDHLO API"""
+    __tablename__ = "unpaid_hlo_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    id_hlo_document = Column(String(100), nullable=True, index=True)
+    tanggal_pemesanan_hlo = Column(String(50), nullable=True)
+    no_work_order = Column(String(100), nullable=True, index=True)
+    no_buku_claim_c2 = Column(String(100), nullable=True)
+    no_ktp = Column(String(100), nullable=True, index=True)
+    nama_customer = Column(String(200), nullable=True)
+    alamat = Column(Text, nullable=True)
+    kode_propinsi = Column(String(10), nullable=True)
+    kode_kota = Column(String(10), nullable=True)
+    kode_kecamatan = Column(String(20), nullable=True)
+    kode_kelurahan = Column(String(20), nullable=True)
+    kode_pos = Column(String(10), nullable=True)
+    no_kontak = Column(String(50), nullable=True)
+    kode_tipe_unit = Column(String(50), nullable=True)
+    tahun_motor = Column(String(10), nullable=True)
+    no_mesin = Column(String(100), nullable=True, index=True)
+    no_rangka = Column(String(100), nullable=True, index=True)
+    flag_numbering = Column(String(10), nullable=True)
+    vehicle_off_road = Column(String(10), nullable=True)
+    job_return = Column(String(10), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="unpaid_hlo_data")
+    parts = relationship("UnpaidHLOPart", back_populates="unpaid_hlo_data", cascade="all, delete-orphan")
+
+
+class UnpaidHLOPart(Base):
+    """Parts for unpaid HLO data"""
+    __tablename__ = "unpaid_hlo_parts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    unpaid_hlo_data_id = Column(UUID(as_uuid=True), ForeignKey("unpaid_hlo_data.id"), nullable=False)
+    parts_number = Column(String(100), nullable=True, index=True)
+    kuantitas = Column(Integer, nullable=True)
+    harga_parts = Column(Numeric(15, 2), nullable=True)
+    total_harga_parts = Column(Numeric(15, 2), nullable=True)
+    uang_muka = Column(Numeric(15, 2), nullable=True)
+    sisa_bayar = Column(Numeric(15, 2), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    unpaid_hlo_data = relationship("UnpaidHLOData", back_populates="parts")
+
+
+class PartsInvoiceData(Base):
+    """Parts Invoice data from MDINVH3 API"""
+    __tablename__ = "parts_invoice_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    no_invoice = Column(String(100), nullable=True, index=True)
+    tgl_invoice = Column(String(50), nullable=True)
+    tgl_jatuh_tempo = Column(String(50), nullable=True)
+    main_dealer_id = Column(String(10), nullable=True)
+    total_harga_sebelum_diskon = Column(Numeric(15, 2), nullable=True)
+    total_diskon_per_parts_number = Column(Numeric(15, 2), nullable=True)
+    potongan_per_invoice = Column(Numeric(15, 2), nullable=True)
+    total_ppn = Column(Numeric(15, 2), nullable=True)
+    total_harga = Column(Numeric(15, 2), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="parts_invoice_data")
+    parts = relationship("PartsInvoicePart", back_populates="parts_invoice_data", cascade="all, delete-orphan")
+
+
+class PartsInvoicePart(Base):
+    """Parts for parts invoice data"""
+    __tablename__ = "parts_invoice_parts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    parts_invoice_data_id = Column(UUID(as_uuid=True), ForeignKey("parts_invoice_data.id"), nullable=False)
+    no_po = Column(String(100), nullable=True, index=True)
+    jenis_order = Column(String(10), nullable=True)
+    parts_number = Column(String(100), nullable=True, index=True)
+    kuantitas = Column(Integer, nullable=True)
+    uom = Column(String(20), nullable=True)
+    harga_satuan_sebelum_diskon = Column(Numeric(15, 2), nullable=True)
+    diskon_per_parts_number = Column(Numeric(15, 2), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    parts_invoice_data = relationship("PartsInvoiceData", back_populates="parts")
 
 
 class APIConfiguration(Base):

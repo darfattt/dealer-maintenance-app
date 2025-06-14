@@ -19,6 +19,9 @@ from .processors.billing_process_processor import BillingProcessDataProcessor
 from .processors.unit_invoice_processor import UnitInvoiceDataProcessor
 from .processors.parts_sales_processor import PartsSalesDataProcessor
 from .processors.dp_hlo_processor import DPHLODataProcessor
+from .processors.workshop_invoice_processor import WorkshopInvoiceDataProcessor
+from .processors.unpaid_hlo_processor import UnpaidHLODataProcessor
+from .processors.parts_invoice_processor import PartsInvoiceDataProcessor
 from .api_clients import initialize_default_api_configs
 
 # Setup logging
@@ -47,7 +50,10 @@ class DataFetcherRouter:
             "inv1_read": BillingProcessDataProcessor(),
             "mdinvh1_read": UnitInvoiceDataProcessor(),
             "prsl_read": PartsSalesDataProcessor(),
-            "dphlo_read": DPHLODataProcessor()
+            "dphlo_read": DPHLODataProcessor(),
+            "inv2_read": WorkshopInvoiceDataProcessor(),
+            "unpaidhlo_read": UnpaidHLODataProcessor(),
+            "mdinvh3_read": PartsInvoiceDataProcessor()
         }
     
     def get_processor(self, fetch_type: str):
@@ -198,6 +204,30 @@ def fetch_dp_hlo_data(self, dealer_id: str, from_time: str = None, to_time: str 
                               no_work_order=no_work_order, id_hlo_document=id_hlo_document)
 
 
+@celery_app.task(bind=True)
+def fetch_workshop_invoice_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                               no_work_order: str = ""):
+    """Fetch workshop invoice data for a specific dealer"""
+    return router.execute_fetch("inv2_read", dealer_id, from_time, to_time,
+                              no_work_order=no_work_order)
+
+
+@celery_app.task(bind=True)
+def fetch_unpaid_hlo_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                         no_work_order: str = "", id_hlo_document: str = ""):
+    """Fetch unpaid HLO data for a specific dealer"""
+    return router.execute_fetch("unpaidhlo_read", dealer_id, from_time, to_time,
+                              no_work_order=no_work_order, id_hlo_document=id_hlo_document)
+
+
+@celery_app.task(bind=True)
+def fetch_parts_invoice_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                            no_po: str = ""):
+    """Fetch parts invoice data for a specific dealer"""
+    return router.execute_fetch("mdinvh3_read", dealer_id, from_time, to_time,
+                              no_po=no_po)
+
+
 # Convenience functions for direct processor access (useful for testing)
 def get_prospect_processor() -> ProspectDataProcessor:
     """Get prospect processor instance"""
@@ -254,6 +284,21 @@ def get_dp_hlo_processor() -> DPHLODataProcessor:
     return router.get_processor("dphlo_read")
 
 
+def get_workshop_invoice_processor() -> WorkshopInvoiceDataProcessor:
+    """Get workshop invoice processor instance"""
+    return router.get_processor("inv2_read")
+
+
+def get_unpaid_hlo_processor() -> UnpaidHLODataProcessor:
+    """Get unpaid HLO processor instance"""
+    return router.get_processor("unpaidhlo_read")
+
+
+def get_parts_invoice_processor() -> PartsInvoiceDataProcessor:
+    """Get parts invoice processor instance"""
+    return router.get_processor("mdinvh3_read")
+
+
 # Export the main tasks for backward compatibility
 __all__ = [
     'health_check',
@@ -268,6 +313,9 @@ __all__ = [
     'fetch_unit_invoice_data',
     'fetch_parts_sales_data',
     'fetch_dp_hlo_data',
+    'fetch_workshop_invoice_data',
+    'fetch_unpaid_hlo_data',
+    'fetch_parts_invoice_data',
     'router',
     'get_prospect_processor',
     'get_pkb_processor',
@@ -279,5 +327,8 @@ __all__ = [
     'get_billing_process_processor',
     'get_unit_invoice_processor',
     'get_parts_sales_processor',
-    'get_dp_hlo_processor'
+    'get_dp_hlo_processor',
+    'get_workshop_invoice_processor',
+    'get_unpaid_hlo_processor',
+    'get_parts_invoice_processor'
 ]

@@ -926,3 +926,262 @@ def get_dummy_dp_hlo_data(dealer_id: str, from_time: str, to_time: str,
         "message": None,
         "data": hlo_documents
     }
+
+
+def get_dummy_workshop_invoice_data(dealer_id: str, from_time: str, to_time: str,
+                                   no_work_order: str = "") -> Dict[str, Any]:
+    """Generate dummy workshop invoice data for testing"""
+
+    # Parse date range for realistic data generation
+    from_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+    to_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+
+    invoices = []
+
+    # Generate 1-2 workshop invoices
+    num_invoices = random.randint(1, 2)
+
+    for i in range(num_invoices):
+        # Generate random date within range
+        random_days = random.randint(0, (to_date - from_date).days)
+        invoice_date = from_date + timedelta(days=random_days)
+
+        # Generate NJB services (1-3 services)
+        njb_services = []
+        num_services = random.randint(1, 3)
+        total_njb = 0
+
+        for j in range(num_services):
+            service_price = random.choice([30000, 50000, 80000, 120000, 180000])  # Common service prices
+            disc_amount = random.randint(0, 10000)  # 0-10k discount
+            total_service = service_price - disc_amount
+
+            service = {
+                "idJob": f"BA{random.randint(100, 999)}",
+                "hargaServis": service_price,
+                "promoIdJasa": f"PROMO{random.randint(1000, 9999)}" if random.choice([True, False]) else "",
+                "discServiceAmount": disc_amount,
+                "discServicePercentage": f"{(disc_amount/service_price)*100:.1f}" if service_price > 0 else "0.0",
+                "totalHargaServis": total_service,
+                "createdTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+
+            njb_services.append(service)
+            total_njb += total_service
+
+        # Generate NSC parts (1-4 parts)
+        nsc_parts = []
+        num_parts = random.randint(1, 4)
+        total_nsc = 0
+
+        for k in range(num_parts):
+            part_price = random.randint(15000, 50000)  # 15k-50k per part
+            quantity = random.randint(1, 3)
+            disc_amount = random.randint(0, 5000)  # 0-5k discount
+            ppn = int((part_price * quantity - disc_amount) * 0.11)  # 11% VAT
+            total_part = (part_price * quantity) - disc_amount + ppn
+            down_payment = random.randint(0, total_part//2)  # 0 to half of total
+
+            part = {
+                "idJob": njb_services[k % len(njb_services)]["idJob"],  # Link to a service
+                "partsNumber": f"{random.choice(['772A0', '872A0', '972A0'])}{random.choice(['KCJ', 'LDJ', 'MDJ'])}{random.randint(100, 999)}",
+                "kuantitas": quantity,
+                "hargaParts": part_price,
+                "promoIdParts": f"{random.randint(10000, 99999)}" if random.choice([True, False]) else "",
+                "discPartsAmount": disc_amount,
+                "discPartsPercentage": f"{(disc_amount/(part_price*quantity))*100:.1f}" if part_price > 0 else "0.0",
+                "ppn": ppn,
+                "totalHargaParts": total_part,
+                "uangMuka": down_payment,
+                "createdTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+
+            nsc_parts.append(part)
+            total_nsc += total_part
+
+        invoice = {
+            "noWorkOrder": f"WO/{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/{str(i+1).zfill(3)}",
+            "noNJB": f"NJB/{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/{str(i+1).zfill(4)}",
+            "tanggalNJB": invoice_date.strftime("%d/%m/%Y"),
+            "totalHargaNJB": total_njb,
+            "noNSC": f"NSC/{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/{str(i+1).zfill(4)}",
+            "tanggalNSC": invoice_date.strftime("%d/%m/%Y"),
+            "totalHargaNSC": total_nsc,
+            "hondaIdSA": f"{random.randint(100000, 999999)}",
+            "hondaIdMekanik": f"{random.randint(100000, 999999)}",
+            "dealerId": dealer_id,
+            "createdTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "njb": njb_services,
+            "nsc": nsc_parts
+        }
+
+        invoices.append(invoice)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": invoices
+    }
+
+
+def get_dummy_unpaid_hlo_data(dealer_id: str, from_time: str, to_time: str,
+                             no_work_order: str = "", id_hlo_document: str = "") -> Dict[str, Any]:
+    """Generate dummy unpaid HLO data for testing"""
+
+    # Parse date range for realistic data generation
+    from_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+    to_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+
+    hlo_documents = []
+
+    # Generate 1-2 unpaid HLO documents
+    num_docs = random.randint(1, 2)
+
+    for i in range(num_docs):
+        # Generate random date within range
+        random_days = random.randint(0, (to_date - from_date).days)
+        doc_date = from_date + timedelta(days=random_days)
+
+        # Generate customer data
+        customer_names = ["Amir Nasution", "Sari Dewi", "Bambang Sutrisno", "Maya Sari", "Andi Rahman"]
+        provinces = ["3100", "3200", "3300", "3400", "3500"]  # Jakarta, Jabar, Jateng, DIY, Jatim
+        cities = ["3101", "3201", "3301", "3401", "3501"]
+
+        # Generate 1-3 parts per document
+        parts = []
+        num_parts = random.randint(1, 3)
+
+        for j in range(num_parts):
+            part_price = random.randint(20000, 60000)  # 20k-60k per part
+            quantity = random.randint(1, 2)
+            total_part = part_price * quantity
+            down_payment = random.randint(0, total_part//3)  # 0 to 1/3 of total
+            remaining = total_part - down_payment
+
+            part = {
+                "partsNumber": f"{random.choice(['772A0', '872A0', '972A0'])}{random.choice(['KCJ', 'LDJ', 'MDJ'])}{random.randint(100, 999)}",
+                "kuantitas": quantity,
+                "hargaParts": part_price,
+                "totalHargaParts": total_part,
+                "uangMuka": down_payment,
+                "sisaBayar": remaining,
+                "createdTime": doc_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": doc_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+
+            parts.append(part)
+
+        hlo_document = {
+            "idHLODocument": f"PO/HLO/{dealer_id}/{doc_date.strftime('%y%m')}/{str(i+1).zfill(4)}",
+            "tanggalPemesananHLO": doc_date.strftime("%d/%m/%Y"),
+            "noWorkOrder": f"WO/{dealer_id}/{doc_date.strftime('%y')}/{doc_date.strftime('%m')}/{str(i+1).zfill(3)}",
+            "noBukuClaimC2": f"BA{random.randint(100, 999)}",
+            "noKTP": f"{random.randint(1000000000000000, 9999999999999999)}",
+            "namaCustomer": random.choice(customer_names),
+            "alamat": f"Jl. {random.choice(['Sudirman', 'Thamrin', 'Gatot Subroto', 'Kuningan', 'Senayan'])} No. {random.randint(1, 100)} RT {random.randint(1, 10):03d}, RW {random.randint(1, 20):03d}",
+            "kodePropinsi": random.choice(provinces),
+            "kodeKota": random.choice(cities),
+            "kodeKecamatan": f"{random.choice(cities)}{random.randint(10, 99)}",
+            "kodeKelurahan": f"{random.choice(cities)}{random.randint(10, 99)}{random.randint(1000, 9999)}",
+            "kodePos": f"{random.randint(10000, 99999)}",
+            "noKontak": f"081{random.randint(10000000, 99999999)}",
+            "kodeTipeUnit": random.choice(["HP5", "PCX160", "VARIO125", "VARIO150", "BEAT"]),
+            "tahunMotor": str(random.randint(2020, 2024)),
+            "noMesin": f"JB22E{random.randint(1000000, 9999999)}",
+            "noRangka": f"JB22136K{random.randint(100000, 999999)}",
+            "flagNumbering": str(random.randint(0, 1)),
+            "vehicleOffRoad": str(random.randint(0, 1)),
+            "jobReturn": str(random.randint(0, 1)),
+            "dealerId": dealer_id,
+            "createdTime": doc_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": doc_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "parts": parts
+        }
+
+        hlo_documents.append(hlo_document)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": hlo_documents
+    }
+
+
+def get_dummy_parts_invoice_data(dealer_id: str, from_time: str, to_time: str,
+                                no_po: str = "") -> Dict[str, Any]:
+    """Generate dummy parts invoice data for testing"""
+
+    # Parse date range for realistic data generation
+    from_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+    to_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+
+    invoices = []
+
+    # Generate 1-2 parts invoices
+    num_invoices = random.randint(1, 2)
+
+    for i in range(num_invoices):
+        # Generate random date within range
+        random_days = random.randint(0, (to_date - from_date).days)
+        invoice_date = from_date + timedelta(days=random_days)
+        due_date = invoice_date + timedelta(days=30)  # 30 days payment term
+
+        # Generate 2-4 parts per invoice
+        parts = []
+        num_parts = random.randint(2, 4)
+        total_before_discount = 0
+        total_discount = 0
+
+        for j in range(num_parts):
+            unit_price = random.choice([150000, 200000, 250000, 300000])  # Various part prices
+            quantity = random.randint(1, 3)
+            discount = random.randint(10000, 30000)  # 10k-30k discount per part
+
+            part = {
+                "noPO": f"PO{random.randint(100000, 999999)}",
+                "jenisOrder": str(random.choice([1, 2, 3])),  # Order type
+                "partsNumber": f"{random.choice(['272A0', '372A0', '472A0'])}{random.choice(['KCJ', 'LDJ', 'MDJ'])}{random.randint(100, 999)}",
+                "kuantitas": quantity,
+                "uom": "pcs",
+                "hargaSatuanSebelumDiskon": float(unit_price),
+                "diskonPerPartsNumber": float(discount),
+                "createdTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+
+            parts.append(part)
+            total_before_discount += unit_price * quantity
+            total_discount += discount * quantity
+
+        # Calculate totals
+        invoice_discount = random.randint(20000, 50000)  # Additional invoice discount
+        subtotal = total_before_discount - total_discount - invoice_discount
+        ppn = subtotal * 0.11  # 11% VAT
+        total = subtotal + ppn
+
+        invoice = {
+            "noInvoice": f"IN/{dealer_id}/{invoice_date.strftime('%y')}/{invoice_date.strftime('%m')}/{str(i+1).zfill(5)}",
+            "tglInvoice": invoice_date.strftime("%d/%m/%Y"),
+            "tglJatuhTempo": due_date.strftime("%d/%m/%Y"),
+            "mainDealerId": "B10",  # Main dealer code
+            "dealerId": dealer_id,
+            "totalHargaSebelumDiskon": float(total_before_discount),
+            "totalDiskonPerPartsNumber": float(total_discount),
+            "potonganPerInvoice": float(invoice_discount),
+            "totalPPN": float(ppn),
+            "totalHarga": float(total),
+            "createdTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": invoice_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "parts": parts
+        }
+
+        invoices.append(invoice)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": invoices
+    }

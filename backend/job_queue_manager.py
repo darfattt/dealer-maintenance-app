@@ -224,6 +224,15 @@ class JobQueueManager:
             elif job.fetch_type == "dphlo_read":
                 task_name = "tasks.data_fetcher_router.fetch_dp_hlo_data"
                 task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or "", ""]
+            elif job.fetch_type == "inv2_read":
+                task_name = "tasks.data_fetcher_router.fetch_workshop_invoice_data"
+                task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or ""]
+            elif job.fetch_type == "unpaidhlo_read":
+                task_name = "tasks.data_fetcher_router.fetch_unpaid_hlo_data"
+                task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or "", ""]
+            elif job.fetch_type == "mdinvh3_read":
+                task_name = "tasks.data_fetcher_router.fetch_parts_invoice_data"
+                task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or ""]
             else:  # prospect
                 task_name = "tasks.data_fetcher_router.fetch_prospect_data"
                 task_args = [job.dealer_id, job.from_time, job.to_time]

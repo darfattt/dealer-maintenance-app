@@ -240,6 +240,30 @@ async def initialize_api_configurations(db: Session = Depends(get_db)):
             is_active=True,
             timeout_seconds=30,
             retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_workshop_invoice_api",
+            base_url="https://example.com/dgi-api/v1.3",
+            description="DGI API for Workshop Invoice (NJB & NSC) Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_unpaid_hlo_api",
+            base_url="https://example.com/dgi-api/v1.3",
+            description="DGI API for Unpaid HLO Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
+        ),
+        APIConfiguration(
+            config_name="dgi_parts_invoice_api",
+            base_url="https://example.com/dgi-api/v1.3",
+            description="DGI API for Parts Invoice (MD to Dealer) Data",
+            is_active=True,
+            timeout_seconds=30,
+            retry_attempts=3
         )
     ]
 
@@ -345,6 +369,30 @@ async def force_reinitialize_api_configurations(db: Session = Depends(get_db)):
                 config_name="dgi_dp_hlo_api",
                 base_url="https://example.com/dgi-api/v1.3",
                 description="DGI API for DP HLO Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_workshop_invoice_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Workshop Invoice (NJB & NSC) Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_unpaid_hlo_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Unpaid HLO Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_parts_invoice_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Parts Invoice (MD to Dealer) Data",
                 is_active=True,
                 timeout_seconds=30,
                 retry_attempts=3

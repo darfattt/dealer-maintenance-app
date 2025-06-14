@@ -32,6 +32,9 @@ from controllers.billing_process_controller import router as billing_process_rou
 from controllers.unit_invoice_controller import router as unit_invoice_router
 from controllers.parts_sales_controller import router as parts_sales_router
 from controllers.dp_hlo_controller import router as dp_hlo_router
+from controllers.workshop_invoice_controller import router as workshop_invoice_router
+from controllers.unpaid_hlo_controller import router as unpaid_hlo_router
+from controllers.parts_invoice_controller import router as parts_invoice_router
 from controllers.token_controller import router as token_router
 from controllers.logs_controller import router as logs_router
 from controllers.jobs_controller import router as jobs_router
@@ -80,6 +83,9 @@ app.include_router(billing_process_router)          # Billing process data and a
 app.include_router(unit_invoice_router)             # Unit invoice data and analytics
 app.include_router(parts_sales_router)              # Parts sales data and analytics
 app.include_router(dp_hlo_router)                   # DP HLO data and analytics
+app.include_router(workshop_invoice_router)         # Workshop invoice data and analytics
+app.include_router(unpaid_hlo_router)               # Unpaid HLO data and analytics
+app.include_router(parts_invoice_router)            # Parts invoice data and analytics
 app.include_router(token_router)                    # Token generation and management
 app.include_router(logs_router)                     # Logs and monitoring
 app.include_router(jobs_router)                     # Job execution and management
@@ -132,6 +138,9 @@ async def get_api_info():
         "unit_invoice": "Unit invoice (MD to Dealer) data and analytics",
         "parts_sales": "Parts sales data and analytics",
         "dp_hlo": "DP HLO data and analytics",
+        "workshop_invoice": "Workshop invoice (NJB & NSC) data and analytics",
+        "unpaid_hlo": "Unpaid HLO data and analytics",
+        "parts_invoice": "Parts invoice (MD to Dealer) data and analytics",
             "token": "DGI API token generation and management",
             "logs": "Fetch logs and system monitoring",
             "jobs": "Manual job execution and status"
@@ -152,6 +161,9 @@ async def get_api_info():
         "unit_invoice_data": "/unit_invoice/",
         "parts_sales_data": "/parts_sales/",
         "dp_hlo_data": "/dp_hlo/",
+        "workshop_invoice_data": "/workshop_invoice/",
+        "unpaid_hlo_data": "/unpaid_hlo/",
+        "parts_invoice_data": "/parts_invoice/",
             "token_generation": "/token/generate",
             "job_execution": "/jobs/run",
             "logs": "/logs/fetch-logs/"
