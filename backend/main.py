@@ -30,6 +30,8 @@ from controllers.unit_inbound_controller import router as unit_inbound_router
 from controllers.delivery_process_controller import router as delivery_process_router
 from controllers.billing_process_controller import router as billing_process_router
 from controllers.unit_invoice_controller import router as unit_invoice_router
+from controllers.parts_sales_controller import router as parts_sales_router
+from controllers.dp_hlo_controller import router as dp_hlo_router
 from controllers.token_controller import router as token_router
 from controllers.logs_controller import router as logs_router
 from controllers.jobs_controller import router as jobs_router
@@ -76,6 +78,8 @@ app.include_router(unit_inbound_router)              # Unit inbound data and ana
 app.include_router(delivery_process_router)         # Delivery process data and analytics
 app.include_router(billing_process_router)          # Billing process data and analytics
 app.include_router(unit_invoice_router)             # Unit invoice data and analytics
+app.include_router(parts_sales_router)              # Parts sales data and analytics
+app.include_router(dp_hlo_router)                   # DP HLO data and analytics
 app.include_router(token_router)                    # Token generation and management
 app.include_router(logs_router)                     # Logs and monitoring
 app.include_router(jobs_router)                     # Job execution and management
@@ -126,6 +130,8 @@ async def get_api_info():
         "delivery_process": "Delivery process data and analytics",
         "billing_process": "Billing process data and analytics",
         "unit_invoice": "Unit invoice (MD to Dealer) data and analytics",
+        "parts_sales": "Parts sales data and analytics",
+        "dp_hlo": "DP HLO data and analytics",
             "token": "DGI API token generation and management",
             "logs": "Fetch logs and system monitoring",
             "jobs": "Manual job execution and status"
@@ -144,6 +150,8 @@ async def get_api_info():
         "delivery_process_data": "/delivery_process/",
         "billing_process_data": "/billing_process/",
         "unit_invoice_data": "/unit_invoice/",
+        "parts_sales_data": "/parts_sales/",
+        "dp_hlo_data": "/dp_hlo/",
             "token_generation": "/token/generate",
             "job_execution": "/jobs/run",
             "logs": "/logs/fetch-logs/"

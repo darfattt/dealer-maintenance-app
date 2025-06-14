@@ -41,6 +41,8 @@ class Dealer(Base):
     delivery_process_data = relationship("DeliveryProcessData", back_populates="dealer")
     billing_process_data = relationship("BillingProcessData", back_populates="dealer")
     unit_invoice_data = relationship("UnitInvoiceData", back_populates="dealer")
+    parts_sales_data = relationship("PartsSalesData", back_populates="dealer")
+    dp_hlo_data = relationship("DPHLOData", back_populates="dealer")
 
 class FetchConfiguration(Base):
     __tablename__ = "fetch_configurations"
@@ -487,6 +489,89 @@ class UnitInvoiceUnit(Base):
 
     # Relationships
     unit_invoice_data = relationship("UnitInvoiceData", back_populates="units")
+
+
+class PartsSalesData(Base):
+    """Parts sales data from PRSL API"""
+    __tablename__ = "parts_sales_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    no_so = Column(String(100), nullable=True, index=True)
+    tgl_so = Column(String(50), nullable=True)
+    id_customer = Column(String(100), nullable=True, index=True)
+    nama_customer = Column(String(200), nullable=True)
+    disc_so = Column(Numeric(15, 2), nullable=True)
+    total_harga_so = Column(Numeric(15, 2), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="parts_sales_data")
+    parts = relationship("PartsSalesPart", back_populates="parts_sales_data", cascade="all, delete-orphan")
+
+
+class PartsSalesPart(Base):
+    """Individual parts for parts sales data"""
+    __tablename__ = "parts_sales_parts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    parts_sales_data_id = Column(UUID(as_uuid=True), ForeignKey("parts_sales_data.id"), nullable=False)
+    parts_number = Column(String(100), nullable=True, index=True)
+    kuantitas = Column(Integer, nullable=True)
+    harga_parts = Column(Numeric(15, 2), nullable=True)
+    promo_id_parts = Column(String(100), nullable=True)
+    disc_amount = Column(Numeric(15, 2), nullable=True)
+    disc_percentage = Column(String(20), nullable=True)
+    ppn = Column(Numeric(15, 2), nullable=True)
+    total_harga_parts = Column(Numeric(15, 2), nullable=True)
+    uang_muka = Column(Numeric(15, 2), nullable=True)
+    booking_id_reference = Column(String(100), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    parts_sales_data = relationship("PartsSalesData", back_populates="parts")
+
+
+class DPHLOData(Base):
+    """DP HLO data from DPHLO API"""
+    __tablename__ = "dp_hlo_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    no_invoice_uang_jaminan = Column(String(100), nullable=True, index=True)
+    id_hlo_document = Column(String(100), nullable=True, index=True)
+    tanggal_pemesanan_hlo = Column(String(50), nullable=True)
+    no_work_order = Column(String(100), nullable=True, index=True)
+    id_customer = Column(String(100), nullable=True, index=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="dp_hlo_data")
+    parts = relationship("DPHLOPart", back_populates="dp_hlo_data", cascade="all, delete-orphan")
+
+
+class DPHLOPart(Base):
+    """Individual parts for DP HLO data"""
+    __tablename__ = "dp_hlo_parts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dp_hlo_data_id = Column(UUID(as_uuid=True), ForeignKey("dp_hlo_data.id"), nullable=False)
+    parts_number = Column(String(100), nullable=True, index=True)
+    kuantitas = Column(Integer, nullable=True)
+    harga_parts = Column(Numeric(15, 2), nullable=True)
+    total_harga_parts = Column(Numeric(15, 2), nullable=True)
+    uang_muka = Column(Numeric(15, 2), nullable=True)
+    sisa_bayar = Column(Numeric(15, 2), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    dp_hlo_data = relationship("DPHLOData", back_populates="parts")
 
 
 class APIConfiguration(Base):

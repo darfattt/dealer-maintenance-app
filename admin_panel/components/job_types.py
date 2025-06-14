@@ -15,7 +15,9 @@ JOB_TYPE_MAPPING = {
     "uinb_read": "Unit Inbound from Purchase Order",
     "bast_read": "Manage Delivery Process",
     "inv1_read": "Manage Billing Process",
-    "mdinvh1_read": "Unit Invoice (MD to Dealer)"
+    "mdinvh1_read": "Unit Invoice (MD to Dealer)",
+    "prsl_read": "Manage Parts Sales",
+    "dphlo_read": "DP HLO"
 }
 
 # Reverse mapping: label -> code

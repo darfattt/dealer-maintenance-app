@@ -787,3 +787,142 @@ def get_dummy_unit_invoice_data(dealer_id: str, from_time: str, to_time: str,
         "message": None,
         "data": invoices
     }
+
+
+def get_dummy_parts_sales_data(dealer_id: str, from_time: str, to_time: str,
+                              no_po: str = "") -> Dict[str, Any]:
+    """Generate dummy parts sales data for testing"""
+
+    # Parse date range for realistic data generation
+    from_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+    to_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+
+    sales_orders = []
+
+    # Generate 1-3 sales orders
+    num_orders = random.randint(1, 3)
+
+    for i in range(num_orders):
+        # Generate random date within range
+        random_days = random.randint(0, (to_date - from_date).days)
+        order_date = from_date + timedelta(days=random_days)
+
+        # Generate 1-4 parts per order
+        parts = []
+        num_parts = random.randint(1, 4)
+        total_so = 0
+
+        for j in range(num_parts):
+            part_price = random.randint(15000, 50000)  # 15k-50k per part
+            quantity = random.randint(1, 3)
+            disc_amount = random.randint(0, 5000)  # 0-5k discount
+            ppn = int(part_price * quantity * 0.11)  # 11% VAT
+            total_part = (part_price * quantity) - disc_amount + ppn
+
+            part = {
+                "partsNumber": f"{random.choice(['772A0', '872A0', '972A0'])}{random.choice(['KCJ', 'LDJ', 'MDJ'])}{random.randint(100, 999)}",
+                "kuantitas": quantity,
+                "hargaParts": part_price,
+                "promoIdParts": f"A{random.randint(100000, 999999)}" if random.choice([True, False]) else "",
+                "discAmount": disc_amount,
+                "discPercentage": f"{(disc_amount/part_price)*100:.1f}" if part_price > 0 else "0.0",
+                "ppn": ppn,
+                "totalHargaParts": total_part,
+                "uangMuka": random.randint(0, total_part//2),  # 0 to half of total
+                "bookingIdReference": f"PO/HLO/{random.randint(10000, 99999)}/{order_date.strftime('%y%m')}/{str(j+1).zfill(4)}",
+                "createdTime": order_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": order_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+
+            parts.append(part)
+            total_so += total_part
+
+        # Calculate SO discount
+        so_discount = random.randint(1000, 10000)  # 1k-10k SO discount
+
+        sales_order = {
+            "noSO": f"SO/{dealer_id}/{order_date.strftime('%y')}/{order_date.strftime('%m')}/{str(i+1).zfill(5)}",
+            "tglSO": order_date.strftime("%d/%m/%Y"),
+            "idCustomer": f"{dealer_id}{order_date.strftime('%y%m')}{random.randint(100000, 999999)}",
+            "namaCustomer": random.choice([
+                "John Doe", "Jane Smith", "Ahmad Rahman", "Siti Nurhaliza",
+                "Budi Santoso", "Dewi Sartika", "Eko Prasetyo", "Maya Sari"
+            ]),
+            "discSO": so_discount,
+            "totalHargaSO": total_so - so_discount,
+            "dealerId": dealer_id,
+            "createdTime": order_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": order_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "parts": parts
+        }
+
+        sales_orders.append(sales_order)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": sales_orders
+    }
+
+
+def get_dummy_dp_hlo_data(dealer_id: str, from_time: str, to_time: str,
+                         no_work_order: str = "", id_hlo_document: str = "") -> Dict[str, Any]:
+    """Generate dummy DP HLO data for testing"""
+
+    # Parse date range for realistic data generation
+    from_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+    to_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+
+    hlo_documents = []
+
+    # Generate 1-2 HLO documents
+    num_docs = random.randint(1, 2)
+
+    for i in range(num_docs):
+        # Generate random date within range
+        random_days = random.randint(0, (to_date - from_date).days)
+        doc_date = from_date + timedelta(days=random_days)
+
+        # Generate 1-3 parts per document
+        parts = []
+        num_parts = random.randint(1, 3)
+
+        for j in range(num_parts):
+            part_price = random.randint(20000, 60000)  # 20k-60k per part
+            quantity = random.randint(1, 2)
+            total_part = part_price * quantity
+            down_payment = random.randint(0, total_part//3)  # 0 to 1/3 of total
+            remaining = total_part - down_payment
+
+            part = {
+                "partsNumber": f"{random.choice(['772A0', '872A0', '972A0'])}{random.choice(['KCJ', 'LDJ', 'MDJ'])}{random.randint(100, 999)}",
+                "kuantitas": quantity,
+                "hargaParts": part_price,
+                "totalHargaParts": total_part,
+                "uangMuka": down_payment,
+                "sisaBayar": remaining,
+                "createdTime": doc_date.strftime("%d/%m/%Y %H:%M:%S"),
+                "modifiedTime": doc_date.strftime("%d/%m/%Y %H:%M:%S")
+            }
+
+            parts.append(part)
+
+        hlo_document = {
+            "noInvoiceUangJaminan": f"UJ/{dealer_id}/{doc_date.strftime('%y')}/{doc_date.strftime('%m')}/{str(i+1).zfill(3)}",
+            "idHLODocument": f"PO/HLO/{dealer_id}/{doc_date.strftime('%y%m')}/{str(i+1).zfill(4)}",
+            "tanggalPemesananHLO": doc_date.strftime("%d/%m/%Y"),
+            "noWorkOrder": f"WO/{dealer_id}/{doc_date.strftime('%y')}/{doc_date.strftime('%m')}/{str(i+1).zfill(3)}",
+            "idCustomer": f"{dealer_id}{doc_date.strftime('%y%m')}{random.randint(1000, 9999)}",
+            "dealerId": dealer_id,
+            "createdTime": doc_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": doc_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "parts": parts
+        }
+
+        hlo_documents.append(hlo_document)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": hlo_documents
+    }

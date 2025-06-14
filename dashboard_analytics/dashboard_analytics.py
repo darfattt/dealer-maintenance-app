@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, and_, or_
 from sqlalchemy.orm import sessionmaker
-from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail, BillingProcessData, UnitInvoiceData, UnitInvoiceUnit
+from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail, BillingProcessData, UnitInvoiceData, UnitInvoiceUnit, PartsSalesData, PartsSalesPart, DPHLOData, DPHLOPart
 
 # Load environment variables
 load_dotenv()
@@ -591,7 +591,9 @@ menu_options = {
     "🚚 Unit Inbound": "uinb_read",
     "🚛 Delivery Process": "bast_read",
     "💳 Billing Process": "inv1_read",
-    "📋 Unit Invoice": "mdinvh1_read"
+    "📋 Unit Invoice": "mdinvh1_read",
+    "🛒 Parts Sales": "prsl_read",
+    "🔧 DP HLO": "dphlo_read"
 }
 
 selected_menu = st.sidebar.selectbox(
@@ -628,157 +630,109 @@ st.sidebar.markdown("---")
 st.sidebar.info("🔗 **Admin Panel**: http://localhost:8502")
 
 def render_home_page(dealer_id):
-    """Render the home analytics page"""
-    # Get analytics data
-    analytics = get_prospect_analytics(dealer_id)
+    """Render the home page focused on fetch logs"""
+    st.subheader("🏠 Dashboard Home")
+    st.markdown(f"**Dealer:** {dealer_id}")
 
-    # Key metrics
-    st.subheader("📈 Key Metrics")
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric(
-            label="Total Prospects",
-            value=analytics['total_prospects'],
-            delta=None
-        )
-
-    with col2:
-        st.metric(
-            label="Recent (7 days)",
-            value=analytics['recent_prospects'],
-            delta=None
-        )
-
-    with col3:
-        st.metric(
-            label="Active Prospects",
-            value=analytics['active_prospects'],
-            delta=None
-        )
-
-    with col4:
-        success_rate = 85  # Placeholder
-        st.metric(
-            label="Success Rate",
-            value=f"{success_rate}%",
-            delta="5%"
-        )
+    # Welcome message
+    st.info("� Welcome to the Dealer Dashboard Analytics. Use the menu to navigate to different data views.")
 
     st.markdown("---")
 
-    # Charts section
-    col1, col2 = st.columns(2)
+    # Fetch logs section - main focus
+    st.subheader("🕒 Data Fetch Activity")
 
-    with col1:
-        st.subheader("📅 Daily Prospect Trends")
-        if analytics['daily_counts']:
-            df_daily = pd.DataFrame(analytics['daily_counts'])
-            df_daily['date'] = pd.to_datetime(df_daily['date'])
+    # Get recent fetch logs
+    recent_logs = get_recent_fetch_logs(dealer_id, limit=20)
 
-            fig_line = px.line(
-                df_daily,
-                x='date',
-                y='count',
-                title="Daily Prospect Count",
-                markers=True
-            )
-            fig_line.update_layout(
-                xaxis_title="Date",
-                yaxis_title="Number of Prospects",
-                showlegend=False
-            )
-            st.plotly_chart(fig_line, use_container_width=True)
-        else:
-            st.info("No daily data available")
-
-    with col2:
-        st.subheader("📊 Status Distribution")
-        if analytics['status_distribution']:
-            df_status = pd.DataFrame(analytics['status_distribution'])
-
-            # Map status codes to labels
-            status_labels = {
-                '1': 'New',
-                '2': 'In Progress',
-                '3': 'Completed',
-                '4': 'Cancelled'
-            }
-            df_status['status_label'] = df_status['status'].map(status_labels)
-
-            fig_pie = px.pie(
-                df_status,
-                values='count',
-                names='status_label',
-                title="Prospect Status Distribution"
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("No status data available")
-
-    # Unit distribution chart
-    st.subheader("🏍️ Unit Type Distribution")
-    if analytics['unit_distribution']:
-        df_units = pd.DataFrame(analytics['unit_distribution'])
-
-        fig_bar = px.bar(
-            df_units,
-            x='unit',
-            y='count',
-            title="Preferred Unit Types",
-            color='count',
-            color_continuous_scale='Blues'
-        )
-        fig_bar.update_layout(
-            xaxis_title="Unit Type",
-            yaxis_title="Number of Prospects",
-            showlegend=False
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-    else:
-        st.info("No unit data available")
-
-    # Recent activity
-    st.markdown("---")
-    st.subheader("🕒 Recent Data Fetch Activity")
-
-    recent_logs = get_recent_fetch_logs(dealer_id)
     if recent_logs and len(recent_logs) > 0:
-        df_logs = pd.DataFrame(recent_logs)
-
-        # Display as metrics
-        col1, col2, col3 = st.columns(3)
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            # Safe access to first row
             last_fetch_time = recent_logs[0]['completed_at'] if recent_logs else "No data"
             st.metric("Last Fetch", last_fetch_time)
 
         with col2:
             success_count = len([log for log in recent_logs if log['status'] == 'success'])
-            st.metric("Recent Success", f"{success_count}/{len(recent_logs)}")
+            st.metric("Success Rate", f"{success_count}/{len(recent_logs)}")
 
         with col3:
+            total_records = sum([log['records_fetched'] or 0 for log in recent_logs])
+            st.metric("Total Records", f"{total_records:,}")
+
+        with col4:
             avg_duration = sum([log['duration'] or 0 for log in recent_logs]) / len(recent_logs)
             st.metric("Avg Duration", f"{avg_duration:.1f}s")
 
-        # Display logs table
+        st.markdown("---")
+
+        # Enhanced fetch logs table
+        st.subheader("📋 Recent Fetch Logs")
+
+        # Convert to DataFrame for better display
+        df_logs = pd.DataFrame(recent_logs)
+
+        # Format the data for display
+        display_data = []
+        for log in recent_logs:
+            status_icon = "✅" if log['status'] == 'success' else "❌"
+            display_data.append({
+                "Status": f"{status_icon} {log['status'].title()}",
+                "Records": log['records_fetched'] or 0,
+                "Duration": f"{log['duration'] or 0:.1f}s",
+                "Completed": log['completed_at'] or "N/A"
+            })
+
+        df_display = pd.DataFrame(display_data)
+
+        # Display the enhanced table
         st.dataframe(
-            df_logs[['status', 'records_fetched', 'duration', 'completed_at']],
+            df_display,
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            column_config={
+                "Status": st.column_config.TextColumn("Status", width="medium"),
+                "Records": st.column_config.NumberColumn("Records", width="small"),
+                "Duration": st.column_config.TextColumn("Duration", width="small"),
+                "Completed": st.column_config.TextColumn("Completed At", width="large")
+            }
         )
+
+
     else:
-        st.info("No recent fetch activity found")
+        st.warning("No fetch activity found for this dealer.")
 
         # Show placeholder metrics
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Last Fetch", "No data")
         with col2:
-            st.metric("Recent Success", "0/0")
+            st.metric("Success Rate", "0/0")
         with col3:
+            st.metric("Total Records", "0")
+        with col4:
             st.metric("Avg Duration", "N/A")
+
+    st.markdown("---")
+
+    # Quick navigation
+    st.subheader("🚀 Quick Navigation")
+    st.markdown("""
+    Use the sidebar menu to navigate to different data views:
+    - **👥 Prospect Data**: Customer prospect information
+    - **🔧 PKB Data**: Service record data
+    - **📦 Parts Inbound**: Parts receiving data
+    - **💰 Leasing Data**: Leasing requirement data
+    - **📄 Document Handling**: STNK/BPKB document data
+    - **🚚 Unit Inbound**: Purchase order unit data
+    - **🚛 Delivery Process**: Delivery process data
+    - **💳 Billing Process**: Invoice billing data
+    - **📋 Unit Invoice**: MD to dealer invoice data
+    """)
+
+    # Admin panel link
+    st.info("🔗 **Admin Panel**: http://localhost:8502 - Manage jobs, dealers, and configurations")
 
 def render_prospect_data_page(dealer_id):
     """Render the prospect data table page"""
@@ -1117,10 +1071,7 @@ def render_document_handling_data_page(dealer_id):
             # Pagination info
             st.markdown(f"Showing {len(display_data)} records")
 
-            # Auto-refresh option
-            if st.checkbox("🔄 Auto-refresh (30s)"):
-                time.sleep(30)
-                st.rerun()
+            
     else:
         st.warning("No Document Handling data found for the selected dealer.")
 
@@ -1348,10 +1299,7 @@ def render_delivery_process_data_page(dealer_id):
                         st.session_state.delivery_process_page = total_pages
                         st.rerun()
 
-            # Auto-refresh option
-            if st.checkbox("🔄 Auto-refresh (30s)"):
-                time.sleep(30)
-                st.rerun()
+           
     else:
         st.warning("No Delivery Process data found for the selected dealer.")
 
@@ -1508,10 +1456,7 @@ def render_billing_process_data_page(dealer_id):
                         st.session_state.billing_process_page = total_pages
                         st.rerun()
 
-            # Auto-refresh option
-            if st.checkbox("🔄 Auto-refresh (30s)"):
-                time.sleep(30)
-                st.rerun()
+            
     else:
         st.warning("No Billing Process data found for the selected dealer.")
 
@@ -1707,12 +1652,372 @@ def render_unit_invoice_data_page(dealer_id):
                         st.session_state.unit_invoice_page = total_pages
                         st.rerun()
 
-            # Auto-refresh option
-            if st.checkbox("🔄 Auto-refresh (30s)"):
-                time.sleep(30)
-                st.rerun()
+            
     else:
         st.warning("No Unit Invoice data found for the selected dealer.")
+
+
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_parts_sales_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get Parts Sales data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(PartsSalesData).filter(PartsSalesData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            # Join with parts to search in parts data
+            query = query.join(PartsSalesPart, PartsSalesData.id == PartsSalesPart.parts_sales_data_id, isouter=True)
+            search_filter = or_(
+                PartsSalesData.no_so.ilike(f"%{search_term}%"),
+                PartsSalesData.id_customer.ilike(f"%{search_term}%"),
+                PartsSalesData.nama_customer.ilike(f"%{search_term}%"),
+                PartsSalesPart.parts_number.ilike(f"%{search_term}%"),
+                PartsSalesPart.booking_id_reference.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter).distinct()
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        sales_records = query.order_by(PartsSalesData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries with parts details
+        data = []
+        for sales in sales_records:
+            # Get parts for this sales order
+            parts = db.query(PartsSalesPart).filter(
+                PartsSalesPart.parts_sales_data_id == sales.id
+            ).all()
+
+            data.append({
+                "id": str(sales.id),
+                "dealer_id": sales.dealer_id,
+                "dealer_name": sales.dealer.dealer_name if sales.dealer else "Unknown",
+                "no_so": sales.no_so,
+                "tgl_so": sales.tgl_so,
+                "id_customer": sales.id_customer,
+                "nama_customer": sales.nama_customer,
+                "disc_so": float(sales.disc_so) if sales.disc_so else 0.0,
+                "total_harga_so": float(sales.total_harga_so) if sales.total_harga_so else 0.0,
+                "created_time": sales.created_time,
+                "modified_time": sales.modified_time,
+                "fetched_at": sales.fetched_at.isoformat() if sales.fetched_at else None,
+                "parts_count": len(parts),
+                "parts": [
+                    {
+                        "id": str(part.id),
+                        "parts_number": part.parts_number,
+                        "kuantitas": part.kuantitas,
+                        "harga_parts": float(part.harga_parts) if part.harga_parts else 0.0,
+                        "promo_id_parts": part.promo_id_parts,
+                        "disc_amount": float(part.disc_amount) if part.disc_amount else 0.0,
+                        "disc_percentage": part.disc_percentage,
+                        "ppn": float(part.ppn) if part.ppn else 0.0,
+                        "total_harga_parts": float(part.total_harga_parts) if part.total_harga_parts else 0.0,
+                        "uang_muka": float(part.uang_muka) if part.uang_muka else 0.0,
+                        "booking_id_reference": part.booking_id_reference
+                    } for part in parts
+                ]
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
+
+def render_parts_sales_data_page(dealer_id):
+    """Render the Parts Sales data table page"""
+    st.subheader("� Parts Sales")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search SO number, customer, parts number, or booking reference...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'parts_sales_page' not in st.session_state:
+        st.session_state.parts_sales_page = 1
+
+    # Get data with error handling
+    try:
+        data, total_count = get_parts_sales_data_table(dealer_id, st.session_state.parts_sales_page, page_size, search_term)
+    except Exception as e:
+        st.error(f"Error loading parts sales data: {str(e)}")
+        return
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.parts_sales_page}")
+
+    if data:
+        # Create DataFrame for display
+        display_data = []
+        for record in data:
+            # Get first part for main display - safe access
+            parts = record.get('parts', [])
+            first_part = parts[0] if parts and len(parts) > 0 else {}
+
+            display_data.append({
+                "SO Number": record.get('no_so', ''),
+                "SO Date": record.get('tgl_so', ''),
+                "Customer ID": record.get('id_customer', ''),
+                "Customer Name": record.get('nama_customer', ''),
+                "Parts Count": record.get('parts_count', 0),
+                "First Part": first_part.get('parts_number', '') if first_part else '',
+                "Part Qty": first_part.get('kuantitas', '') if first_part else '',
+                "Part Price": f"Rp {first_part.get('harga_parts', 0):,.0f}" if first_part else '',
+                "SO Discount": f"Rp {record.get('disc_so', 0):,.0f}",
+                "Total SO": f"Rp {record.get('total_harga_so', 0):,.0f}",
+                "Fetched": record.get('fetched_at', '')[:19] if record.get('fetched_at') else ''
+            })
+
+        if display_data:
+            df = pd.DataFrame(display_data)
+
+            # Display the table
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "SO Number": st.column_config.TextColumn("SO Number", width="medium"),
+                    "SO Date": st.column_config.TextColumn("SO Date", width="small"),
+                    "Customer ID": st.column_config.TextColumn("Customer ID", width="medium"),
+                    "Customer Name": st.column_config.TextColumn("Customer Name", width="medium"),
+                    "Parts Count": st.column_config.NumberColumn("Parts", width="small"),
+                    "First Part": st.column_config.TextColumn("First Part", width="medium"),
+                    "Part Qty": st.column_config.NumberColumn("Qty", width="small"),
+                    "Part Price": st.column_config.TextColumn("Part Price", width="medium"),
+                    "SO Discount": st.column_config.TextColumn("SO Discount", width="medium"),
+                    "Total SO": st.column_config.TextColumn("Total SO", width="medium"),
+                    "Fetched": st.column_config.TextColumn("Fetched", width="medium")
+                }
+            )
+
+            # Pagination controls
+            total_pages = (total_count + page_size - 1) // page_size
+
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First") and st.session_state.parts_sales_page > 1:
+                        st.session_state.parts_sales_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous") and st.session_state.parts_sales_page > 1:
+                        st.session_state.parts_sales_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.parts_sales_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩") and st.session_state.parts_sales_page < total_pages:
+                        st.session_state.parts_sales_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️") and st.session_state.parts_sales_page < total_pages:
+                        st.session_state.parts_sales_page = total_pages
+                        st.rerun()
+    else:
+        st.warning("No Parts Sales data found for the selected dealer.")
+
+
+@st.cache_data(ttl=60)  # Cache for 1 minute
+def get_dp_hlo_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get DP HLO data for table display with pagination"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Base query
+        query = db.query(DPHLOData).filter(DPHLOData.dealer_id == dealer_id)
+
+        # Apply search filter if provided
+        if search_term:
+            # Join with parts to search in parts data
+            query = query.join(DPHLOPart, DPHLOData.id == DPHLOPart.dp_hlo_data_id, isouter=True)
+            search_filter = or_(
+                DPHLOData.id_hlo_document.ilike(f"%{search_term}%"),
+                DPHLOData.no_work_order.ilike(f"%{search_term}%"),
+                DPHLOData.id_customer.ilike(f"%{search_term}%"),
+                DPHLOData.no_invoice_uang_jaminan.ilike(f"%{search_term}%"),
+                DPHLOPart.parts_number.ilike(f"%{search_term}%")
+            )
+            query = query.filter(search_filter).distinct()
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * page_size
+        hlo_records = query.order_by(DPHLOData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Convert to list of dictionaries with parts details
+        data = []
+        for hlo in hlo_records:
+            # Get parts for this HLO document
+            parts = db.query(DPHLOPart).filter(
+                DPHLOPart.dp_hlo_data_id == hlo.id
+            ).all()
+
+            data.append({
+                "id": str(hlo.id),
+                "dealer_id": hlo.dealer_id,
+                "dealer_name": hlo.dealer.dealer_name if hlo.dealer else "Unknown",
+                "no_invoice_uang_jaminan": hlo.no_invoice_uang_jaminan,
+                "id_hlo_document": hlo.id_hlo_document,
+                "tanggal_pemesanan_hlo": hlo.tanggal_pemesanan_hlo,
+                "no_work_order": hlo.no_work_order,
+                "id_customer": hlo.id_customer,
+                "created_time": hlo.created_time,
+                "modified_time": hlo.modified_time,
+                "fetched_at": hlo.fetched_at.isoformat() if hlo.fetched_at else None,
+                "parts_count": len(parts),
+                "parts": [
+                    {
+                        "id": str(part.id),
+                        "parts_number": part.parts_number,
+                        "kuantitas": part.kuantitas,
+                        "harga_parts": float(part.harga_parts) if part.harga_parts else 0.0,
+                        "total_harga_parts": float(part.total_harga_parts) if part.total_harga_parts else 0.0,
+                        "uang_muka": float(part.uang_muka) if part.uang_muka else 0.0,
+                        "sisa_bayar": float(part.sisa_bayar) if part.sisa_bayar else 0.0
+                    } for part in parts
+                ]
+            })
+
+        return data, total_count
+    finally:
+        db.close()
+
+
+def render_dp_hlo_data_page(dealer_id):
+    """Render the DP HLO data table page"""
+    st.subheader("🔧 DP HLO")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search HLO document, work order, customer ID, or parts number...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'dp_hlo_page' not in st.session_state:
+        st.session_state.dp_hlo_page = 1
+
+    # Get data with error handling
+    try:
+        data, total_count = get_dp_hlo_data_table(dealer_id, st.session_state.dp_hlo_page, page_size, search_term)
+    except Exception as e:
+        st.error(f"Error loading DP HLO data: {str(e)}")
+        return
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.dp_hlo_page}")
+
+    if data:
+        # Create DataFrame for display
+        display_data = []
+        for record in data:
+            # Get first part for main display - safe access
+            parts = record.get('parts', [])
+            first_part = parts[0] if parts and len(parts) > 0 else {}
+
+            display_data.append({
+                "HLO Document": record.get('id_hlo_document', ''),
+                "Invoice UJ": record.get('no_invoice_uang_jaminan', ''),
+                "Order Date": record.get('tanggal_pemesanan_hlo', ''),
+                "Work Order": record.get('no_work_order', ''),
+                "Customer ID": record.get('id_customer', ''),
+                "Parts Count": record.get('parts_count', 0),
+                "First Part": first_part.get('parts_number', '') if first_part else '',
+                "Part Qty": first_part.get('kuantitas', '') if first_part else '',
+                "Part Price": f"Rp {first_part.get('harga_parts', 0):,.0f}" if first_part else '',
+                "Down Payment": f"Rp {first_part.get('uang_muka', 0):,.0f}" if first_part else '',
+                "Remaining": f"Rp {first_part.get('sisa_bayar', 0):,.0f}" if first_part else '',
+                "Fetched": record.get('fetched_at', '')[:19] if record.get('fetched_at') else ''
+            })
+
+        if display_data:
+            df = pd.DataFrame(display_data)
+
+            # Display the table
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "HLO Document": st.column_config.TextColumn("HLO Document", width="medium"),
+                    "Invoice UJ": st.column_config.TextColumn("Invoice UJ", width="medium"),
+                    "Order Date": st.column_config.TextColumn("Order Date", width="small"),
+                    "Work Order": st.column_config.TextColumn("Work Order", width="medium"),
+                    "Customer ID": st.column_config.TextColumn("Customer ID", width="medium"),
+                    "Parts Count": st.column_config.NumberColumn("Parts", width="small"),
+                    "First Part": st.column_config.TextColumn("First Part", width="medium"),
+                    "Part Qty": st.column_config.NumberColumn("Qty", width="small"),
+                    "Part Price": st.column_config.TextColumn("Part Price", width="medium"),
+                    "Down Payment": st.column_config.TextColumn("Down Payment", width="medium"),
+                    "Remaining": st.column_config.TextColumn("Remaining", width="medium"),
+                    "Fetched": st.column_config.TextColumn("Fetched", width="medium")
+                }
+            )
+
+            # Pagination controls
+            total_pages = (total_count + page_size - 1) // page_size
+
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First") and st.session_state.dp_hlo_page > 1:
+                        st.session_state.dp_hlo_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous") and st.session_state.dp_hlo_page > 1:
+                        st.session_state.dp_hlo_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.dp_hlo_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩") and st.session_state.dp_hlo_page < total_pages:
+                        st.session_state.dp_hlo_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️") and st.session_state.dp_hlo_page < total_pages:
+                        st.session_state.dp_hlo_page = total_pages
+                        st.rerun()
+    else:
+        st.warning("No DP HLO data found for the selected dealer.")
 
 
 # Main content routing
@@ -1752,6 +2057,14 @@ if selected_dealer_id:
     elif current_page == "mdinvh1_read":
         # Unit invoice data page
         render_unit_invoice_data_page(selected_dealer_id)
+
+    elif current_page == "prsl_read":
+        # Parts sales data page
+        render_parts_sales_data_page(selected_dealer_id)
+
+    elif current_page == "dphlo_read":
+        # DP HLO data page
+        render_dp_hlo_data_page(selected_dealer_id)
 
 # Footer
 st.markdown("---")

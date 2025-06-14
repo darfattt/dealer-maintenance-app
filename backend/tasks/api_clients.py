@@ -526,6 +526,164 @@ class UnitInvoiceAPIClient:
             raise ValueError(f"API call failed: {e}")
 
 
+class PartsSalesAPIClient:
+    """Client for Parts Sales (PRSL) API calls"""
+
+    def __init__(self):
+        self.config = APIConfigManager.get_api_config("dgi_parts_sales_api") or APIConfigManager.get_default_config()
+        self.endpoint = "/prsl/read"
+
+    def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str,
+                   no_po: str = "") -> Dict[str, Any]:
+        """Fetch Parts Sales data from DGI API"""
+        try:
+            # Check if config is valid
+            if not self.config:
+                raise ValueError("API configuration is not available")
+
+            # Generate token using token manager
+            token_manager = DGITokenManager(api_key, secret_key)
+            headers = token_manager.get_headers()
+
+            payload = {
+                "fromTime": from_time,
+                "toTime": to_time,
+                "dealerId": dealer_id
+            }
+
+            # Add optional parameters if provided
+            if no_po:
+                payload["noPO"] = no_po
+
+            url = f"{self.config['base_url']}{self.endpoint}"
+
+            logger.info(f"Calling Parts Sales API for dealer {dealer_id} at {url}")
+
+            with httpx.Client(timeout=self.config.get('timeout_seconds', 30)) as client:
+                logger.debug(f"Making POST request to {url}")
+                logger.debug(f"Headers: {headers}")
+                logger.debug(f"Payload: {payload}")
+
+                response = client.post(url, headers=headers, json=payload)
+                logger.debug(f"Response status: {response.status_code}")
+                logger.debug(f"Response headers: {dict(response.headers)}")
+
+                response.raise_for_status()
+
+                # Get response text first for debugging
+                response_text = response.text
+                logger.debug(f"Response text: {response_text[:500]}...")  # First 500 chars
+
+                # Get JSON response with validation
+                if not response_text:
+                    raise ValueError("API returned empty response")
+
+                try:
+                    json_response = response.json()
+                except Exception as json_error:
+                    raise ValueError(f"Failed to parse JSON response: {json_error}. Response text: {response_text[:200]}")
+
+                if json_response is None:
+                    raise ValueError("API returned None JSON response")
+
+                logger.debug(f"API response type: {type(json_response)}")
+                return json_response
+
+        except httpx.ConnectError as e:
+            logger.error(f"Parts Sales API connection failed: {e}")
+            raise ValueError(f"Connection failed to {url}: {e}")
+        except httpx.TimeoutException as e:
+            logger.error(f"Parts Sales API timeout: {e}")
+            raise ValueError(f"Request timeout to {url}: {e}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Parts Sales API HTTP error: {e}")
+            raise ValueError(f"HTTP error {e.response.status_code}: {e}")
+        except Exception as e:
+            logger.error(f"Parts Sales API call failed: {e}")
+            logger.error(f"Error type: {type(e)}")
+            raise ValueError(f"API call failed: {e}")
+
+
+class DPHLOAPIClient:
+    """Client for DP HLO (DPHLO) API calls"""
+
+    def __init__(self):
+        self.config = APIConfigManager.get_api_config("dgi_dp_hlo_api") or APIConfigManager.get_default_config()
+        self.endpoint = "/dphlo/read"
+
+    def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str,
+                   no_work_order: str = "", id_hlo_document: str = "") -> Dict[str, Any]:
+        """Fetch DP HLO data from DGI API"""
+        try:
+            # Check if config is valid
+            if not self.config:
+                raise ValueError("API configuration is not available")
+
+            # Generate token using token manager
+            token_manager = DGITokenManager(api_key, secret_key)
+            headers = token_manager.get_headers()
+
+            payload = {
+                "fromTime": from_time,
+                "toTime": to_time,
+                "dealerId": dealer_id
+            }
+
+            # Add optional parameters if provided
+            if no_work_order:
+                payload["noWorkOrder"] = no_work_order
+            if id_hlo_document:
+                payload["idHLODocument"] = id_hlo_document
+
+            url = f"{self.config['base_url']}{self.endpoint}"
+
+            logger.info(f"Calling DP HLO API for dealer {dealer_id} at {url}")
+
+            with httpx.Client(timeout=self.config.get('timeout_seconds', 30)) as client:
+                logger.debug(f"Making POST request to {url}")
+                logger.debug(f"Headers: {headers}")
+                logger.debug(f"Payload: {payload}")
+
+                response = client.post(url, headers=headers, json=payload)
+                logger.debug(f"Response status: {response.status_code}")
+                logger.debug(f"Response headers: {dict(response.headers)}")
+
+                response.raise_for_status()
+
+                # Get response text first for debugging
+                response_text = response.text
+                logger.debug(f"Response text: {response_text[:500]}...")  # First 500 chars
+
+                # Get JSON response with validation
+                if not response_text:
+                    raise ValueError("API returned empty response")
+
+                try:
+                    json_response = response.json()
+                except Exception as json_error:
+                    raise ValueError(f"Failed to parse JSON response: {json_error}. Response text: {response_text[:200]}")
+
+                if json_response is None:
+                    raise ValueError("API returned None JSON response")
+
+                logger.debug(f"API response type: {type(json_response)}")
+                return json_response
+
+        except httpx.ConnectError as e:
+            logger.error(f"DP HLO API connection failed: {e}")
+            raise ValueError(f"Connection failed to {url}: {e}")
+        except httpx.TimeoutException as e:
+            logger.error(f"DP HLO API timeout: {e}")
+            raise ValueError(f"Request timeout to {url}: {e}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"DP HLO API HTTP error: {e}")
+            raise ValueError(f"HTTP error {e.response.status_code}: {e}")
+        except Exception as e:
+            logger.error(f"DP HLO API call failed: {e}")
+            logger.error(f"Error type: {type(e)}")
+            raise ValueError(f"API call failed: {e}")
+
+
 def initialize_default_api_configs():
     """Initialize default API configurations in database"""
     db = SessionLocal()
@@ -606,6 +764,22 @@ def initialize_default_api_configs():
                 config_name="dgi_unit_invoice_api",
                 base_url="https://example.com/dgi-api/v1.3",
                 description="DGI API for Unit Invoice (MD to Dealer) Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_parts_sales_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for Parts Sales Data",
+                is_active=True,
+                timeout_seconds=30,
+                retry_attempts=3
+            ),
+            APIConfiguration(
+                config_name="dgi_dp_hlo_api",
+                base_url="https://example.com/dgi-api/v1.3",
+                description="DGI API for DP HLO Data",
                 is_active=True,
                 timeout_seconds=30,
                 retry_attempts=3
