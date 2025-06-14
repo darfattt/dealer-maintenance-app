@@ -7,7 +7,7 @@ import time
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, and_, or_
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail, BillingProcessData, UnitInvoiceData, UnitInvoiceUnit, PartsSalesData, PartsSalesPart, DPHLOData, DPHLOPart, WorkshopInvoiceData, WorkshopInvoiceNJB, WorkshopInvoiceNSC, UnpaidHLOData, UnpaidHLOPart, PartsInvoiceData, PartsInvoicePart
 
 # Load environment variables
@@ -2025,26 +2025,422 @@ def render_dp_hlo_data_page(dealer_id):
 
 def render_workshop_invoice_data_page(dealer_id):
     """Render the Workshop Invoice data page"""
-    st.subheader("🔨 Workshop Invoice")
+    st.subheader("🔨 Workshop Invoice (NJB & NSC)")
     st.markdown(f"**Dealer:** {dealer_id}")
-    st.info("Workshop Invoice data page - Implementation coming soon!")
-    st.markdown("This page will display workshop invoice data (NJB & NSC) from the INV2 API.")
+
+    # Get session
+    SessionLocal = get_database_connection()
+    session = SessionLocal()
+
+    try:
+        # Base query
+        query = session.query(WorkshopInvoiceData).join(Dealer)
+
+        # Apply dealer filter
+        if dealer_id != "All":
+            query = query.filter(WorkshopInvoiceData.dealer_id == dealer_id)
+
+        # Get total count
+        total_records = query.count()
+
+        if total_records == 0:
+            st.warning("No workshop invoice data found for the selected dealer.")
+            return
+
+        st.info(f"Found {total_records} workshop invoice records")
+
+        # Pagination controls
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            page_size = st.selectbox("Records per page", [10, 25, 50, 100], index=1, key="workshop_invoice_page_size")
+        with col3:
+            total_pages = (total_records + page_size - 1) // page_size
+            page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="workshop_invoice_page")
+
+        # Search functionality
+        search_term = st.text_input("🔍 Search (Work Order, NJB, NSC, Job ID, Parts Number)", key="workshop_invoice_search")
+
+        # Apply search filter
+        if search_term:
+            search_pattern = f"%{search_term}%"
+            # Join with services and parts for comprehensive search
+            query = query.join(WorkshopInvoiceNJB, WorkshopInvoiceData.id == WorkshopInvoiceNJB.workshop_invoice_data_id, isouter=True)
+            query = query.join(WorkshopInvoiceNSC, WorkshopInvoiceData.id == WorkshopInvoiceNSC.workshop_invoice_data_id, isouter=True)
+            query = query.filter(
+                or_(
+                    WorkshopInvoiceData.no_work_order.ilike(search_pattern),
+                    WorkshopInvoiceData.no_njb.ilike(search_pattern),
+                    WorkshopInvoiceData.no_nsc.ilike(search_pattern),
+                    WorkshopInvoiceNJB.id_job.ilike(search_pattern),
+                    WorkshopInvoiceNSC.id_job.ilike(search_pattern),
+                    WorkshopInvoiceNSC.parts_number.ilike(search_pattern)
+                )
+            ).distinct()
+
+        # Apply pagination
+        offset = (page_number - 1) * page_size
+        invoices = query.order_by(WorkshopInvoiceData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Prepare data for display
+        data = []
+        for invoice in invoices:
+            # Get services and parts count
+            services_count = session.query(WorkshopInvoiceNJB).filter(
+                WorkshopInvoiceNJB.workshop_invoice_data_id == invoice.id
+            ).count()
+
+            parts_count = session.query(WorkshopInvoiceNSC).filter(
+                WorkshopInvoiceNSC.workshop_invoice_data_id == invoice.id
+            ).count()
+
+            data.append({
+                "Dealer": invoice.dealer.dealer_name,
+                "Work Order": invoice.no_work_order or "N/A",
+                "NJB Number": invoice.no_njb or "N/A",
+                "NJB Date": invoice.tanggal_njb or "N/A",
+                "NJB Amount": f"Rp {invoice.total_harga_njb:,.0f}" if invoice.total_harga_njb else "N/A",
+                "NSC Number": invoice.no_nsc or "N/A",
+                "NSC Date": invoice.tanggal_nsc or "N/A",
+                "NSC Amount": f"Rp {invoice.total_harga_nsc:,.0f}" if invoice.total_harga_nsc else "N/A",
+                "Services": services_count,
+                "Parts": parts_count,
+                "Honda SA": invoice.honda_id_sa or "N/A",
+                "Honda Mechanic": invoice.honda_id_mekanik or "N/A",
+                "Created": invoice.created_time or "N/A",
+                "Fetched": invoice.fetched_at.strftime("%Y-%m-%d %H:%M") if invoice.fetched_at else "N/A"
+            })
+
+        # Display data table
+        if data:
+            df = pd.DataFrame(data)
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "NJB Amount": st.column_config.TextColumn("NJB Amount", help="Total NJB service amount"),
+                    "NSC Amount": st.column_config.TextColumn("NSC Amount", help="Total NSC parts amount"),
+                    "Services": st.column_config.NumberColumn("Services", help="Number of services"),
+                    "Parts": st.column_config.NumberColumn("Parts", help="Number of parts")
+                }
+            )
+
+            # Summary statistics
+            st.subheader("📊 Summary Statistics")
+            col1, col2, col3, col4, col5 = st.columns(5)
+
+            total_njb = sum([invoice.total_harga_njb or 0 for invoice in invoices])
+            total_nsc = sum([invoice.total_harga_nsc or 0 for invoice in invoices])
+            total_services = sum([session.query(WorkshopInvoiceNJB).filter(
+                WorkshopInvoiceNJB.workshop_invoice_data_id == invoice.id
+            ).count() for invoice in invoices])
+            total_parts = sum([session.query(WorkshopInvoiceNSC).filter(
+                WorkshopInvoiceNSC.workshop_invoice_data_id == invoice.id
+            ).count() for invoice in invoices])
+
+            with col1:
+                st.metric("Total Invoices", len(invoices))
+            with col2:
+                st.metric("Total NJB Amount", f"Rp {total_njb:,.0f}")
+            with col3:
+                st.metric("Total NSC Amount", f"Rp {total_nsc:,.0f}")
+            with col4:
+                st.metric("Total Services", total_services)
+            with col5:
+                st.metric("Total Parts", total_parts)
+        else:
+            st.warning("No workshop invoice data found matching your search criteria.")
+
+    except Exception as e:
+        st.error(f"Error loading workshop invoice data: {str(e)}")
+    finally:
+        session.close()
 
 
 def render_unpaid_hlo_data_page(dealer_id):
     """Render the Unpaid HLO data page"""
-    st.subheader("📋 Unpaid HLO")
+    st.subheader("📋 Unpaid HLO Documents")
     st.markdown(f"**Dealer:** {dealer_id}")
-    st.info("Unpaid HLO data page - Implementation coming soon!")
-    st.markdown("This page will display unpaid HLO data from the UNPAIDHLO API.")
+
+    # Get session
+    SessionLocal = get_database_connection()
+    session = SessionLocal()
+
+    try:
+        # Base query
+        query = session.query(UnpaidHLOData).join(Dealer)
+
+        # Apply dealer filter
+        if dealer_id != "All":
+            query = query.filter(UnpaidHLOData.dealer_id == dealer_id)
+
+        # Get total count
+        total_records = query.count()
+
+        if total_records == 0:
+            st.warning("No unpaid HLO data found for the selected dealer.")
+            return
+
+        st.info(f"Found {total_records} unpaid HLO documents")
+
+        # Pagination controls
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            page_size = st.selectbox("Records per page", [10, 25, 50, 100], index=1, key="unpaid_hlo_page_size")
+        with col3:
+            total_pages = (total_records + page_size - 1) // page_size
+            page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="unpaid_hlo_page")
+
+        # Search functionality
+        search_term = st.text_input("🔍 Search (HLO Document, Work Order, Customer Name, KTP, Vehicle Details)", key="unpaid_hlo_search")
+
+        # Apply search filter
+        if search_term:
+            search_pattern = f"%{search_term}%"
+            # Join with parts for comprehensive search
+            query = query.join(UnpaidHLOPart, UnpaidHLOData.id == UnpaidHLOPart.unpaid_hlo_data_id, isouter=True)
+            query = query.filter(
+                or_(
+                    UnpaidHLOData.id_hlo_document.ilike(search_pattern),
+                    UnpaidHLOData.no_work_order.ilike(search_pattern),
+                    UnpaidHLOData.nama_customer.ilike(search_pattern),
+                    UnpaidHLOData.no_ktp.ilike(search_pattern),
+                    UnpaidHLOData.kode_tipe_unit.ilike(search_pattern),
+                    UnpaidHLOData.no_mesin.ilike(search_pattern),
+                    UnpaidHLOData.no_rangka.ilike(search_pattern),
+                    UnpaidHLOPart.parts_number.ilike(search_pattern)
+                )
+            ).distinct()
+
+        # Apply pagination
+        offset = (page_number - 1) * page_size
+        hlo_documents = query.order_by(UnpaidHLOData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Prepare data for display
+        data = []
+        for hlo in hlo_documents:
+            # Get parts count and total amounts
+            parts = session.query(UnpaidHLOPart).filter(
+                UnpaidHLOPart.unpaid_hlo_data_id == hlo.id
+            ).all()
+
+            parts_count = len(parts)
+            total_parts_value = sum([part.total_harga_parts or 0 for part in parts])
+            total_down_payment = sum([part.uang_muka or 0 for part in parts])
+            total_remaining = sum([part.sisa_bayar or 0 for part in parts])
+
+            data.append({
+                "Dealer": hlo.dealer.dealer_name,
+                "HLO Document": hlo.id_hlo_document or "N/A",
+                "HLO Date": hlo.tanggal_pemesanan_hlo or "N/A",
+                "Work Order": hlo.no_work_order or "N/A",
+                "Customer": hlo.nama_customer or "N/A",
+                "KTP": hlo.no_ktp or "N/A",
+                "Contact": hlo.no_kontak or "N/A",
+                "Vehicle Type": hlo.kode_tipe_unit or "N/A",
+                "Year": hlo.tahun_motor or "N/A",
+                "Engine No": hlo.no_mesin or "N/A",
+                "Chassis No": hlo.no_rangka or "N/A",
+                "Parts Count": parts_count,
+                "Parts Value": f"Rp {total_parts_value:,.0f}" if total_parts_value else "N/A",
+                "Down Payment": f"Rp {total_down_payment:,.0f}" if total_down_payment else "N/A",
+                "Remaining": f"Rp {total_remaining:,.0f}" if total_remaining else "N/A",
+                "Created": hlo.created_time or "N/A",
+                "Fetched": hlo.fetched_at.strftime("%Y-%m-%d %H:%M") if hlo.fetched_at else "N/A"
+            })
+
+        # Display data table
+        if data:
+            df = pd.DataFrame(data)
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Parts Value": st.column_config.TextColumn("Parts Value", help="Total value of all parts"),
+                    "Down Payment": st.column_config.TextColumn("Down Payment", help="Total down payment made"),
+                    "Remaining": st.column_config.TextColumn("Remaining", help="Total remaining balance"),
+                    "Parts Count": st.column_config.NumberColumn("Parts", help="Number of parts")
+                }
+            )
+
+            # Summary statistics
+            st.subheader("📊 Summary Statistics")
+            col1, col2, col3, col4, col5 = st.columns(5)
+
+            total_docs = len(hlo_documents)
+            total_parts_all = sum([len(session.query(UnpaidHLOPart).filter(
+                UnpaidHLOPart.unpaid_hlo_data_id == hlo.id
+            ).all()) for hlo in hlo_documents])
+            total_value_all = sum([sum([part.total_harga_parts or 0 for part in session.query(UnpaidHLOPart).filter(
+                UnpaidHLOPart.unpaid_hlo_data_id == hlo.id
+            ).all()]) for hlo in hlo_documents])
+            total_down_all = sum([sum([part.uang_muka or 0 for part in session.query(UnpaidHLOPart).filter(
+                UnpaidHLOPart.unpaid_hlo_data_id == hlo.id
+            ).all()]) for hlo in hlo_documents])
+            total_remaining_all = sum([sum([part.sisa_bayar or 0 for part in session.query(UnpaidHLOPart).filter(
+                UnpaidHLOPart.unpaid_hlo_data_id == hlo.id
+            ).all()]) for hlo in hlo_documents])
+
+            with col1:
+                st.metric("Total Documents", total_docs)
+            with col2:
+                st.metric("Total Parts", total_parts_all)
+            with col3:
+                st.metric("Total Value", f"Rp {total_value_all:,.0f}")
+            with col4:
+                st.metric("Down Payment", f"Rp {total_down_all:,.0f}")
+            with col5:
+                st.metric("Remaining", f"Rp {total_remaining_all:,.0f}")
+        else:
+            st.warning("No unpaid HLO data found matching your search criteria.")
+
+    except Exception as e:
+        st.error(f"Error loading unpaid HLO data: {str(e)}")
+    finally:
+        session.close()
 
 
 def render_parts_invoice_data_page(dealer_id):
     """Render the Parts Invoice data page"""
-    st.subheader("📄 Parts Invoice")
+    st.subheader("📄 Parts Invoice (MD to Dealer)")
     st.markdown(f"**Dealer:** {dealer_id}")
-    st.info("Parts Invoice data page - Implementation coming soon!")
-    st.markdown("This page will display parts invoice data from the MDINVH3 API.")
+
+    # Get session
+    SessionLocal = get_database_connection()
+    session = SessionLocal()
+
+    try:
+        # Base query
+        query = session.query(PartsInvoiceData).join(Dealer)
+
+        # Apply dealer filter
+        if dealer_id != "All":
+            query = query.filter(PartsInvoiceData.dealer_id == dealer_id)
+
+        # Get total count
+        total_records = query.count()
+
+        if total_records == 0:
+            st.warning("No parts invoice data found for the selected dealer.")
+            return
+
+        st.info(f"Found {total_records} parts invoice records")
+
+        # Pagination controls
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            page_size = st.selectbox("Records per page", [10, 25, 50, 100], index=1, key="parts_invoice_page_size")
+        with col3:
+            total_pages = (total_records + page_size - 1) // page_size
+            page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="parts_invoice_page")
+
+        # Search functionality
+        search_term = st.text_input("🔍 Search (Invoice Number, PO Number, Parts Number, Main Dealer)", key="parts_invoice_search")
+
+        # Apply search filter
+        if search_term:
+            search_pattern = f"%{search_term}%"
+            # Join with parts for comprehensive search
+            query = query.join(PartsInvoicePart, PartsInvoiceData.id == PartsInvoicePart.parts_invoice_data_id, isouter=True)
+            query = query.filter(
+                or_(
+                    PartsInvoiceData.no_invoice.ilike(search_pattern),
+                    PartsInvoiceData.main_dealer_id.ilike(search_pattern),
+                    PartsInvoicePart.no_po.ilike(search_pattern),
+                    PartsInvoicePart.parts_number.ilike(search_pattern)
+                )
+            ).distinct()
+
+        # Apply pagination
+        offset = (page_number - 1) * page_size
+        invoices = query.order_by(PartsInvoiceData.fetched_at.desc()).offset(offset).limit(page_size).all()
+
+        # Prepare data for display
+        data = []
+        for invoice in invoices:
+            # Get parts count and details
+            parts = session.query(PartsInvoicePart).filter(
+                PartsInvoicePart.parts_invoice_data_id == invoice.id
+            ).all()
+
+            parts_count = len(parts)
+            total_quantity = sum([part.kuantitas or 0 for part in parts])
+
+            # Get unique PO numbers
+            po_numbers = list(set([part.no_po for part in parts if part.no_po]))
+            po_display = ", ".join(po_numbers[:3])  # Show first 3 PO numbers
+            if len(po_numbers) > 3:
+                po_display += f" (+{len(po_numbers) - 3} more)"
+
+            data.append({
+                "Dealer": invoice.dealer.dealer_name,
+                "Invoice No": invoice.no_invoice or "N/A",
+                "Invoice Date": invoice.tgl_invoice or "N/A",
+                "Due Date": invoice.tgl_jatuh_tempo or "N/A",
+                "Main Dealer": invoice.main_dealer_id or "N/A",
+                "PO Numbers": po_display if po_display else "N/A",
+                "Parts Count": parts_count,
+                "Total Qty": total_quantity,
+                "Before Discount": f"Rp {invoice.total_harga_sebelum_diskon:,.0f}" if invoice.total_harga_sebelum_diskon else "N/A",
+                "Parts Discount": f"Rp {invoice.total_diskon_per_parts_number:,.0f}" if invoice.total_diskon_per_parts_number else "N/A",
+                "Invoice Discount": f"Rp {invoice.potongan_per_invoice:,.0f}" if invoice.potongan_per_invoice else "N/A",
+                "PPN": f"Rp {invoice.total_ppn:,.0f}" if invoice.total_ppn else "N/A",
+                "Total Amount": f"Rp {invoice.total_harga:,.0f}" if invoice.total_harga else "N/A",
+                "Created": invoice.created_time or "N/A",
+                "Fetched": invoice.fetched_at.strftime("%Y-%m-%d %H:%M") if invoice.fetched_at else "N/A"
+            })
+
+        # Display data table
+        if data:
+            df = pd.DataFrame(data)
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Before Discount": st.column_config.TextColumn("Before Discount", help="Total amount before discount"),
+                    "Parts Discount": st.column_config.TextColumn("Parts Discount", help="Total discount per parts"),
+                    "Invoice Discount": st.column_config.TextColumn("Invoice Discount", help="Additional invoice discount"),
+                    "PPN": st.column_config.TextColumn("PPN", help="Total VAT amount"),
+                    "Total Amount": st.column_config.TextColumn("Total Amount", help="Final invoice amount"),
+                    "Parts Count": st.column_config.NumberColumn("Parts", help="Number of parts"),
+                    "Total Qty": st.column_config.NumberColumn("Qty", help="Total quantity")
+                }
+            )
+
+            # Summary statistics
+            st.subheader("📊 Summary Statistics")
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+            total_invoices = len(invoices)
+            total_parts_all = sum([len(session.query(PartsInvoicePart).filter(
+                PartsInvoicePart.parts_invoice_data_id == invoice.id
+            ).all()) for invoice in invoices])
+            total_before_discount = sum([invoice.total_harga_sebelum_diskon or 0 for invoice in invoices])
+            total_discount = sum([(invoice.total_diskon_per_parts_number or 0) + (invoice.potongan_per_invoice or 0) for invoice in invoices])
+            total_ppn = sum([invoice.total_ppn or 0 for invoice in invoices])
+            total_amount = sum([invoice.total_harga or 0 for invoice in invoices])
+
+            with col1:
+                st.metric("Total Invoices", total_invoices)
+            with col2:
+                st.metric("Total Parts", total_parts_all)
+            with col3:
+                st.metric("Before Discount", f"Rp {total_before_discount:,.0f}")
+            with col4:
+                st.metric("Total Discount", f"Rp {total_discount:,.0f}")
+            with col5:
+                st.metric("Total PPN", f"Rp {total_ppn:,.0f}")
+            with col6:
+                st.metric("Final Amount", f"Rp {total_amount:,.0f}")
+        else:
+            st.warning("No parts invoice data found matching your search criteria.")
+
+    except Exception as e:
+        st.error(f"Error loading parts invoice data: {str(e)}")
+    finally:
+        session.close()
 
 
 # Main content routing
