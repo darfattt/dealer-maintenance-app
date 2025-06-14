@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 import time
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, func, and_, or_
+from sqlalchemy import create_engine, func, and_, or_, extract
 from sqlalchemy.orm import sessionmaker, Session
 from database import Dealer, ProspectData, ProspectUnit, FetchLog, PKBData, PKBService, PKBPart, PartsInboundData, PartsInboundPO, LeasingData, DocumentHandlingData, DocumentHandlingUnit, UnitInboundData, UnitInboundUnit, DeliveryProcessData, DeliveryProcessDetail, BillingProcessData, UnitInvoiceData, UnitInvoiceUnit, PartsSalesData, PartsSalesPart, DPHLOData, DPHLOPart, WorkshopInvoiceData, WorkshopInvoiceNJB, WorkshopInvoiceNSC, UnpaidHLOData, UnpaidHLOPart, PartsInvoiceData, PartsInvoicePart
 
@@ -141,6 +141,30 @@ def get_prospect_analytics(dealer_id):
     finally:
         db.close()
 
+def format_status_display(status):
+    """Format status for display with appropriate icons"""
+    if not status:
+        return "❓ Unknown"
+
+    status_lower = status.lower()
+    if status_lower == "success":
+        return "✅ Success"
+    elif status_lower == "failed":
+        return "❌ Failed"
+    elif status_lower == "partial":
+        return "⚠️ Partial"
+    elif status_lower == "completed":
+        return "✅ Completed"
+    elif status_lower == "error":
+        return "❌ Error"
+    elif status_lower == "running":
+        return "🔄 Running"
+    elif status_lower == "pending":
+        return "⏳ Pending"
+    else:
+        return f"❓ {status.title()}"
+
+
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_recent_fetch_logs(dealer_id, limit=10):
     """Get recent fetch logs from database"""
@@ -159,6 +183,46 @@ def get_recent_fetch_logs(dealer_id, limit=10):
             "duration": log.fetch_duration_seconds,
             "completed_at": log.completed_at.strftime('%Y-%m-%d %H:%M:%S') if log.completed_at else None
         } for log in logs]
+    finally:
+        db.close()
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_dashboard_analytics(from_date, to_date):
+    """Get dashboard analytics data for charts"""
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+    try:
+        # Convert dates to datetime for comparison
+        from_datetime = datetime.combine(from_date, datetime.min.time())
+        to_datetime = datetime.combine(to_date, datetime.max.time())
+
+        # Get fetch logs within date range
+        logs = db.query(FetchLog).filter(
+            FetchLog.completed_at >= from_datetime,
+            FetchLog.completed_at <= to_datetime
+        ).all()
+
+        # Prepare data for charts
+        chart_data = []
+        for log in logs:
+            if log.completed_at:
+                # Calculate week start date
+                week_start = log.completed_at.date() - timedelta(days=log.completed_at.weekday())
+
+                chart_data.append({
+                    "dealer_id": log.dealer_id,
+                    "dealer_name": log.dealer.dealer_name if log.dealer else "Unknown",
+                    "fetch_type": log.fetch_type,
+                    "status": log.status,
+                    "records_fetched": log.records_fetched or 0,
+                    "duration": log.fetch_duration_seconds or 0,
+                    "completed_at": log.completed_at,
+                    "date": log.completed_at.date(),
+                    "week_start": week_start,
+                    "week_label": f"Week of {week_start.strftime('%Y-%m-%d')}"
+                })
+
+        return chart_data
     finally:
         db.close()
 
@@ -583,6 +647,7 @@ st.sidebar.markdown("---")
 # Menu navigation
 menu_options = {
     "🏠 Home": "home",
+    "📋 Fetch Logs": "fetch_logs",
     "👥 Prospect Data": "prospect",
     "🔧 PKB Data": "pkb",
     "📦 Parts Inbound": "parts_inbound",
@@ -632,110 +697,309 @@ if st.sidebar.button("🔄 Refresh Data"):
 st.sidebar.markdown("---")
 st.sidebar.info("🔗 **Admin Panel**: http://localhost:8502")
 
-def render_home_page(dealer_id):
-    """Render the home page focused on fetch logs"""
-    st.subheader("🏠 Dashboard Home")
-    st.markdown(f"**Dealer:** {dealer_id}")
+def render_home_page():
+    """Render the new home page with dashboard charts and date filters"""
+    st.title("🏠 Dashboard Analytics")
+    st.markdown("**System-wide analytics and insights**")
 
-    # Welcome message
-    st.info("� Welcome to the Dealer Dashboard Analytics. Use the menu to navigate to different data views.")
+    # Date filter controls (independent of dealer filter)
+    st.subheader("📅 Date Range Filter")
+    col1, col2 = st.columns(2)
 
-    st.markdown("---")
+    with col1:
+        from_date = st.date_input(
+            "From Date",
+            value=date.today() - timedelta(days=30),
+            key="home_from_date"
+        )
 
-    # Fetch logs section - main focus
-    st.subheader("🕒 Data Fetch Activity")
+    with col2:
+        to_date = st.date_input(
+            "To Date",
+            value=date.today(),
+            key="home_to_date"
+        )
 
-    # Get recent fetch logs
-    recent_logs = get_recent_fetch_logs(dealer_id, limit=20)
+    # Validate date range
+    if from_date > to_date:
+        st.error("From date cannot be later than to date.")
+        return
 
-    if recent_logs and len(recent_logs) > 0:
-        # Summary metrics
+    # Get dashboard analytics data
+    try:
+        chart_data = get_dashboard_analytics(from_date, to_date)
+
+        if not chart_data:
+            st.warning(f"No data found for the selected date range ({from_date} to {to_date}).")
+            return
+
+        # Convert to DataFrame for easier manipulation
+        df = pd.DataFrame(chart_data)
+
+        # Overview metrics
+        st.subheader("📊 Overview Statistics")
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            last_fetch_time = recent_logs[0]['completed_at'] if recent_logs else "No data"
-            st.metric("Last Fetch", last_fetch_time)
+            total_jobs = len(df)
+            st.metric("Total Jobs", total_jobs)
 
         with col2:
-            success_count = len([log for log in recent_logs if log['status'] == 'success'])
-            st.metric("Success Rate", f"{success_count}/{len(recent_logs)}")
+            # Count successful jobs (success or completed status)
+            successful_jobs = len(df[df['status'].isin(['success', 'completed'])])
+            st.metric("Successful Jobs", successful_jobs)
 
         with col3:
-            total_records = sum([log['records_fetched'] or 0 for log in recent_logs])
+            total_records = df['records_fetched'].sum()
             st.metric("Total Records", f"{total_records:,}")
 
         with col4:
-            avg_duration = sum([log['duration'] or 0 for log in recent_logs]) / len(recent_logs)
-            st.metric("Avg Duration", f"{avg_duration:.1f}s")
+            unique_dealers = df['dealer_id'].nunique()
+            st.metric("Active Dealers", unique_dealers)
 
-        st.markdown("---")
+        # Charts section
+        st.subheader("📈 Analytics Charts")
 
-        # Enhanced fetch logs table
-        st.subheader("📋 Recent Fetch Logs")
+        # Chart 1: Jobs by API Name (Fetch Type)
+        st.subheader("🔧 Jobs by API Type")
+        api_counts = df.groupby('fetch_type').size().reset_index(name='count')
+        api_counts = api_counts.sort_values('count', ascending=False)
 
-        # Convert to DataFrame for better display
-        df_logs = pd.DataFrame(recent_logs)
-
-        # Format the data for display
-        display_data = []
-        for log in recent_logs:
-            status_icon = "✅" if log['status'] == 'success' else "❌"
-            display_data.append({
-                "Status": f"{status_icon} {log['status'].title()}",
-                "Records": log['records_fetched'] or 0,
-                "Duration": f"{log['duration'] or 0:.1f}s",
-                "Completed": log['completed_at'] or "N/A"
-            })
-
-        df_display = pd.DataFrame(display_data)
-
-        # Display the enhanced table
-        st.dataframe(
-            df_display,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Status": st.column_config.TextColumn("Status", width="medium"),
-                "Records": st.column_config.NumberColumn("Records", width="small"),
-                "Duration": st.column_config.TextColumn("Duration", width="small"),
-                "Completed": st.column_config.TextColumn("Completed At", width="large")
-            }
+        fig_api = px.bar(
+            api_counts,
+            x='fetch_type',
+            y='count',
+            title='Number of Jobs by API Type',
+            labels={'fetch_type': 'API Type', 'count': 'Number of Jobs'}
         )
+        fig_api.update_layout(height=400, xaxis_tickangle=-45)
+        st.plotly_chart(fig_api, use_container_width=True)
 
+        # Chart 2: Jobs by Dealer (Pie Charts)
+        st.subheader("🏢 Jobs by Dealer")
 
-    else:
-        st.warning("No fetch activity found for this dealer.")
+        # Aggregate data by dealer
+        dealer_stats = df.groupby(['dealer_id', 'dealer_name']).agg({
+            'dealer_id': 'count',  # Count of jobs
+            'records_fetched': 'sum'  # Sum of records
+        }).rename(columns={
+            'dealer_id': 'total_jobs',
+            'records_fetched': 'total_records'
+        }).reset_index()
 
-        # Show placeholder metrics
-        col1, col2, col3, col4 = st.columns(4)
+        # Sort by total jobs and get top 10 dealers
+        dealer_stats = dealer_stats.sort_values('total_jobs', ascending=False).head(10)
+
+        # Create two columns for side-by-side pie charts
+        col1, col2 = st.columns(2)
+
         with col1:
-            st.metric("Last Fetch", "No data")
+            # Pie chart for total jobs
+            fig_jobs = px.pie(
+                dealer_stats,
+                values='total_jobs',
+                names='dealer_name',
+                title='Distribution of Jobs by Dealer (Top 10)',
+                color_discrete_sequence=px.colors.qualitative.Set3
+            )
+            fig_jobs.update_traces(textposition='inside', textinfo='percent+label')
+            fig_jobs.update_layout(height=400, showlegend=False)
+            st.plotly_chart(fig_jobs, use_container_width=True)
+
         with col2:
-            st.metric("Success Rate", "0/0")
+            # Pie chart for total records
+            fig_records = px.pie(
+                dealer_stats,
+                values='total_records',
+                names='dealer_name',
+                title='Distribution of Records by Dealer (Top 10)',
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_records.update_traces(textposition='inside', textinfo='percent+label')
+            fig_records.update_layout(height=400, showlegend=False)
+            st.plotly_chart(fig_records, use_container_width=True)
+
+        # Summary table for dealer statistics
+        st.subheader("📊 Dealer Statistics Summary")
+        dealer_display = dealer_stats.copy()
+        dealer_display['total_records'] = dealer_display['total_records'].apply(lambda x: f"{x:,}")
+        dealer_display = dealer_display.rename(columns={
+            'dealer_name': 'Dealer Name',
+            'total_jobs': 'Total Jobs',
+            'total_records': 'Total Records'
+        })[['Dealer Name', 'Total Jobs', 'Total Records']]
+
+        st.dataframe(dealer_display, use_container_width=True, hide_index=True)
+
+        # Chart 3: Jobs by Week
+        st.subheader("📅 Jobs by Week")
+        weekly_counts = df.groupby('week_label').size().reset_index(name='count')
+        weekly_counts = weekly_counts.sort_values('week_label')
+
+        fig_weekly = px.line(
+            weekly_counts,
+            x='week_label',
+            y='count',
+            title='Number of Jobs by Week',
+            labels={'week_label': 'Week', 'count': 'Number of Jobs'},
+            markers=True
+        )
+        fig_weekly.update_layout(height=400, xaxis_tickangle=-45)
+        st.plotly_chart(fig_weekly, use_container_width=True)
+
+        # Chart 4: Success Rate by API Type
+        st.subheader("✅ Success Rate by API Type")
+        success_rate = df.groupby('fetch_type').agg({
+            'status': lambda x: x.isin(['success', 'completed']).sum(),
+            'fetch_type': 'count'
+        }).rename(columns={'status': 'successful', 'fetch_type': 'total'})
+        success_rate['success_rate'] = (success_rate['successful'] / success_rate['total'] * 100).round(2)
+        success_rate = success_rate.reset_index()
+
+        fig_success = px.bar(
+            success_rate,
+            x='fetch_type',
+            y='success_rate',
+            title='Success Rate by API Type (%)',
+            labels={'fetch_type': 'API Type', 'success_rate': 'Success Rate (%)'}
+        )
+        fig_success.update_layout(height=400, xaxis_tickangle=-45)
+        st.plotly_chart(fig_success, use_container_width=True)
+
+        # Chart 5: Records Fetched by API Type
+        st.subheader("📊 Records Fetched by API Type")
+        records_by_api = df.groupby('fetch_type')['records_fetched'].sum().reset_index()
+        records_by_api = records_by_api.sort_values('records_fetched', ascending=False)
+
+        fig_records = px.bar(
+            records_by_api,
+            x='fetch_type',
+            y='records_fetched',
+            title='Total Records Fetched by API Type',
+            labels={'fetch_type': 'API Type', 'records_fetched': 'Records Fetched'}
+        )
+        fig_records.update_layout(height=400, xaxis_tickangle=-45)
+        st.plotly_chart(fig_records, use_container_width=True)
+
+        # Summary table
+        st.subheader("📋 Summary by API Type")
+        summary_table = df.groupby('fetch_type').agg({
+            'status': lambda x: x.isin(['success', 'completed']).sum(),
+            'fetch_type': 'count',
+            'records_fetched': 'sum',
+            'duration': 'mean'
+        }).rename(columns={
+            'status': 'Successful Jobs',
+            'fetch_type': 'Total Jobs',
+            'records_fetched': 'Total Records',
+            'duration': 'Avg Duration (s)'
+        })
+        summary_table['Success Rate (%)'] = (summary_table['Successful Jobs'] / summary_table['Total Jobs'] * 100).round(2)
+        summary_table['Avg Duration (s)'] = summary_table['Avg Duration (s)'].round(2)
+        summary_table = summary_table.reset_index()
+
+        st.dataframe(summary_table, use_container_width=True, hide_index=True)
+
+    except Exception as e:
+        st.error(f"Error loading dashboard data: {str(e)}")
+
+
+def render_fetch_logs_page(dealer_id):
+    """Render the fetch logs page (previously home page)"""
+    st.title("📋 Fetch Logs")
+    st.markdown(f"**Selected Dealer:** {dealer_id}")
+
+    # Get database connection
+    SessionLocal = get_database_connection()
+    db = SessionLocal()
+
+    try:
+        # Get dealer information
+        if dealer_id != "All":
+            dealer = db.query(Dealer).filter(Dealer.dealer_id == dealer_id).first()
+            if dealer:
+                st.info(f"**Dealer Name:** {dealer.dealer_name}")
+
+        # Overview metrics
+        st.subheader("📊 Overview Statistics")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            # Count prospect data
+            prospect_count = db.query(ProspectData).filter(
+                ProspectData.dealer_id == dealer_id if dealer_id != "All" else True
+            ).count()
+            st.metric("Prospect Records", prospect_count)
+
+        with col2:
+            # Count PKB data
+            pkb_count = db.query(PKBData).filter(
+                PKBData.dealer_id == dealer_id if dealer_id != "All" else True
+            ).count()
+            st.metric("PKB Records", pkb_count)
+
         with col3:
-            st.metric("Total Records", "0")
+            # Count parts inbound data
+            parts_count = db.query(PartsInboundData).filter(
+                PartsInboundData.dealer_id == dealer_id if dealer_id != "All" else True
+            ).count()
+            st.metric("Parts Inbound", parts_count)
+
         with col4:
-            st.metric("Avg Duration", "N/A")
+            # Count fetch logs
+            logs_count = db.query(FetchLog).filter(
+                FetchLog.dealer_id == dealer_id if dealer_id != "All" else True
+            ).count()
+            st.metric("Total Fetch Logs", logs_count)
 
-    st.markdown("---")
+        # Recent activity
+        st.subheader("🕒 Recent Activity")
 
-    # Quick navigation
-    st.subheader("🚀 Quick Navigation")
-    st.markdown("""
-    Use the sidebar menu to navigate to different data views:
-    - **👥 Prospect Data**: Customer prospect information
-    - **🔧 PKB Data**: Service record data
-    - **📦 Parts Inbound**: Parts receiving data
-    - **💰 Leasing Data**: Leasing requirement data
-    - **📄 Document Handling**: STNK/BPKB document data
-    - **🚚 Unit Inbound**: Purchase order unit data
-    - **🚛 Delivery Process**: Delivery process data
-    - **💳 Billing Process**: Invoice billing data
-    - **📋 Unit Invoice**: MD to dealer invoice data
-    """)
+        # Debug: Show status distribution
+        if st.checkbox("🔍 Show Status Debug Info", key="status_debug"):
+            status_counts = db.query(
+                FetchLog.status,
+                func.count(FetchLog.id).label('count')
+            ).filter(
+                FetchLog.dealer_id == dealer_id if dealer_id != "All" else True
+            ).group_by(FetchLog.status).all()
 
-    # Admin panel link
-    st.info("🔗 **Admin Panel**: http://localhost:8502 - Manage jobs, dealers, and configurations")
+            if status_counts:
+                st.write("**Status Distribution in Database:**")
+                for status, count in status_counts:
+                    st.write(f"- {status}: {count} records")
+            else:
+                st.write("No fetch logs found")
+
+        # Get recent fetch logs
+        recent_logs = get_recent_fetch_logs(dealer_id, limit=10)
+
+        if recent_logs:
+            st.subheader("📋 Recent Fetch Logs")
+
+            # Format the data for display
+            display_data = []
+            for log in recent_logs:
+                display_data.append({
+                    "Status": format_status_display(log["status"]),
+                    "Records": log["records_fetched"] or 0,
+                    "Duration (s)": f"{log['duration']:.2f}" if log["duration"] else "N/A",
+                    "Completed At": log["completed_at"] or "N/A"
+                })
+
+            if display_data:
+                df_display = pd.DataFrame(display_data)
+                st.dataframe(df_display, use_container_width=True, hide_index=True)
+        else:
+            st.info("No recent fetch logs found.")
+
+        
+
+    except Exception as e:
+        st.error(f"Error loading dashboard data: {str(e)}")
+    finally:
+        db.close()
 
 def render_prospect_data_page(dealer_id):
     """Render the prospect data table page"""
@@ -2053,9 +2317,12 @@ def render_workshop_invoice_data_page(dealer_id):
         col1, col2, col3 = st.columns([1, 2, 1])
         with col1:
             page_size = st.selectbox("Records per page", [10, 25, 50, 100], index=1, key="workshop_invoice_page_size")
-        with col3:
-            total_pages = (total_records + page_size - 1) // page_size
-            page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="workshop_invoice_page")
+
+        # Initialize page number in session state
+        if 'workshop_invoice_page' not in st.session_state:
+            st.session_state.workshop_invoice_page = 1
+
+        total_pages = (total_records + page_size - 1) // page_size
 
         # Search functionality
         search_term = st.text_input("🔍 Search (Work Order, NJB, NSC, Job ID, Parts Number)", key="workshop_invoice_search")
@@ -2078,7 +2345,7 @@ def render_workshop_invoice_data_page(dealer_id):
             ).distinct()
 
         # Apply pagination
-        offset = (page_number - 1) * page_size
+        offset = (st.session_state.workshop_invoice_page - 1) * page_size
         invoices = query.order_by(WorkshopInvoiceData.fetched_at.desc()).offset(offset).limit(page_size).all()
 
         # Prepare data for display
@@ -2124,6 +2391,33 @@ def render_workshop_invoice_data_page(dealer_id):
                     "Parts": st.column_config.NumberColumn("Parts", help="Number of parts")
                 }
             )
+
+            # Arrow pagination controls
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First", key="workshop_invoice_first") and st.session_state.workshop_invoice_page > 1:
+                        st.session_state.workshop_invoice_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous", key="workshop_invoice_prev") and st.session_state.workshop_invoice_page > 1:
+                        st.session_state.workshop_invoice_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.workshop_invoice_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩", key="workshop_invoice_next") and st.session_state.workshop_invoice_page < total_pages:
+                        st.session_state.workshop_invoice_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️", key="workshop_invoice_last") and st.session_state.workshop_invoice_page < total_pages:
+                        st.session_state.workshop_invoice_page = total_pages
+                        st.rerun()
 
             # Summary statistics
             st.subheader("📊 Summary Statistics")
@@ -2187,9 +2481,12 @@ def render_unpaid_hlo_data_page(dealer_id):
         col1, col2, col3 = st.columns([1, 2, 1])
         with col1:
             page_size = st.selectbox("Records per page", [10, 25, 50, 100], index=1, key="unpaid_hlo_page_size")
-        with col3:
-            total_pages = (total_records + page_size - 1) // page_size
-            page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="unpaid_hlo_page")
+
+        # Initialize page number in session state
+        if 'unpaid_hlo_page' not in st.session_state:
+            st.session_state.unpaid_hlo_page = 1
+
+        total_pages = (total_records + page_size - 1) // page_size
 
         # Search functionality
         search_term = st.text_input("🔍 Search (HLO Document, Work Order, Customer Name, KTP, Vehicle Details)", key="unpaid_hlo_search")
@@ -2213,7 +2510,7 @@ def render_unpaid_hlo_data_page(dealer_id):
             ).distinct()
 
         # Apply pagination
-        offset = (page_number - 1) * page_size
+        offset = (st.session_state.unpaid_hlo_page - 1) * page_size
         hlo_documents = query.order_by(UnpaidHLOData.fetched_at.desc()).offset(offset).limit(page_size).all()
 
         # Prepare data for display
@@ -2263,6 +2560,33 @@ def render_unpaid_hlo_data_page(dealer_id):
                     "Parts Count": st.column_config.NumberColumn("Parts", help="Number of parts")
                 }
             )
+
+            # Arrow pagination controls
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First", key="unpaid_hlo_first") and st.session_state.unpaid_hlo_page > 1:
+                        st.session_state.unpaid_hlo_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous", key="unpaid_hlo_prev") and st.session_state.unpaid_hlo_page > 1:
+                        st.session_state.unpaid_hlo_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.unpaid_hlo_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩", key="unpaid_hlo_next") and st.session_state.unpaid_hlo_page < total_pages:
+                        st.session_state.unpaid_hlo_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️", key="unpaid_hlo_last") and st.session_state.unpaid_hlo_page < total_pages:
+                        st.session_state.unpaid_hlo_page = total_pages
+                        st.rerun()
 
             # Summary statistics
             st.subheader("📊 Summary Statistics")
@@ -2331,9 +2655,12 @@ def render_parts_invoice_data_page(dealer_id):
         col1, col2, col3 = st.columns([1, 2, 1])
         with col1:
             page_size = st.selectbox("Records per page", [10, 25, 50, 100], index=1, key="parts_invoice_page_size")
-        with col3:
-            total_pages = (total_records + page_size - 1) // page_size
-            page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="parts_invoice_page")
+
+        # Initialize page number in session state
+        if 'parts_invoice_page' not in st.session_state:
+            st.session_state.parts_invoice_page = 1
+
+        total_pages = (total_records + page_size - 1) // page_size
 
         # Search functionality
         search_term = st.text_input("🔍 Search (Invoice Number, PO Number, Parts Number, Main Dealer)", key="parts_invoice_search")
@@ -2353,7 +2680,7 @@ def render_parts_invoice_data_page(dealer_id):
             ).distinct()
 
         # Apply pagination
-        offset = (page_number - 1) * page_size
+        offset = (st.session_state.parts_invoice_page - 1) * page_size
         invoices = query.order_by(PartsInvoiceData.fetched_at.desc()).offset(offset).limit(page_size).all()
 
         # Prepare data for display
@@ -2409,6 +2736,33 @@ def render_parts_invoice_data_page(dealer_id):
                 }
             )
 
+            # Arrow pagination controls
+            if total_pages > 1:
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+                with col1:
+                    if st.button("⏮️ First", key="parts_invoice_first") and st.session_state.parts_invoice_page > 1:
+                        st.session_state.parts_invoice_page = 1
+                        st.rerun()
+
+                with col2:
+                    if st.button("⏪ Previous", key="parts_invoice_prev") and st.session_state.parts_invoice_page > 1:
+                        st.session_state.parts_invoice_page -= 1
+                        st.rerun()
+
+                with col3:
+                    st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.parts_invoice_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+                with col4:
+                    if st.button("Next ⏩", key="parts_invoice_next") and st.session_state.parts_invoice_page < total_pages:
+                        st.session_state.parts_invoice_page += 1
+                        st.rerun()
+
+                with col5:
+                    if st.button("Last ⏭️", key="parts_invoice_last") and st.session_state.parts_invoice_page < total_pages:
+                        st.session_state.parts_invoice_page = total_pages
+                        st.rerun()
+
             # Summary statistics
             st.subheader("📊 Summary Statistics")
             col1, col2, col3, col4, col5, col6 = st.columns(6)
@@ -2444,10 +2798,13 @@ def render_parts_invoice_data_page(dealer_id):
 
 
 # Main content routing
-if selected_dealer_id:
-    if current_page == "home":
-        # Home page - existing analytics dashboard
-        render_home_page(selected_dealer_id)
+if current_page == "home":
+    # New home page with dashboard charts (no dealer filter dependency)
+    render_home_page()
+elif selected_dealer_id:
+    if current_page == "fetch_logs":
+        # Fetch logs page (previously home page)
+        render_fetch_logs_page(selected_dealer_id)
     elif current_page == "prospect":
         # Prospect data page
         render_prospect_data_page(selected_dealer_id)
@@ -2500,6 +2857,9 @@ if selected_dealer_id:
     elif current_page == "mdinvh3_read":
         # Parts invoice data page
         render_parts_invoice_data_page(selected_dealer_id)
+else:
+    if current_page != "home":
+        st.warning("Please select a dealer from the sidebar to view data.")
 
 # Footer
 st.markdown("---")
