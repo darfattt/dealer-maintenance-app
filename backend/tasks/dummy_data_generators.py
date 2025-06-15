@@ -13,7 +13,7 @@ DUMMY_DATA_DEALER_UUID = "e3a18c82-c500-450f-b6e1-5c5fbe68bf41"
 
 def should_use_dummy_data(dealer_id: str) -> bool:
     """Check if dealer should use dummy data"""
-    return dealer_id in DUMMY_DATA_DEALER_IDS or dealer_id == DUMMY_DATA_DEALER_UUID
+    return dealer_id in DUMMY_DATA_DEALER_IDS
 
 def get_dummy_prospect_data(dealer_id: str, from_time: str, to_time: str) -> Dict[str, Any]:
     """Generate dummy prospect data for demonstration"""

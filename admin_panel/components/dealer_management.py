@@ -5,10 +5,9 @@ Handles all dealer-related operations: view, add, edit
 
 import streamlit as st
 import pandas as pd
-import time
 import requests
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from .api_utils import get_dealers, create_dealer, update_dealer
 
 def render_dealer_management():
@@ -121,7 +120,6 @@ def render_add_dealer():
                 result = create_dealer(dealer_data)
                 if result:
                     st.success(f"✅ Dealer {dealer_id} created successfully!")
-                    time.sleep(1)
                     st.rerun()
             else:
                 st.error("❌ Please fill in Dealer ID and Name")
@@ -221,12 +219,11 @@ def render_edit_dealer():
                         # Clear the edit selection
                         if 'edit_dealer_id' in st.session_state:
                             del st.session_state.edit_dealer_id
-                        time.sleep(1)
                         st.rerun()
                 else:
                     st.error("❌ Please fill in Dealer Name")
 
-def generate_api_token(api_key: str, secret_key: str) -> dict:
+def generate_api_token(api_key: str, secret_key: str) -> Optional[dict]:
     """Generate API token using backend service"""
     try:
         backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")

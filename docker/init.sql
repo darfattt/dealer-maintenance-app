@@ -603,6 +603,7 @@ CREATE TABLE workshop_invoice_njb (
 CREATE TABLE workshop_invoice_nsc (
     id UUID NOT NULL DEFAULT uuid_generate_v4(),
     workshop_invoice_data_id UUID NOT NULL,
+    id_job VARCHAR(100) NULL,
     parts_number VARCHAR(100) NULL,
     kuantitas INTEGER NULL,
     harga_parts NUMERIC(15,2) NULL,
@@ -682,11 +683,15 @@ CREATE TABLE parts_invoice_data (
 CREATE TABLE parts_invoice_parts (
     id UUID NOT NULL DEFAULT uuid_generate_v4(),
     parts_invoice_data_id UUID NOT NULL,
-    kode_part VARCHAR(50) NULL,
-    nama_part VARCHAR(255) NULL,
-    qty INTEGER NULL,
-    harga_satuan NUMERIC(15,2) NULL,
+    no_po VARCHAR(100) NULL,
+    jenis_order VARCHAR(10) NULL,
+    parts_number VARCHAR(100) NULL,
+    kuantitas INTEGER NULL,
+    uom VARCHAR(20) NULL,
+    harga_satuan_sebelum_diskon NUMERIC(15,2) NULL,
     diskon_per_parts_number NUMERIC(15,2) NULL,
+    created_time VARCHAR(50) NULL,
+    modified_time VARCHAR(50) NULL,
     CONSTRAINT parts_invoice_parts_pkey PRIMARY KEY (id),
     CONSTRAINT parts_invoice_parts_parts_invoice_data_id_fkey FOREIGN KEY (parts_invoice_data_id) REFERENCES parts_invoice_data(id) ON DELETE CASCADE
 );
@@ -698,7 +703,7 @@ CREATE TABLE parts_invoice_parts (
 -- Insert default dealers
 INSERT INTO dealers (id, dealer_id, dealer_name, api_key, api_token, secret_key, is_active, created_at, updated_at)
 VALUES
-    (uuid_generate_v4(), '00999', 'Default Dealer', '6c796097-a453-420f-9a19-155a2a24513e', '81d7fd22c95ba5385e05563a515868905d20419df06190ab035cf8be307a1e0c', 'default-secret-key-2024', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (uuid_generate_v4(), '00999', '00999', '6c796097-a453-420f-9a19-155a2a24513e', '81d7fd22c95ba5385e05563a515868905d20419df06190ab035cf8be307a1e0c', 'default-secret-key-2024', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('e3a18c82-c500-450f-b6e1-5c5fbe68bf41', '12284', 'Sample Dealer', 'sample-api-key-12284', 'sample-api-token-12284', 'sample-secret-key-12284', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (dealer_id) DO NOTHING;
 

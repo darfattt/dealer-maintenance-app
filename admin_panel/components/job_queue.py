@@ -7,7 +7,7 @@ import streamlit as st
 import requests
 import time
 from typing import Dict, Any, List
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time as datetime_time, timedelta
 
 from .api_utils import BACKEND_URL
 from .job_types import get_job_type_options, get_codes_from_labels, code_to_label
@@ -104,9 +104,9 @@ def render_job_queue():
         # Time inputs with default values
         col_time1, col_time2 = st.columns(2)
         with col_time1:
-            from_time_input = st.time_input("From Time", value=time(0, 0))  # Default 00:00
+            from_time_input = st.time_input("From Time", value=datetime_time(0, 0))  # Default 00:00
         with col_time2:
-            to_time_input = st.time_input("To Time", value=time(23, 59))  # Default 23:59
+            to_time_input = st.time_input("To Time", value=datetime_time(23, 59))  # Default 23:59
 
         # Additional parameter field (PO Number for Parts Inbound, SPK ID for Leasing)
         no_po = st.text_input("Additional Parameter", placeholder="PO Number (Parts Inbound) / SPK ID (Leasing) - Optional")
@@ -151,6 +151,10 @@ def render_job_queue():
 
     # Simple auto-refresh - only when enabled
     if auto_refresh:
+        # Use a more Streamlit-friendly approach
+        import asyncio
+        import time
+        # Note: This still uses sleep but is user-controlled
         time.sleep(5)
         st.rerun()
 
