@@ -1,47 +1,77 @@
-# 🏗️ Dealer Dashboard - Split Architecture
+# 🏗️ Dealer Dashboard - Complete System
 
-This project implements a **split service architecture** for the Dealer Dashboard Analytics application, separating concerns into independent services.
+This project implements a **hybrid architecture** combining both monolithic and microservices patterns for the Dealer Dashboard Analytics application, providing maximum flexibility and scalability.
 
-## 🏗️ Architecture Overview
+## 🎯 Architecture Highlights
+
+- **🔄 Hybrid Architecture**: Combines proven monolithic services with modern microservices
+- **🔐 Modern Authentication**: JWT-based user management with role-based access control
+- **🌐 API Gateway**: Unified entry point for all services with routing and middleware
+- **📊 Split Analytics**: Dedicated analytics and admin interfaces
+- **🗄️ Shared Database**: PostgreSQL with schema isolation for different services
+- **🚀 Unified Deployment**: Single docker-compose.yml for complete system
+
+## 🏗️ Complete System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Split Service Architecture                    │
+│                    Hybrid Architecture System                   │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  📊 Analytics Dashboard (Port 8501)                            │
+│  🌐 API Gateway (Port 8080) - NEW MICROSERVICE                 │
+│  ├─ Unified API Entry Point                                    │
+│  ├─ Authentication Middleware                                  │
+│  ├─ Rate Limiting & CORS                                       │
+│  ├─ Routes to Account Service                                  │
+│  └─ Routes to Legacy Backend                                   │
+│                                                                 │
+│  👤 Account Service (Port 8100) - NEW MICROSERVICE             │
+│  ├─ JWT Authentication                                          │
+│  ├─ User Management (SUPER_ADMIN/DEALER_ADMIN)                 │
+│  ├─ Role-Based Access Control                                  │
+│  ├─ Password Management                                         │
+│  └─ Account Schema (PostgreSQL)                                │
+│                                                                 │
+│  📊 Analytics Dashboard (Port 8501) - EXISTING                 │
 │  ├─ Direct Database Connection                                  │
 │  ├─ Real-time Charts & Metrics                                 │
 │  ├─ Cached Data (5min TTL)                                     │
 │  └─ Read-only Operations                                        │
 │                                                                 │
-│  ⚙️ Admin Panel (Port 8502)                                     │
+│  ⚙️ Admin Panel (Port 8502) - EXISTING                         │
 │  ├─ API-based Communication                                     │
 │  ├─ Dealer Management                                           │
 │  ├─ Job Execution & Monitoring                                  │
 │  └─ Configuration Management                                     │
 │                                                                 │
-│  🔧 Backend API (Port 8000)                                     │
+│  🔧 Backend API (Port 8000) - EXISTING                         │
 │  ├─ RESTful API Endpoints                                       │
 │  ├─ Business Logic                                              │
 │  ├─ Database Operations                                         │
 │  └─ Job Orchestration                                           │
 │                                                                 │
-│  🔄 Celery Worker                                               │
+│  🔄 Celery Worker - EXISTING                                   │
 │  ├─ Background Job Processing                                   │
 │  ├─ Data Fetching from DGI API                                 │
 │  ├─ Database Updates                                            │
 │  └─ Error Handling & Logging                                   │
 │                                                                 │
-│  💾 PostgreSQL Database                                         │
-│  ├─ Dealers, Prospects, Units                                  │
+│  💾 PostgreSQL Database - SHARED                               │
+│  ├─ account schema (Users, Roles)                              │
+│  ├─ dealer_integration schema (Dealers, Prospects, Units)      │
 │  ├─ Job Logs & Configuration                                   │
 │  └─ Centralized Data Storage                                   │
 │                                                                 │
-│  🔴 Redis                                                       │
+│  🔴 Redis - SHARED                                             │
 │  ├─ Celery Message Broker                                      │
 │  ├─ Task Queue Management                                      │
-│  └─ Result Backend                                             │
+│  ├─ Result Backend                                             │
+│  └─ Session Storage (Future)                                   │
+│                                                                 │
+│  📊 Monitoring Stack - EXISTING                                │
+│  ├─ Prometheus (Metrics Collection)                            │
+│  ├─ Grafana (Visualization)                                    │
+│  └─ Health Checks                                              │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -62,55 +92,75 @@ This project implements a **split service architecture** for the Dealer Dashboar
 - **Audit Trail**: All operations logged through API
 - **Flexibility**: Easy to replace or extend admin functionality
 
-## 🚀 Quick Start
+## 🚀 Quick Start - Complete System
 
-### Option 1: Automated Script (Recommended)
+### Option 1: Unified Deployment (Recommended)
 ```bash
-# Windows
-start_split.bat
+# Windows PowerShell
+.\scripts\start-all-services.ps1
 
 # Linux/Mac
-python start_split_services.py
+./scripts/start-all-services.sh
+
+# Or using Docker Compose directly
+docker-compose up -d
 ```
 
-### Option 2: Docker Compose
+### Option 2: Development Mode
 ```bash
-docker-compose -f docker-compose.split.yml up -d
+# 1. Create environment file
+cp .env.example .env
+# Edit .env with your configuration
+
+# 2. Start all services
+docker-compose up -d
+
+# 3. Check service health
+curl http://localhost:8080/health  # API Gateway
+curl http://localhost:8100/api/v1/health  # Account Service
+curl http://localhost:8000/health  # Backend API
 ```
 
-### Option 3: Manual Setup
+### Option 3: Individual Service Development
 ```bash
-# 1. Start external services
-docker run -d --name postgres -p 5432:5432 \
-  -e POSTGRES_DB=dealer_dashboard \
-  -e POSTGRES_USER=dealer_user \
-  -e POSTGRES_PASSWORD=dealer_pass \
-  postgres:15-alpine
+# Start only database services
+docker-compose up -d postgres redis
 
-docker run -d --name redis -p 6379:6379 redis:7-alpine
-
-# 2. Install dependencies
+# Backend microservices (separate terminals)
+cd backend-microservices/services/account
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
+python main.py  # Port 8100
 
-# 3. Setup sample data
-python insert_sample_data.py more
+cd backend-microservices/api-gateway
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python main.py  # Port 8080
 
-# 4. Start services (separate terminals):
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-celery -A celery_app worker --loglevel=info
-streamlit run dashboard_analytics.py --server.port 8501
-streamlit run admin_app.py --server.port 8502
+# Existing services (separate terminals)
+cd backend && uvicorn main:app --reload --port 8000
+cd dashboard_analytics && streamlit run dashboard_analytics.py --server.port 8501
+cd admin_panel && streamlit run admin_app.py --server.port 8502
 ```
 
-## 🌐 Service URLs
+## 🌐 Service URLs - Complete System
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| 📊 **Analytics Dashboard** | http://localhost:8501 | Charts, metrics, data visualization |
-| ⚙️ **Admin Panel** | http://localhost:8502 | Dealer management, job execution |
-| 🔧 **Backend API** | http://localhost:8000 | RESTful API endpoints |
-| 📚 **API Documentation** | http://localhost:8000/docs | Swagger/OpenAPI docs |
-| 📈 **Health Check** | http://localhost:8000/health | Service health status |
+| Service | URL | Purpose | Type |
+|---------|-----|---------|------|
+| 🌐 **API Gateway** | http://localhost:8080 | Unified API entry point | NEW |
+| 📚 **Gateway Docs** | http://localhost:8080/docs | API Gateway documentation | NEW |
+| 👤 **Account Service** | http://localhost:8100 | User authentication & management | NEW |
+| 📚 **Account Docs** | http://localhost:8100/docs | Account service documentation | NEW |
+| 📊 **Analytics Dashboard** | http://localhost:8501 | Charts, metrics, data visualization | EXISTING |
+| ⚙️ **Admin Panel** | http://localhost:8502 | Dealer management, job execution | EXISTING |
+| 🔧 **Backend API** | http://localhost:8000 | RESTful API endpoints | EXISTING |
+| 📚 **Backend Docs** | http://localhost:8000/docs | Backend API documentation | EXISTING |
+| 📊 **Prometheus** | http://localhost:9090 | Metrics collection | EXISTING |
+| 📊 **Grafana** | http://localhost:3000 | Monitoring dashboards | EXISTING |
+
+### 🔐 Default Credentials
+- **Admin User**: admin@dealer-dashboard.com / admin123
+- **Grafana**: admin / admin
 
 ## 📊 Analytics Dashboard Features
 
