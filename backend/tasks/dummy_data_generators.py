@@ -420,22 +420,32 @@ def get_dummy_document_handling_data(dealer_id: str, from_time: str, to_time: st
 
     # Generate realistic dummy data
     dummy_data = []
-    current_date = start_date
 
-    # Generate 2-4 document handling records
-    while current_date <= end_date:
-        for i in range(random.randint(1, 2)):
-            # Generate SPK and SO IDs
-            spk_id = f"SPK/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(5)}"
-            so_id = f"SO/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(5)}"
+    # Calculate total days in range
+    total_days = (end_date - start_date).days + 1
 
-            # Filter by idSPK if provided
-            if id_spk and id_spk not in spk_id:
-                continue
+    # Generate 2-5 document handling records regardless of date range
+    num_records = random.randint(2, 5)
 
-            # Generate units for this document (1-3 units per document)
-            units = []
-            for j in range(random.randint(1, 3)):
+    for i in range(num_records):
+        # Pick a random date within the range
+        random_days = random.randint(0, max(0, total_days - 1))
+        current_date = start_date + timedelta(days=random_days)
+
+        # Generate SPK and SO IDs
+        spk_id = f"SPK/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(5)}"
+        so_id = f"SO/{dealer_id}/{current_date.strftime('%y')}/{current_date.strftime('%m')}/{str(i+1).zfill(5)}"
+
+        # If specific idSPK is requested, use it instead of generated one
+        if id_spk:
+            spk_id = id_spk
+
+        # Generate customer ID if specific one is requested
+        customer_id = id_customer if id_customer else f"CUST{random.randint(10000, 99999)}"
+
+        # Generate units for this document (1-3 units per document)
+        units = []
+        for j in range(random.randint(1, 3)):
                 # Random vehicle data
                 chassis_numbers = [
                     "MF139XJ5000001", "MF139XJ5000002", "MF139XJ5000003",
@@ -471,17 +481,15 @@ def get_dummy_document_handling_data(dealer_id: str, from_time: str, to_time: st
                 }
                 units.append(unit)
 
-            record = {
-                "idSO": so_id,
-                "idSPK": spk_id,
-                "dealerId": dealer_id,
-                "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
-                "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
-                "unit": units
-            }
-            dummy_data.append(record)
-
-        current_date += timedelta(days=1)
+        record = {
+            "idSO": so_id,
+            "idSPK": spk_id,
+            "dealerId": dealer_id,
+            "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "unit": units
+        }
+        dummy_data.append(record)
 
     return {
         "status": 1,
