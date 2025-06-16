@@ -11,7 +11,22 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://dealer_user:dealer_pass@localhost:5432/dealer_dashboard")
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={
+        "options": "-csearch_path=dealer_integration,public"
+    },
+    pool_pre_ping=True,
+    echo=False
+)
+
+# Custom session factory that sets search path
+def create_session():
+    session = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+    # Ensure search path is set for each session
+    session.execute("SET search_path TO dealer_integration, public")
+    return session
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

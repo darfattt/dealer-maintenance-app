@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (shared)
+  postgres:
+    image: postgres:15
+    container_name: dealer-postgres
+    environment:
+      POSTGRES_DB: dealer_dashboard
+      POSTGRES_USER: dealer_user
+      POSTGRES_PASSWORD: dealer_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dealer_user -d dealer_dashboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Account Service
+  account-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.account
+    container_name: account-service
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - JWT_SECRET_KEY=your-super-secret-jwt-key-here-change-this-in-production
+      - SERVICE_NAME=account-service
+      - SERVICE_VERSION=1.0.0
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=development
+    ports:
+      - "8100:8100"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    volumes:
+      - ./services/account:/app
+      - ./utils:/app/utils
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.gateway
+    container_name: api-gateway
+    environment:
+      - ACCOUNT_SERVICE_URL=http://account-service:8100
+      - DEALER_DASHBOARD_SERVICE_URL=http://localhost:8000
+      - JWT_SECRET_KEY=your-super-secret-jwt-key-here-change-this-in-production
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=development
+    ports:
+      - "8080:8080"
+    depends_on:
+      account-service:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    volumes:
+      - ./api-gateway:/app
+      - ./utils:/app/utils
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Redis (for future caching and session management)
+  redis:
+    image: redis:7-alpine
+    container_name: dealer-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-network
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  microservices-network:
+    driver: bridge

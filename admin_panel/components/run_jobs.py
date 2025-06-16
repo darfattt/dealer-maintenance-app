@@ -271,7 +271,8 @@ def monitor_job_progress(task_id: str):
             else:
                 status_placeholder.info(f"🔄 Job status: {status['status']}")
         
-        time.sleep(2)
+        # Use st.empty() and rerun instead of sleep
+        st.rerun()
         wait_time += 2
     
     if wait_time >= max_wait:
