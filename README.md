@@ -147,6 +147,7 @@ cd admin_panel && streamlit run admin_app.py --server.port 8502
 
 | Service | URL | Purpose | Type |
 |---------|-----|---------|------|
+| 🌐 **Web App** | http://localhost:3000 | Vue 3 modern web interface with authentication | NEW |
 | 🌐 **API Gateway** | http://localhost:8080 | Unified API entry point | NEW |
 | 📚 **Gateway Docs** | http://localhost:8080/docs | API Gateway documentation | NEW |
 | 👤 **Account Service** | http://localhost:8100 | User authentication & management | NEW |
@@ -156,10 +157,11 @@ cd admin_panel && streamlit run admin_app.py --server.port 8502
 | 🔧 **Backend API** | http://localhost:8000 | RESTful API endpoints | EXISTING |
 | 📚 **Backend Docs** | http://localhost:8000/docs | Backend API documentation | EXISTING |
 | 📊 **Prometheus** | http://localhost:9090 | Metrics collection | EXISTING |
-| 📊 **Grafana** | http://localhost:3000 | Monitoring dashboards | EXISTING |
+| 📊 **Grafana** | http://localhost:3001 | Monitoring dashboards | EXISTING |
 
 ### 🔐 Default Credentials
-- **Admin User**: admin@dealer-dashboard.com / admin123
+- **Web App**: admin@dealer-dashboard.com / Admin123!
+- **Admin User**: admin@dealer-dashboard.com / Admin123!
 - **Grafana**: admin / admin
 
 ## 📊 Analytics Dashboard Features

@@ -1,0 +1,61 @@
+import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
+
+// Create axios instance
+const api = axios.create({
+  baseURL: '/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const authStore = useAuthStore()
+    if (authStore.token) {
+      config.headers.Authorization = `Bearer ${authStore.token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Response interceptor to handle token refresh
+api.interceptors.response.use(
+  (response) => {
+    return response
+  },
+  async (error) => {
+    const authStore = useAuthStore()
+    const originalRequest = error.config
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+
+      try {
+        const result = await authStore.refreshAccessToken()
+        if (result.success) {
+          // Retry the original request with new token
+          originalRequest.headers.Authorization = `Bearer ${authStore.token}`
+          return api(originalRequest)
+        } else {
+          // Refresh failed, logout user
+          await authStore.logout()
+          window.location.href = '/login'
+        }
+      } catch (refreshError) {
+        // Refresh failed, logout user
+        await authStore.logout()
+        window.location.href = '/login'
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
+
+export default api

@@ -20,15 +20,15 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # Service URLs
-    account_service_url: str = "http://localhost:8100"
-    dealer_dashboard_service_url: str = "http://localhost:8000"
+    account_service_url: str = "http://account_service:8100"
+    dealer_dashboard_service_url: str = "http://backend:8000"
     
     # JWT Configuration (should match account service)
     jwt_secret_key: str = "your-super-secret-jwt-key-here"
     jwt_algorithm: str = "HS256"
     
     # CORS
-    allowed_origins: str = "http://localhost:3000,http://localhost:8501,http://localhost:8502"
+    allowed_origins: str = "http://localhost:3000,http://localhost:3001,http://localhost:8501,http://localhost:8502"
     
     # Rate Limiting
     rate_limit_requests: int = 100
