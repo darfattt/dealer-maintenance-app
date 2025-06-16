@@ -199,7 +199,7 @@ services:
       - LOG_LEVEL=INFO
       - ENVIRONMENT=production
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@dealer-dashboard.com}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin123!}
       - ADMIN_FULL_NAME=${ADMIN_FULL_NAME:-System Administrator}
     ports:
       - "8100:8100"

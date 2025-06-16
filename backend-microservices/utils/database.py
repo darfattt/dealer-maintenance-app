@@ -51,12 +51,13 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def create_tables(schema_name: str = None) -> None:
+def create_tables(schema_name: str = None, base_metadata=None) -> None:
     """
     Create all tables for the specified schema
-    
+
     Args:
         schema_name: Database schema name
+        base_metadata: SQLAlchemy Base metadata to use for table creation
     """
     try:
         if schema_name:
@@ -65,8 +66,10 @@ def create_tables(schema_name: str = None) -> None:
                 conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
                 conn.execute(text(f"SET search_path TO {schema_name}, public"))
                 conn.commit()
-        
-        Base.metadata.create_all(bind=engine)
+
+        # Use provided metadata or default Base
+        metadata = base_metadata if base_metadata is not None else Base.metadata
+        metadata.create_all(bind=engine)
         logger.info(f"Tables created successfully for schema: {schema_name or 'default'}")
     except Exception as e:
         logger.error(f"Failed to create tables: {str(e)}")
@@ -115,9 +118,9 @@ class DatabaseManager:
         finally:
             db.close()
     
-    def create_schema_tables(self) -> None:
+    def create_schema_tables(self, base_metadata=None) -> None:
         """Create tables for this schema"""
-        create_tables(self.schema_name)
+        create_tables(self.schema_name, base_metadata)
     
     def drop_schema_tables(self) -> None:
         """Drop tables for this schema"""

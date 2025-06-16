@@ -37,12 +37,16 @@ async def lifespan(app: FastAPI):
     
     # Create database schema and tables
     try:
-        db_manager.create_schema_tables()
+        # Import models to register them with Base
+        from app.models.user import User, Base
+
+        # Create schema and tables
+        db_manager.create_schema_tables(Base.metadata)
         logger.info("Database tables created successfully")
-        
+
         # Create default admin user if not exists
         await create_default_admin()
-        
+
     except Exception as e:
         logger.error(f"Failed to initialize database: {str(e)}")
         raise

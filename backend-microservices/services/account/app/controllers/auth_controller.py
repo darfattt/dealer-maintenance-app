@@ -85,12 +85,28 @@ class AuthController:
         
         logger.info(f"Successful login for user: {login_data.email}")
         
+        # Convert User model to UserResponse
+        from app.schemas.user import UserResponse
+        user_response = UserResponse(
+            id=str(user.id),
+            email=user.email,
+            username=user.username,
+            full_name=user.full_name,
+            role=user.role,
+            dealer_id=user.dealer_id,
+            is_active=user.is_active,
+            is_verified=user.is_verified,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            last_login_at=user.last_login_at
+        )
+
         return TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
             expires_in=30 * 60,  # 30 minutes
-            user=user
+            user=user_response
         )
     
     def refresh_token(self, refresh_request: RefreshTokenRequest) -> TokenResponse:
@@ -142,12 +158,27 @@ class AuthController:
         
         logger.info(f"Token refreshed for user: {user.email}")
         
+        # Convert User model to UserResponse
+        user_response = UserResponse(
+            id=str(user.id),
+            email=user.email,
+            username=user.username,
+            full_name=user.full_name,
+            role=user.role,
+            dealer_id=user.dealer_id,
+            is_active=user.is_active,
+            is_verified=user.is_verified,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            last_login_at=user.last_login_at
+        )
+
         return TokenResponse(
             access_token=access_token,
             refresh_token=new_refresh_token,
             token_type="bearer",
             expires_in=30 * 60,  # 30 minutes
-            user=user
+            user=user_response
         )
     
     def get_current_user(self, token: str) -> User:
