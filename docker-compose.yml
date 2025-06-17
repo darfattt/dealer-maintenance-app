@@ -252,7 +252,7 @@ services:
     restart: unless-stopped
 
   # Vue 3 Web Application (Port 5000) - PrimeVue with Authentication
-  web_primevue:
+  web_app:
     build:
       context: ./web
       dockerfile: Dockerfile
@@ -260,7 +260,7 @@ services:
       args:
         NODE_ENV: production
         VITE_API_BASE_URL: http://api_gateway:8080
-    container_name: dealer_web_primevue
+    container_name: dealer_web_app
     environment:
       - NODE_ENV=production
       - VITE_API_BASE_URL=http://localhost:8080
