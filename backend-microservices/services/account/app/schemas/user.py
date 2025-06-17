@@ -13,7 +13,7 @@ class UserBase(BaseModel):
     email: EmailStr
     username: Optional[str] = None
     full_name: str = Field(..., min_length=1, max_length=255)
-    role: UserRole = UserRole.DEALER_ADMIN
+    role: UserRole = UserRole.DEALER_USER
     dealer_id: Optional[str] = Field(None, max_length=10)
     is_active: bool = True
 
@@ -39,12 +39,14 @@ class UserCreate(UserBase):
     
     @validator('dealer_id')
     def validate_dealer_id(cls, v, values):
-        """Validate dealer_id is required for DEALER_ADMIN role"""
+        """Validate dealer_id requirements based on role"""
         role = values.get('role')
         if role == UserRole.DEALER_ADMIN and not v:
             raise ValueError('dealer_id is required for DEALER_ADMIN role')
         if role == UserRole.SUPER_ADMIN and v:
             raise ValueError('dealer_id should not be set for SUPER_ADMIN role')
+        if role == UserRole.DEALER_USER and v:
+            raise ValueError('dealer_id should not be set for DEALER_USER role (use users_dealer table instead)')
         return v
 
 
@@ -151,3 +153,32 @@ class UserListResponse(BaseModel):
     page: int
     per_page: int
     pages: int
+
+
+# UserDealer schemas
+class UserDealerBase(BaseModel):
+    """Base user dealer schema"""
+    dealer_id: str = Field(..., max_length=10)
+
+
+class UserDealerCreate(UserDealerBase):
+    """Schema for creating a new user dealer relationship"""
+    user_id: str
+
+
+class UserDealerResponse(BaseModel):
+    """Schema for user dealer response"""
+    id: str
+    user_id: str
+    dealer_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserDealerListResponse(BaseModel):
+    """Schema for user dealer list response"""
+    user_dealers: list[UserDealerResponse]
+    total: int

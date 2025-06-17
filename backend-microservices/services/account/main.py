@@ -16,7 +16,7 @@ if utils_path not in sys.path:
     sys.path.append(utils_path)
 
 from app.config import settings
-from app.routes import auth_router, users_router, health_router
+from app.routes import auth_router, users_router, user_dealers_router, health_router
 from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from utils.database import DatabaseManager
@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     # Create database schema and tables
     try:
         # Import models to register them with Base
-        from app.models.user import User, Base
+        from app.models.user import User, UserDealer, Base
 
         # Create schema and tables
         db_manager.create_schema_tables(Base.metadata)
@@ -148,6 +148,7 @@ async def general_exception_handler(request, exc):
 # Include routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
+app.include_router(user_dealers_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1")
 
 

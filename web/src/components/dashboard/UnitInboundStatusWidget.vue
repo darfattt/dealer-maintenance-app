@@ -7,6 +7,10 @@ import Calendar from 'primevue/calendar';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
 import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
+
+// Auth store
+const authStore = useAuthStore();
 
 // Reactive data
 const chartData = ref({});
@@ -19,6 +23,7 @@ const totalRecords = ref(0);
 const selectedDealer = ref('12284'); // Default dealer
 const dateFrom = ref(new Date(new Date().getFullYear(), 0, 1)); // Start of current year
 const dateTo = ref(new Date()); // Today
+const userDealers = ref([]); // For DEALER_USER role
 
 // Dealer options (you can expand this list)
 const dealerOptions = ref([
@@ -49,6 +54,16 @@ const formattedDateTo = computed(() => {
     return dateTo.value.toISOString().split('T')[0];
 });
 
+// Check if user is DEALER_USER role
+const isDealerUser = computed(() => {
+    return authStore.userRole === 'DEALER_USER';
+});
+
+// Show dealer dropdown only for non-DEALER_USER roles
+const showDealerDropdown = computed(() => {
+    return !isDealerUser.value;
+});
+
 // Computed property for legend items
 const legendItems = computed(() => {
     if (!chartData.value || !chartData.value.labels) return [];
@@ -67,6 +82,23 @@ const legendItems = computed(() => {
 });
 
 // Methods
+const fetchUserDealers = async () => {
+    if (!isDealerUser.value) return;
+
+    try {
+        const response = await axios.get('/api/v1/user-dealers/me/dealers');
+        userDealers.value = response.data;
+
+        // Set the first dealer as selected if available
+        if (userDealers.value.length > 0) {
+            selectedDealer.value = userDealers.value[0];
+        }
+    } catch (err) {
+        console.error('Error fetching user dealers:', err);
+        error.value = 'Failed to fetch assigned dealers';
+    }
+};
+
 const fetchUnitInboundStatus = async () => {
     if (!selectedDealer.value || !dateFrom.value || !dateTo.value) {
         error.value = 'Please select dealer and date range';
@@ -162,7 +194,13 @@ const fetchUnitInboundStatus = async () => {
 };
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+    // Fetch user dealers first if DEALER_USER role
+    if (isDealerUser.value) {
+        await fetchUserDealers();
+    }
+
+    // Then fetch the chart data
     fetchUnitInboundStatus();
 });
 </script>
@@ -180,33 +218,44 @@ onMounted(() => {
         
         <template #content>
             <!-- Filter Controls -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div>
-                    <label class="block text-sm font-medium mb-2">Dealer</label>
-                    <Dropdown 
-                        v-model="selectedDealer" 
-                        :options="dealerOptions" 
-                        optionLabel="label" 
+            <div class="grid grid-cols-1 gap-4 mb-6" :class="showDealerDropdown ? 'md:grid-cols-4' : 'md:grid-cols-3'">
+                <div v-if="showDealerDropdown">
+                    <label for="dealer-select" class="block text-sm font-medium mb-2">Dealer</label>
+                    <Dropdown
+                        id="dealer-select"
+                        v-model="selectedDealer"
+                        :options="dealerOptions"
+                        optionLabel="label"
                         optionValue="value"
                         placeholder="Select Dealer"
                         class="w-full"
                     />
                 </div>
+
+                <!-- Show assigned dealer info for DEALER_USER -->
+                <div v-else-if="isDealerUser && userDealers.length > 0" class="md:col-span-1">
+                    <label for="assigned-dealer" class="block text-sm font-medium mb-2">Assigned Dealer</label>
+                    <div id="assigned-dealer" class="p-3 bg-surface-50 border border-surface-200 rounded-md">
+                        <span class="font-medium">{{ selectedDealer }}</span>
+                    </div>
+                </div>
                 
                 <div>
-                    <label class="block text-sm font-medium mb-2">From Date</label>
-                    <Calendar 
-                        v-model="dateFrom" 
+                    <label for="date-from" class="block text-sm font-medium mb-2">From Date</label>
+                    <Calendar
+                        id="date-from"
+                        v-model="dateFrom"
                         dateFormat="yy-mm-dd"
                         placeholder="Select start date"
                         class="w-full"
                     />
                 </div>
-                
+
                 <div>
-                    <label class="block text-sm font-medium mb-2">To Date</label>
-                    <Calendar 
-                        v-model="dateTo" 
+                    <label for="date-to" class="block text-sm font-medium mb-2">To Date</label>
+                    <Calendar
+                        id="date-to"
+                        v-model="dateTo"
                         dateFormat="yy-mm-dd"
                         placeholder="Select end date"
                         class="w-full"
