@@ -4,6 +4,7 @@ import NotificationsWidget from '@/components/dashboard/NotificationsWidget.vue'
 import RecentSalesWidget from '@/components/dashboard/RecentSalesWidget.vue';
 import RevenueStreamWidget from '@/components/dashboard/RevenueStreamWidget.vue';
 import StatsWidget from '@/components/dashboard/StatsWidget.vue';
+import UnitInboundStatusWidget from '@/components/dashboard/UnitInboundStatusWidget.vue';
 </script>
 
 <template>
@@ -17,6 +18,11 @@ import StatsWidget from '@/components/dashboard/StatsWidget.vue';
         <div class="col-span-12 xl:col-span-6">
             <RevenueStreamWidget />
             <NotificationsWidget />
+        </div>
+
+        <!-- Unit Inbound Status Chart -->
+        <div class="col-span-12">
+            <UnitInboundStatusWidget />
         </div>
     </div>
 </template>

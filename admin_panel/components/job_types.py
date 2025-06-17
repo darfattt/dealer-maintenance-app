@@ -12,7 +12,7 @@ JOB_TYPE_MAPPING = {
     "parts_inbound": "Part Inbound - PINB",
     "leasing": "Handle Leasing Requirement",
     "doch_read": "Manage Document Handling",
-    "uinb_read": "Unit Inbound from Purchase Order",
+    "uinb_read": "Unit Inbound from Purchase Order", #UnitInboundData
     "bast_read": "Manage Delivery Process",
     "inv1_read": "Manage Billing Process",
     "mdinvh1_read": "Unit Invoice (MD to Dealer)",

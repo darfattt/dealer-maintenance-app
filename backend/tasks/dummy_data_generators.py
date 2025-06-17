@@ -582,7 +582,7 @@ def get_dummy_unit_inbound_data(dealer_id: str, from_time: str, to_time: str, po
                 "mainDealerId": "B10",
                 "dealerId": dealer_id,
                 "noInvoice": invoice_no,
-                "statusShippingList": random.choice(["1", "2", "3"]),
+                "statusShippingList": random.choice(["0", "1"]),
                 "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
                 "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
                 "unit": units
