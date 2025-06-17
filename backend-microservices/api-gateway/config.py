@@ -4,6 +4,7 @@ Configuration settings for the API Gateway
 
 import os
 from typing import List, Dict
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -28,7 +29,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     
     # CORS
-    allowed_origins: str = "http://localhost:3000,http://localhost:3001,http://localhost:8501,http://localhost:8502"
+    allowed_origins: str = Field(
+        default="http://localhost:3000,http://localhost:3001,http://localhost:5000,http://localhost:5173,http://localhost:5174,http://localhost:8501,http://localhost:8502",
+        env="ALLOWED_ORIGINS"
+    )
     
     # Rate Limiting
     rate_limit_requests: int = 100
