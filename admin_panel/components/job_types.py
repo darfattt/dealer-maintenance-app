@@ -7,14 +7,14 @@ from typing import Dict, List, Tuple
 
 # Job type mapping: code -> label
 JOB_TYPE_MAPPING = {
-    "prospect": "Prospect",
+    "prospect": "Prospect", #prospect_data
     "pkb": "Manage WO - PKB",
     "parts_inbound": "Part Inbound - PINB",
     "leasing": "Handle Leasing Requirement",
     "doch_read": "Manage Document Handling",
     "uinb_read": "Unit Inbound from Purchase Order", #UnitInboundData
     "bast_read": "Manage Delivery Process",
-    "inv1_read": "Manage Billing Process",
+    "inv1_read": "Manage Billing Process", #billing_process_data BillingProcessData
     "mdinvh1_read": "Unit Invoice (MD to Dealer)",
     "prsl_read": "Manage Parts Sales",
     "dphlo_read": "DP HLO",

@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
+import axios from 'axios';
 
 // Props from parent dashboard
 const props = defineProps({
@@ -35,16 +36,82 @@ const fetchPaymentTypeData = async () => {
     error.value = '';
 
     try {
-        // Dummy data for now
-        paymentData.value = [
-            { type: 'CASH', amount: 3256, color: '#10B981' },
-            { type: 'CREDIT', amount: 2495, color: '#3B82F6' }
-        ];
+        // Call real API endpoint
+        const response = await axios.get('/api/v1/dashboard/payment-type/statistics', {
+            params: {
+                dealer_id: props.dealerId,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
+
+        if (response.data.success) {
+            // Transform API response to component format
+            paymentData.value = response.data.data.map(item => ({
+                type: mapPaymentType(item.tipe_pembayaran),
+                amount: parseFloat(item.total_amount) || 0,
+                color: getPaymentTypeColor(item.tipe_pembayaran)
+            }));
+        } else {
+            error.value = response.data.message || 'Failed to fetch payment type data';
+        }
     } catch (err) {
         console.error('Error fetching payment type data:', err);
-        error.value = 'Failed to fetch payment type data';
+        if (err.response?.status === 404) {
+            error.value = 'Payment type data not available for this dealer';
+        } else if (err.response?.status === 500) {
+            error.value = 'Server error while fetching payment type data';
+        } else {
+            error.value = 'Failed to fetch payment type data';
+        }
     } finally {
         loading.value = false;
+    }
+};
+
+// Helper function to map payment type codes to labels
+const mapPaymentType = (tipeCode) => {
+    const typeMap = {
+        '1': 'CASH',
+        '2': 'CREDIT',
+        '3': 'LEASING',
+        'CASH': 'CASH',
+        'CREDIT': 'CREDIT',
+        'LEASING': 'LEASING'
+    };
+    return typeMap[tipeCode] || tipeCode || 'UNKNOWN';
+};
+
+// Helper function to get color for payment type
+const getPaymentTypeColor = (paymentType) => {
+    const colorMap = {
+        '1': '#10B981',      // Cash - Green
+        '2': '#3B82F6',      // Credit - Blue
+        '3': '#F59E0B',      // Leasing - Orange
+        'CASH': '#10B981',
+        'CREDIT': '#3B82F6',
+        'LEASING': '#F59E0B',
+        'OTHER': '#6B7280'
+    };
+    return colorMap[paymentType] || '#6B7280';
+};
+
+// Helper function to format amount
+const formatAmount = (amount) => {
+    if (!amount || amount === 0) return '0';
+
+    // Convert to millions for better readability
+    const millions = amount / 1000000;
+
+    if (millions >= 1000) {
+        // Show in billions
+        return `${(millions / 1000).toFixed(1)}B`;
+    } else if (millions >= 1) {
+        // Show in millions
+        return `${millions.toFixed(0)}M`;
+    } else {
+        // Show in thousands
+        return `${(amount / 1000).toFixed(0)}K`;
     }
 };
 
@@ -86,11 +153,11 @@ onMounted(() => {
                         <span class="font-semibold text-lg">{{ payment.type }}</span>
                     </div>
                     <div class="text-right">
-                        <div 
+                        <div
                             class="text-2xl font-bold"
                             :style="{ color: payment.color }"
                         >
-                            {{ payment.amount.toLocaleString() }}
+                            {{ formatAmount(payment.amount) }}
                         </div>
                     </div>
                 </div>
