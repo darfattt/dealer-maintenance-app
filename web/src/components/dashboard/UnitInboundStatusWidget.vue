@@ -1,13 +1,26 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import Chart from 'primevue/chart';
 import Card from 'primevue/card';
-import Dropdown from 'primevue/dropdown';
-import Calendar from 'primevue/calendar';
-import Button from 'primevue/button';
 import Message from 'primevue/message';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
+
+// Props from parent dashboard
+const props = defineProps({
+    dealerId: {
+        type: String,
+        default: '12284'
+    },
+    dateFrom: {
+        type: String,
+        required: true
+    },
+    dateTo: {
+        type: String,
+        required: true
+    }
+});
 
 // Auth store
 const authStore = useAuthStore();
@@ -18,18 +31,7 @@ const chartOptions = ref({});
 const loading = ref(false);
 const error = ref('');
 const totalRecords = ref(0);
-
-// Filter controls
-const selectedDealer = ref('12284'); // Default dealer
-const dateFrom = ref(new Date(new Date().getFullYear(), 0, 1)); // Start of current year
-const dateTo = ref(new Date()); // Today
 const userDealers = ref([]); // For DEALER_USER role
-
-// Dealer options (you can expand this list)
-const dealerOptions = ref([
-    { label: 'Sample Dealer (12284)', value: '12284' },
-    { label: 'Test Dealer (00999)', value: '00999' }
-]);
 
 // Chart colors
 const chartColors = [
@@ -44,24 +46,17 @@ const statusMapping = {
 };
 
 // Computed properties
-const formattedDateFrom = computed(() => {
-    if (!dateFrom.value) return '';
-    return dateFrom.value.toISOString().split('T')[0];
-});
-
-const formattedDateTo = computed(() => {
-    if (!dateTo.value) return '';
-    return dateTo.value.toISOString().split('T')[0];
-});
-
 // Check if user is DEALER_USER role
 const isDealerUser = computed(() => {
     return authStore.userRole === 'DEALER_USER';
 });
 
-// Show dealer dropdown only for non-DEALER_USER roles
-const showDealerDropdown = computed(() => {
-    return !isDealerUser.value;
+// Get effective dealer ID (from props or user assignment)
+const effectiveDealerId = computed(() => {
+    if (isDealerUser.value && userDealers.value.length > 0) {
+        return userDealers.value[0];
+    }
+    return props.dealerId;
 });
 
 // Computed property for legend items
@@ -88,11 +83,6 @@ const fetchUserDealers = async () => {
     try {
         const response = await axios.get('/api/v1/user-dealers/me/dealers');
         userDealers.value = response.data;
-
-        // Set the first dealer as selected if available
-        if (userDealers.value.length > 0) {
-            selectedDealer.value = userDealers.value[0];
-        }
     } catch (err) {
         console.error('Error fetching user dealers:', err);
         error.value = 'Failed to fetch assigned dealers';
@@ -100,8 +90,8 @@ const fetchUserDealers = async () => {
 };
 
 const fetchUnitInboundStatus = async () => {
-    if (!selectedDealer.value || !dateFrom.value || !dateTo.value) {
-        error.value = 'Please select dealer and date range';
+    if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
+        error.value = 'Missing required parameters';
         return;
     }
 
@@ -111,9 +101,9 @@ const fetchUnitInboundStatus = async () => {
     try {
         const response = await axios.get('/api/v1/dashboard/unit-inbound/status-counts', {
             params: {
-                dealer_id: selectedDealer.value,
-                date_from: formattedDateFrom.value,
-                date_to: formattedDateTo.value
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
             }
         });
 
@@ -193,6 +183,11 @@ const fetchUnitInboundStatus = async () => {
     }
 };
 
+// Watch for prop changes
+watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
+    fetchUnitInboundStatus();
+}, { deep: true });
+
 // Lifecycle
 onMounted(async () => {
     // Fetch user dealers first if DEALER_USER role
@@ -217,62 +212,6 @@ onMounted(async () => {
         </template>
         
         <template #content>
-            <!-- Filter Controls -->
-            <div class="grid grid-cols-1 gap-4 mb-6" :class="showDealerDropdown ? 'md:grid-cols-4' : 'md:grid-cols-3'">
-                <div v-if="showDealerDropdown">
-                    <label for="dealer-select" class="block text-sm font-medium mb-2">Dealer</label>
-                    <Dropdown
-                        id="dealer-select"
-                        v-model="selectedDealer"
-                        :options="dealerOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Select Dealer"
-                        class="w-full"
-                    />
-                </div>
-
-                <!-- Show assigned dealer info for DEALER_USER -->
-                <div v-else-if="isDealerUser && userDealers.length > 0" class="md:col-span-1">
-                    <label for="assigned-dealer" class="block text-sm font-medium mb-2">Assigned Dealer</label>
-                    <div id="assigned-dealer" class="p-3 bg-surface-50 border border-surface-200 rounded-md">
-                        <span class="font-medium">{{ selectedDealer }}</span>
-                    </div>
-                </div>
-                
-                <div>
-                    <label for="date-from" class="block text-sm font-medium mb-2">From Date</label>
-                    <Calendar
-                        id="date-from"
-                        v-model="dateFrom"
-                        dateFormat="yy-mm-dd"
-                        placeholder="Select start date"
-                        class="w-full"
-                    />
-                </div>
-
-                <div>
-                    <label for="date-to" class="block text-sm font-medium mb-2">To Date</label>
-                    <Calendar
-                        id="date-to"
-                        v-model="dateTo"
-                        dateFormat="yy-mm-dd"
-                        placeholder="Select end date"
-                        class="w-full"
-                    />
-                </div>
-                
-                <div class="flex items-end">
-                    <Button 
-                        @click="fetchUnitInboundStatus"
-                        :loading="loading"
-                        label="Refresh"
-                        icon="pi pi-refresh"
-                        class="w-full"
-                    />
-                </div>
-            </div>
-
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}
