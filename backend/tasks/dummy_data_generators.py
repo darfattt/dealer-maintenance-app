@@ -1193,3 +1193,132 @@ def get_dummy_parts_invoice_data(dealer_id: str, from_time: str, to_time: str,
         "message": None,
         "data": invoices
     }
+
+
+def get_dummy_spk_dealing_process_data(dealer_id: str, from_time: str, to_time: str,
+                                      id_prospect: str = "", id_sales_people: str = "") -> Dict[str, Any]:
+    """Generate realistic dummy SPK dealing process data for testing"""
+
+    # Only generate for specific test dealers
+    if not should_use_dummy_data(dealer_id):
+        return {
+            "status": 0,
+            "message": f"No dummy data available for dealer {dealer_id}. Please configure real API credentials.",
+            "data": []
+        }
+
+    # Parse time range
+    try:
+        start_date = datetime.strptime(from_time.split()[0], "%Y-%m-%d")
+        end_date = datetime.strptime(to_time.split()[0], "%Y-%m-%d")
+    except:
+        start_date = datetime.now() - timedelta(days=1)
+        end_date = datetime.now()
+
+    # Generate realistic test data
+    dummy_data = []
+
+    # Calculate total days in range
+    total_days = (end_date - start_date).days + 1
+
+    # Generate 3-5 SPK records regardless of date range
+    num_records = random.randint(3, 5)
+
+    for i in range(num_records):
+        # Pick a random date within the range
+        random_days = random.randint(0, max(0, total_days - 1))
+        current_date = start_date + timedelta(days=random_days)
+
+        spk_id = f"SPK/{dealer_id}/24/01/0000{i+1}"
+        prospect_id = f"H2Z/{dealer_id}/24/03/PSP/0001/0000{i+1}"
+        sales_id = f"12253{i+1}"
+
+        # Skip if filtering by prospect and doesn't match
+        if id_prospect and id_prospect != prospect_id:
+            continue
+
+        # Skip if filtering by sales people and doesn't match
+        if id_sales_people and id_sales_people != sales_id:
+            continue
+
+        # Customer names
+        customer_names = ["Amir Nasution", "Siti Rahayu", "Budi Santoso", "Dewi Lestari", "Ahmad Fauzi"]
+
+        spk_record = {
+            "idSpk": spk_id,
+            "idProspect": prospect_id,
+            "namaCustomer": random.choice(customer_names),
+            "noKtp": f"320107050609000{i+1:02d}",
+            "alamat": f"Jl. Test No. {i+1} RT 001, RW 002",
+            "kodePropinsi": "3100",
+            "kodeKota": "3101",
+            "kodeKecamatan": "317404",
+            "kodeKelurahan": "3174040001",
+            "kodePos": "14130",
+            "noKontak": f"081212312{i+1}",
+            "namaBPKB": random.choice(customer_names),
+            "noKTPBPKB": f"320107050609000{i+1:02d}",
+            "alamatBPKB": f"Jl. Test No. {i+1} RT 001, RW 002",
+            "kodePropinsiBPKB": "3100",
+            "kodeKotaBPKB": "3101",
+            "kodeKecamatanBPKB": "317404",
+            "kodeKelurahanBPKB": "3174040001",
+            "kodePosBPKB": "14130",
+            "latitude": f"111,12312{i+1}",
+            "longitude": f"-7,12311{i+1}",
+            "NPWP": f"1.111.111.{i+1}-111.111",
+            "noKK": f"320107050609000{i+1}",
+            "alamatKK": f"Jl. Test No. {i+1} RT 001, RW 002",
+            "kodePropinsiKK": "3100",
+            "kodeKotaKK": "3101",
+            "kodeKecamatanKK": "317404",
+            "kodeKelurahanKK": "3174040001",
+            "kodePosKK": "14130",
+            "fax": f"021-535567{i+1}",
+            "email": f"customer{i+1}@test.com",
+            "idSalesPeople": sales_id,
+            "idEvent": f"EV/E/K0Z/1232{i+1}/24/01/004",
+            "tanggalPesanan": current_date.strftime("%d/%m/%Y"),
+            "statusSPK": str((i % 4) + 1),  # Different statuses 1-4
+            "dealerId": dealer_id,
+            "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+            "unit": [
+                {
+                    "kodeTipeUnit": f"HP{i+1}",
+                    "kodeWarna": "BK" if i % 2 == 0 else "WH",
+                    "quantity": 1,
+                    "hargaJual": 18000000 + (i * 1000000),
+                    "diskon": 250000,
+                    "amountPPN": 1800000,
+                    "fakturPajak": f"010.-900-13.0000000{i+1}",
+                    "tipePembayaran": str((i % 3) + 1),  # 1, 2, 3
+                    "jumlahTandaJadi": 2000000,
+                    "tanggalPengiriman": current_date.strftime("%d/%m/%Y"),
+                    "idSalesProgram": f"PRM/0102/24/12/000{i+1}",
+                    "idApparel": f"86100H04 FA00INBO{i+1}",
+                    "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                    "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+                }
+            ],
+            "dataAnggotaKeluarga": [
+                {
+                    "anggotaKK": f"Family Member {i+1}-1",
+                    "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                    "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+                },
+                {
+                    "anggotaKK": f"Family Member {i+1}-2",
+                    "createdTime": current_date.strftime("%d/%m/%Y %H:%M:%S"),
+                    "modifiedTime": current_date.strftime("%d/%m/%Y %H:%M:%S")
+                }
+            ]
+        }
+
+        dummy_data.append(spk_record)
+
+    return {
+        "status": 1,
+        "message": None,
+        "data": dummy_data
+    }

@@ -22,6 +22,7 @@ from .processors.dp_hlo_processor import DPHLODataProcessor
 from .processors.workshop_invoice_processor import WorkshopInvoiceDataProcessor
 from .processors.unpaid_hlo_processor import UnpaidHLODataProcessor
 from .processors.parts_invoice_processor import PartsInvoiceDataProcessor
+from .processors.spk_dealing_process_processor import SPKDealingProcessDataProcessor
 from .api_clients import initialize_default_api_configs
 
 # Setup logging
@@ -53,7 +54,8 @@ class DataFetcherRouter:
             "dphlo_read": DPHLODataProcessor(),
             "inv2_read": WorkshopInvoiceDataProcessor(),
             "unpaidhlo_read": UnpaidHLODataProcessor(),
-            "mdinvh3_read": PartsInvoiceDataProcessor()
+            "mdinvh3_read": PartsInvoiceDataProcessor(),
+            "spk_read": SPKDealingProcessDataProcessor()
         }
     
     def get_processor(self, fetch_type: str):
@@ -228,6 +230,14 @@ def fetch_parts_invoice_data(self, dealer_id: str, from_time: str = None, to_tim
                               no_po=no_po)
 
 
+@celery_app.task(bind=True)
+def fetch_spk_dealing_process_data(self, dealer_id: str, from_time: str = None, to_time: str = None,
+                                  id_prospect: str = "", id_sales_people: str = ""):
+    """Fetch SPK dealing process data for a specific dealer"""
+    return router.execute_fetch("spk_read", dealer_id, from_time, to_time,
+                              id_prospect=id_prospect, id_sales_people=id_sales_people)
+
+
 # Convenience functions for direct processor access (useful for testing)
 def get_prospect_processor() -> ProspectDataProcessor:
     """Get prospect processor instance"""
@@ -299,6 +309,11 @@ def get_parts_invoice_processor() -> PartsInvoiceDataProcessor:
     return router.get_processor("mdinvh3_read")
 
 
+def get_spk_dealing_process_processor() -> SPKDealingProcessDataProcessor:
+    """Get SPK dealing process processor instance"""
+    return router.get_processor("spk_read")
+
+
 # Export the main tasks for backward compatibility
 __all__ = [
     'health_check',
@@ -316,6 +331,7 @@ __all__ = [
     'fetch_workshop_invoice_data',
     'fetch_unpaid_hlo_data',
     'fetch_parts_invoice_data',
+    'fetch_spk_dealing_process_data',
     'router',
     'get_prospect_processor',
     'get_pkb_processor',
@@ -330,5 +346,6 @@ __all__ = [
     'get_dp_hlo_processor',
     'get_workshop_invoice_processor',
     'get_unpaid_hlo_processor',
-    'get_parts_invoice_processor'
+    'get_parts_invoice_processor',
+    'get_spk_dealing_process_processor'
 ]

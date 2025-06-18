@@ -57,6 +57,7 @@ class Dealer(Base):
     workshop_invoice_data = relationship("WorkshopInvoiceData", back_populates="dealer")
     unpaid_hlo_data = relationship("UnpaidHLOData", back_populates="dealer")
     parts_invoice_data = relationship("PartsInvoiceData", back_populates="dealer")
+    spk_dealing_process_data = relationship("SPKDealingProcessData", back_populates="dealer")
 
 class FetchConfiguration(Base):
     __tablename__ = "fetch_configurations"
@@ -751,6 +752,96 @@ class PartsInvoicePart(Base):
 
     # Relationships
     parts_invoice_data = relationship("PartsInvoiceData", back_populates="parts")
+
+
+class SPKDealingProcessData(Base):
+    """SPK dealing process data from SPK API"""
+    __tablename__ = "spk_dealing_process_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dealer_id = Column(String(10), ForeignKey("dealers.dealer_id"), nullable=False)
+    id_spk = Column(String(100), nullable=True, index=True)
+    id_prospect = Column(String(100), nullable=True, index=True)
+    nama_customer = Column(String(200), nullable=True)
+    no_ktp = Column(String(50), nullable=True, index=True)
+    alamat = Column(Text, nullable=True)
+    kode_propinsi = Column(String(10), nullable=True)
+    kode_kota = Column(String(10), nullable=True)
+    kode_kecamatan = Column(String(20), nullable=True)
+    kode_kelurahan = Column(String(20), nullable=True)
+    kode_pos = Column(String(10), nullable=True)
+    no_kontak = Column(String(50), nullable=True)
+    nama_bpkb = Column(String(200), nullable=True)
+    no_ktp_bpkb = Column(String(50), nullable=True)
+    alamat_bpkb = Column(Text, nullable=True)
+    kode_propinsi_bpkb = Column(String(10), nullable=True)
+    kode_kota_bpkb = Column(String(10), nullable=True)
+    kode_kecamatan_bpkb = Column(String(20), nullable=True)
+    kode_kelurahan_bpkb = Column(String(20), nullable=True)
+    kode_pos_bpkb = Column(String(10), nullable=True)
+    latitude = Column(String(50), nullable=True)
+    longitude = Column(String(50), nullable=True)
+    npwp = Column(String(50), nullable=True)
+    no_kk = Column(String(50), nullable=True)
+    alamat_kk = Column(Text, nullable=True)
+    kode_propinsi_kk = Column(String(10), nullable=True)
+    kode_kota_kk = Column(String(10), nullable=True)
+    kode_kecamatan_kk = Column(String(20), nullable=True)
+    kode_kelurahan_kk = Column(String(20), nullable=True)
+    kode_pos_kk = Column(String(10), nullable=True)
+    fax = Column(String(50), nullable=True)
+    email = Column(String(100), nullable=True)
+    id_sales_people = Column(String(50), nullable=True)
+    id_event = Column(String(100), nullable=True)
+    tanggal_pesanan = Column(String(50), nullable=True)
+    status_spk = Column(String(10), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dealer = relationship("Dealer", back_populates="spk_dealing_process_data")
+    units = relationship("SPKDealingProcessUnit", back_populates="spk_dealing_process_data", cascade="all, delete-orphan")
+    family_members = relationship("SPKDealingProcessFamilyMember", back_populates="spk_dealing_process_data", cascade="all, delete-orphan")
+
+
+class SPKDealingProcessUnit(Base):
+    """Unit data for SPK dealing process"""
+    __tablename__ = "spk_dealing_process_units"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    spk_dealing_process_data_id = Column(UUID(as_uuid=True), ForeignKey("spk_dealing_process_data.id"), nullable=False)
+    kode_tipe_unit = Column(String(50), nullable=True)
+    kode_warna = Column(String(10), nullable=True)
+    quantity = Column(Integer, nullable=True)
+    harga_jual = Column(Numeric(15, 2), nullable=True)
+    diskon = Column(Numeric(15, 2), nullable=True)
+    amount_ppn = Column(Numeric(15, 2), nullable=True)
+    faktur_pajak = Column(String(100), nullable=True)
+    tipe_pembayaran = Column(String(10), nullable=True)
+    jumlah_tanda_jadi = Column(Numeric(15, 2), nullable=True)
+    tanggal_pengiriman = Column(String(50), nullable=True)
+    id_sales_program = Column(Text, nullable=True)
+    id_apparel = Column(Text, nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    spk_dealing_process_data = relationship("SPKDealingProcessData", back_populates="units")
+
+
+class SPKDealingProcessFamilyMember(Base):
+    """Family member data for SPK dealing process"""
+    __tablename__ = "spk_dealing_process_family_members"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    spk_dealing_process_data_id = Column(UUID(as_uuid=True), ForeignKey("spk_dealing_process_data.id"), nullable=False)
+    anggota_kk = Column(String(200), nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    spk_dealing_process_data = relationship("SPKDealingProcessData", back_populates="family_members")
 
 
 class APIConfiguration(Base):
