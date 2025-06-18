@@ -61,6 +61,7 @@ declare module 'vue' {
     ToggleButton: typeof import('primevue/togglebutton')['default']
     Toolbar: typeof import('primevue/toolbar')['default']
     TopbarWidget: typeof import('./src/components/landing/TopbarWidget.vue')['default']
+    UnitInboundStatusWidget: typeof import('./src/components/dashboard/UnitInboundStatusWidget.vue')['default']
   }
   export interface ComponentCustomProperties {
     StyleClass: typeof import('primevue/styleclass')['default']

@@ -57,16 +57,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         schema='account'
     )
-    op.create_index(op.f('ix_account_users_dealer_id'), 'users_dealer', ['id'], unique=False, schema='account')
+    op.create_index(op.f('ix_account_users_dealer_id_pk'), 'users_dealer', ['id'], unique=False, schema='account')
     op.create_index(op.f('ix_account_users_dealer_user_id'), 'users_dealer', ['user_id'], unique=False, schema='account')
-    op.create_index(op.f('ix_account_users_dealer_dealer_id'), 'users_dealer', ['dealer_id'], unique=False, schema='account')
+    op.create_index(op.f('ix_account_users_dealer_dealer_id_fk'), 'users_dealer', ['dealer_id'], unique=False, schema='account')
 
 
 def downgrade() -> None:
     # Drop users_dealer table
-    op.drop_index(op.f('ix_account_users_dealer_dealer_id'), table_name='users_dealer', schema='account')
+    op.drop_index(op.f('ix_account_users_dealer_dealer_id_fk'), table_name='users_dealer', schema='account')
     op.drop_index(op.f('ix_account_users_dealer_user_id'), table_name='users_dealer', schema='account')
-    op.drop_index(op.f('ix_account_users_dealer_id'), table_name='users_dealer', schema='account')
+    op.drop_index(op.f('ix_account_users_dealer_id_pk'), table_name='users_dealer', schema='account')
     op.drop_table('users_dealer', schema='account')
     
     # Update enum to remove DEALER_USER

@@ -40,12 +40,16 @@ async def lifespan(app: FastAPI):
         # Import models to register them with Base
         from app.models.user import User, UserDealer, Base
 
-        # Create schema and tables
-        db_manager.create_schema_tables(Base.metadata)
+        # Create schema and tables with checkfirst=True to avoid conflicts
+        logger.info("Creating database schema and tables...")
+        db_manager.create_schema_tables_safe(Base.metadata)
         logger.info("Database tables created successfully")
 
         # Create default admin user if not exists
         await create_default_admin()
+
+        # Create default dealer user if not exists
+        await create_default_dealer_user()
 
     except Exception as e:
         logger.error(f"Failed to initialize database: {str(e)}")
@@ -84,6 +88,60 @@ async def create_default_admin():
         
     except Exception as e:
         logger.error(f"Failed to create default admin user: {str(e)}")
+    finally:
+        db.close()
+
+
+async def create_default_dealer_user():
+    """Create default dealer user if not exists"""
+    try:
+        db = next(db_manager.get_session())
+        user_repo = UserRepository(db)
+
+        # Default dealer user credentials
+        dealer_email = "dealer.user@example.com"
+        dealer_password = "DealerPass123"
+        dealer_full_name = "Sample Dealer User"
+        dealer_id = "12284"
+
+        # Check if dealer user already exists
+        dealer_user = user_repo.get_user_by_email(dealer_email)
+        if dealer_user:
+            logger.info("Default dealer user already exists")
+
+            # Check if user-dealer relationship exists
+            from app.repositories.user_dealer_repository import UserDealerRepository
+            user_dealer_repo = UserDealerRepository(db)
+
+            if not user_dealer_repo.exists(dealer_user.id, dealer_id):
+                # Create user-dealer relationship
+                user_dealer_repo.create(dealer_user.id, dealer_id)
+                logger.info(f"User-dealer relationship created for dealer {dealer_id}")
+            else:
+                logger.info("User-dealer relationship already exists")
+            return
+
+        # Create dealer user
+        from app.schemas.user import UserCreate
+        dealer_data = UserCreate(
+            email=dealer_email,
+            password=dealer_password,
+            full_name=dealer_full_name,
+            role=UserRole.DEALER_USER,
+            is_active=True
+        )
+
+        dealer_user = user_repo.create_user(dealer_data)
+        logger.info(f"Default dealer user created: {dealer_user.email}")
+
+        # Create user-dealer relationship
+        from app.repositories.user_dealer_repository import UserDealerRepository
+        user_dealer_repo = UserDealerRepository(db)
+        user_dealer_repo.create(dealer_user.id, dealer_id)
+        logger.info(f"User-dealer relationship created for dealer {dealer_id}")
+
+    except Exception as e:
+        logger.error(f"Failed to create default dealer user: {str(e)}")
     finally:
         db.close()
 

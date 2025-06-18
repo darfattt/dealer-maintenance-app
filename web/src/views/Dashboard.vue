@@ -11,7 +11,7 @@ import UnitInboundStatusWidget from '@/components/dashboard/UnitInboundStatusWid
     <div class="grid grid-cols-12 gap-8">
         <StatsWidget />
 
-        <div class="col-span-12 xl:col-span-6">
+      <!--  <div class="col-span-12 xl:col-span-6">
             <RecentSalesWidget />
             <BestSellingWidget />
         </div>
@@ -19,7 +19,7 @@ import UnitInboundStatusWidget from '@/components/dashboard/UnitInboundStatusWid
             <RevenueStreamWidget />
             <NotificationsWidget />
         </div>
-
+-->
         <!-- Unit Inbound Status Chart -->
         <div class="col-span-12">
             <UnitInboundStatusWidget />

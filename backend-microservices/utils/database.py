@@ -76,6 +76,31 @@ def create_tables(schema_name: str = None, base_metadata=None) -> None:
         raise
 
 
+def create_tables_safe(schema_name: str = None, base_metadata=None) -> None:
+    """
+    Create all tables for the specified schema safely (with checkfirst=True)
+
+    Args:
+        schema_name: Database schema name
+        base_metadata: SQLAlchemy Base metadata to use for table creation
+    """
+    try:
+        if schema_name:
+            # Set search path for schema
+            with engine.connect() as conn:
+                conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+                conn.execute(text(f"SET search_path TO {schema_name}, public"))
+                conn.commit()
+
+        # Use provided metadata or default Base
+        metadata = base_metadata if base_metadata is not None else Base.metadata
+        metadata.create_all(bind=engine, checkfirst=True)
+        logger.info(f"Tables created safely for schema: {schema_name or 'default'}")
+    except Exception as e:
+        logger.error(f"Failed to create tables safely: {str(e)}")
+        raise
+
+
 def drop_tables(schema_name: str = None) -> None:
     """
     Drop all tables for the specified schema
@@ -121,6 +146,10 @@ class DatabaseManager:
     def create_schema_tables(self, base_metadata=None) -> None:
         """Create tables for this schema"""
         create_tables(self.schema_name, base_metadata)
+
+    def create_schema_tables_safe(self, base_metadata=None) -> None:
+        """Create tables for this schema safely (with checkfirst=True)"""
+        create_tables_safe(self.schema_name, base_metadata)
     
     def drop_schema_tables(self) -> None:
         """Drop tables for this schema"""

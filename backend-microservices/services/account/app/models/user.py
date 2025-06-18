@@ -5,7 +5,7 @@ User model for account service
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -126,16 +126,21 @@ class UserDealer(Base):
     """User-Dealer relationship model for DEALER_USER role"""
 
     __tablename__ = "users_dealer"
-    __table_args__ = {"schema": "account"}
+    __table_args__ = (
+        Index('ix_users_dealer_id', 'id'),
+        Index('ix_users_dealer_user_id', 'user_id'),
+        Index('ix_users_dealer_dealer_id', 'dealer_id'),
+        {"schema": "account"}
+    )
 
     # Primary key
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # Foreign key to user
-    user_id = Column(UUID(as_uuid=True), ForeignKey("account.users.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("account.users.id"), nullable=False)
 
     # Dealer ID (stored as string, not a foreign key to maintain loose coupling)
-    dealer_id = Column(String(10), nullable=False, index=True)
+    dealer_id = Column(String(10), nullable=False)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
