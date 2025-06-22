@@ -151,10 +151,19 @@ const fetchUnitInboundStatus = async () => {
                 ]
             };
 
-            // Chart options
+            // Chart options for vertical bar chart
             chartOptions.value = {
                 responsive: true,
                 maintainAspectRatio: false,
+                indexAxis: 'x', // This makes it a vertical bar chart
+                layout: {
+                    padding: {
+                        top: 20,
+                        bottom: 20,
+                        left: 10,
+                        right: 10
+                    }
+                },
                 plugins: {
                     legend: {
                         display: false // Hide default legend since we're using custom legend
@@ -163,11 +172,42 @@ const fetchUnitInboundStatus = async () => {
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
-                                const value = context.parsed;
+                                const value = context.parsed.y;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = ((value / total) * 100).toFixed(1);
                                 return `${label}: ${value} unit (${percentage}%)`;
                             }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 11
+                            },
+                            maxRotation: 45,
+                            minRotation: 0,
+                            padding: 5
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 11
+                            },
+                            stepSize: 1,
+                            padding: 5
                         }
                     }
                 }
@@ -218,45 +258,47 @@ onMounted(async () => {
             </Message>
 
             <!-- Chart and Legend Container -->
-            <div v-if="!error && Object.keys(chartData).length > 0" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Pie Chart -->
-                <div class="lg:col-span-2 h-96">
-                    <Chart
-                        type="pie"
-                        :data="chartData"
-                        :options="chartOptions"
-                        class="h-full"
-                    />
+            <div v-if="!error && Object.keys(chartData).length > 0" class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <!-- Vertical Bar Chart -->
+                <div class="lg:col-span-3">
+                    <div class="h-80 p-2">
+                        <Chart
+                            type="bar"
+                            :data="chartData"
+                            :options="chartOptions"
+                            class="h-full w-full"
+                        />
+                    </div>
                 </div>
 
                 <!-- Custom Legend -->
-                <div class="lg:col-span-1 flex flex-col justify-center">
-                    <h4 class="text-lg font-semibold mb-4 text-center text-surface-700">Status Distribution</h4>
-                    <div class="space-y-3">
+                <div class="lg:col-span-2 flex flex-col justify-center">
+                    <h4 class="text-sm font-semibold mb-3 text-center text-surface-700">Status Distribution</h4>
+                    <div class="space-y-2">
                         <div
                             v-for="(item, index) in legendItems"
                             :key="index"
-                            class="flex items-center justify-between p-4 rounded-lg border border-surface-200 hover:bg-surface-50 transition-all duration-200 hover:shadow-md"
+                            class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-all duration-200 hover:shadow-sm"
                         >
-                            <div class="flex items-center space-x-3">
+                            <div class="flex items-center space-x-2">
                                 <div
-                                    class="w-5 h-5 rounded-full flex-shrink-0 shadow-sm"
+                                    class="w-4 h-4 rounded-full flex-shrink-0 shadow-sm"
                                     :style="{ backgroundColor: item.color }"
                                 ></div>
-                                <span class="font-medium text-sm text-surface-700">{{ item.label }}</span>
+                                <span class="font-medium text-xs text-surface-700 truncate">{{ item.label }}</span>
                             </div>
-                            <div class="text-right">
-                                <div class="font-bold text-lg text-surface-800">{{ item.count }}</div>
+                            <div class="text-right ml-2">
+                                <div class="font-bold text-sm text-surface-800">{{ item.count }}</div>
                                 <div class="text-xs text-surface-500 font-medium">{{ item.percentage }}%</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Total Summary -->
-                    <div class="mt-4 p-3 bg-primary-50 rounded-lg border border-primary-200">
+                    <div class="mt-3 p-2 bg-primary-50 rounded-lg border border-primary-200">
                         <div class="flex justify-between items-center">
-                            <span class="font-semibold text-primary-700">Total Units</span>
-                            <span class="font-bold text-xl text-primary-700">{{ totalRecords }}</span>
+                            <span class="font-semibold text-xs text-primary-700">Total Units</span>
+                            <span class="font-bold text-lg text-primary-700">{{ totalRecords }}</span>
                         </div>
                     </div>
                 </div>
@@ -264,7 +306,7 @@ onMounted(async () => {
 
             <!-- No Data State -->
             <div v-else-if="!loading && !error" class="text-center py-8">
-                <i class="pi pi-chart-pie text-4xl text-muted-color mb-4"></i>
+                <i class="pi pi-chart-bar text-4xl text-muted-color mb-4"></i>
                 <p class="text-muted-color">No data available for the selected criteria</p>
             </div>
 
@@ -278,7 +320,26 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.h-96 {
-    height: 24rem;
+.h-80 {
+    height: 20rem;
+}
+
+/* Ensure chart container doesn't overflow */
+:deep(.p-chart) {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Responsive text sizing */
+@media (max-width: 1024px) {
+    .h-80 {
+        height: 16rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .h-80 {
+        height: 14rem;
+    }
 }
 </style>

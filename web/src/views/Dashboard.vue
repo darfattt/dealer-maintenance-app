@@ -9,6 +9,12 @@ import DocumentHandlingWidget from '@/components/dashboard/DocumentHandlingWidge
 import StatusProspectWidget from '@/components/dashboard/StatusProspectWidget.vue';
 import TopLeasingWidget from '@/components/dashboard/TopLeasingWidget.vue';
 import DeliveryProcessWidget from '@/components/dashboard/DeliveryProcessWidget.vue';
+// New prospect-related widgets
+import StatusProspectBarWidget from '@/components/dashboard/StatusProspectBarWidget.vue';
+import MetodeFollowUpWidget from '@/components/dashboard/MetodeFollowUpWidget.vue';
+import SumberProspectWidget from '@/components/dashboard/SumberProspectWidget.vue';
+import DataHistoryWidget from '@/components/dashboard/DataHistoryWidget.vue';
+import SebaranDataWidget from '@/components/dashboard/SebaranDataMapWidget.vue';
 import { useAuthStore } from '@/stores/auth';
 
 // Auth store
@@ -141,6 +147,52 @@ const formattedDateTo = computed(() => {
 
             <div class="lg:col-span-1">
                 <DeliveryProcessWidget
+                    :dealerId="selectedDealer"
+                    :dateFrom="formattedDateFrom"
+                    :dateTo="formattedDateTo"
+                />
+            </div>
+        </div>
+
+        <!-- Row 3: New Prospect Analysis Widgets -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1">
+                <StatusProspectBarWidget
+                    :dealerId="selectedDealer"
+                    :dateFrom="formattedDateFrom"
+                    :dateTo="formattedDateTo"
+                />
+            </div>
+
+            <div class="lg:col-span-1">
+                <MetodeFollowUpWidget
+                    :dealerId="selectedDealer"
+                    :dateFrom="formattedDateFrom"
+                    :dateTo="formattedDateTo"
+                />
+            </div>
+
+            <div class="lg:col-span-1">
+                <SumberProspectWidget
+                    :dealerId="selectedDealer"
+                    :dateFrom="formattedDateFrom"
+                    :dateTo="formattedDateTo"
+                />
+            </div>
+        </div>
+
+        <!-- Row 4: Data History and Map -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="lg:col-span-1">
+                <DataHistoryWidget
+                    :dealerId="selectedDealer"
+                    :dateFrom="formattedDateFrom"
+                    :dateTo="formattedDateTo"
+                />
+            </div>
+
+            <div class="lg:col-span-1">
+                <SebaranDataWidget
                     :dealerId="selectedDealer"
                     :dateFrom="formattedDateFrom"
                     :dateTo="formattedDateTo"
