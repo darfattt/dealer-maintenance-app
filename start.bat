@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo ========================================
-echo   🚀 Dealer Dashboard Split Architecture
+echo   🚀 Dealer Dashboard Full Stack Platform
 echo ========================================
 echo.
 
@@ -20,14 +20,20 @@ REM Create logs directory
 if not exist logs mkdir logs
 
 echo 🔨 Building and starting services...
+echo   📦 Database & Cache (PostgreSQL, Redis)
+echo   🔧 Backend Services (FastAPI, Celery)
+echo   🌐 Microservices (Account, API Gateway, Dashboard)
+echo   🎨 Frontend (Vue.js Web App)
+echo   📊 Analytics (Streamlit Dashboards)
+echo   📈 Monitoring (Prometheus, Grafana)
 echo.
 
-REM Start with main compose file (split architecture)
+REM Start with main compose file (full architecture)
 docker-compose up -d --build
 
 echo.
 echo ⏳ Waiting for services to start...
-timeout /t 15 /nobreak >nul
+timeout /t 30 /nobreak >nul
 
 echo.
 echo 🔍 Checking service status...
@@ -48,46 +54,90 @@ if %errorlevel% equ 0 (
     echo ❌ Redis is not ready
 )
 
-echo.
-echo 🎉 Dealer Dashboard Split Architecture is starting up!
-echo.
-echo 📊 Analytics Dashboard: http://localhost:8501
-echo ⚙️ Admin Panel: http://localhost:8502
-echo 🔧 API Docs: http://localhost:8000/docs
-echo 📈 API Health: http://localhost:8000/health
-echo.
-echo 📋 Usage Instructions:
-echo   1. Analytics: Open http://localhost:8501 for charts and metrics
-echo   2. Admin: Open http://localhost:8502 for dealer management
-echo   3. Use Admin Panel to add dealers and run jobs
-echo   4. View Analytics Dashboard for real-time data visualization
-echo   5. Both services work independently
-echo.
-echo 📋 To view logs: docker-compose logs -f [service_name]
-echo 🛑 To stop: docker-compose down
-echo.
+REM Check API Gateway
+curl -f http://localhost:8080/health >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✅ API Gateway is ready
+) else (
+    echo ❌ API Gateway is not ready
+)
 
-REM Wait a bit more and then test
-echo ⏳ Testing application...
-timeout /t 10 /nobreak >nul
-
-REM Try to test the application
-python tests\test_app.py 2>nul
-if %errorlevel% neq 0 (
-    echo.
-    echo ⚠️  Python test script failed. You can still access the dashboard manually.
-    echo    Dashboard: http://localhost:8501
+REM Check Web App
+curl -f http://localhost:5000 >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✅ Web Application is ready
+) else (
+    echo ❌ Web Application is not ready
 )
 
 echo.
-echo 🚀 Split Architecture is ready! Press any key to open dashboards...
-pause >nul
+echo 🎉 Dealer Dashboard Full Stack Platform is ready!
+echo.
+echo 🌐 MAIN APPLICATIONS:
+echo   🎨 Web Dashboard: http://localhost:5000
+echo   📊 Analytics Dashboard: http://localhost:8501
+echo   ⚙️ Admin Panel: http://localhost:8502
+echo.
+echo 🔧 API SERVICES:
+echo   🚪 API Gateway: http://localhost:8080
+echo   🔐 Account Service: http://localhost:8100
+echo   📈 Dashboard Service: http://localhost:8200
+echo   🔧 Backend API: http://localhost:8000/docs
+echo.
+echo 📈 MONITORING:
+echo   📊 Grafana: http://localhost:3000 (admin/admin)
+echo   📈 Prometheus: http://localhost:9090
+echo.
+echo 📋 QUICK START:
+echo   1. 🎨 Main App: http://localhost:5000 (Vue.js Dashboard)
+echo   2. 📊 Analytics: http://localhost:8501 (Streamlit Charts)
+echo   3. ⚙️ Admin: http://localhost:8502 (Management Panel)
+echo   4. 📈 Monitoring: http://localhost:3000 (Grafana)
+echo.
+echo 📋 MANAGEMENT:
+echo   📋 View logs: docker-compose logs -f [service_name]
+echo   🛑 Stop all: docker-compose down
+echo   🔄 Restart: docker-compose restart [service_name]
+echo.
 
-REM Try to open both dashboards
-start http://localhost:8501
-timeout /t 2 /nobreak >nul
-start http://localhost:8502
+REM Wait a bit more and then test
+echo ⏳ Final health checks...
+timeout /t 10 /nobreak >nul
+
+REM Try to test the main application
+curl -f http://localhost:5000 >nul 2>&1
+if %errorlevel% neq 0 (
+    echo.
+    echo ⚠️  Web application may still be starting. You can access it manually.
+    echo    Main App: http://localhost:5000
+)
 
 echo.
-echo Application is running. Press any key to exit...
+echo 🚀 Full Stack Platform is ready! Press any key to open applications...
+pause >nul
+
+REM Open main applications
+echo 🌐 Opening Web Dashboard...
+start http://localhost:5000
+timeout /t 2 /nobreak >nul
+
+echo 📊 Opening Analytics Dashboard...
+start http://localhost:8501
+timeout /t 2 /nobreak >nul
+
+echo ⚙️ Opening Admin Panel...
+start http://localhost:8502
+timeout /t 2 /nobreak >nul
+
+echo 📈 Opening Grafana Monitoring...
+start http://localhost:3000
+
+echo.
+echo 🎉 All applications are now open in your browser!
+echo.
+echo 💡 TIP: Use Ctrl+C to view logs in real-time:
+echo    docker-compose logs -f web_app
+echo    docker-compose logs -f api_gateway
+echo.
+echo Press any key to exit this script (services will continue running)...
 pause >nul
