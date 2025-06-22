@@ -27,9 +27,12 @@ const loading = ref(false);
 const error = ref('');
 const totalRecords = ref(0);
 
-// Chart colors
+// Chart colors matching the image
 const chartColors = [
-    '#FF6B9D', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'
+    '#E91E63', // Pink for SMS (WA/LINE)
+    '#FFC107', // Yellow for Call
+    '#2196F3', // Blue for Visit
+    '#4CAF50'  // Green for Direct Touch
 ];
 
 // Computed property for legend items
@@ -44,13 +47,13 @@ const legendItems = computed(() => {
     return labels.map((label, index) => ({
         label: label,
         count: values[index] || 0,
-        percentage: total > 0 ? ((values[index] / total) * 100).toFixed(1) : '0.0',
+        percentage: total > 0 ? ((values[index] / total) * 100).toFixed(0) : '0',
         color: colors[index] || '#ccc'
     }));
 });
 
 // Methods
-const fetchStatusSPKData = async () => {
+const fetchMetodeFollowUpData = async () => {
     if (!props.dealerId || !props.dateFrom || !props.dateTo) {
         error.value = 'Missing required parameters';
         return;
@@ -60,17 +63,17 @@ const fetchStatusSPKData = async () => {
     error.value = '';
 
     try {
-        // Dummy data for now
+        // Dummy data matching the image
         const dummyData = [
-            { status: 'Open', count: 45 },
-            { status: 'Indent', count: 28 },
-            { status: 'Complete', count: 15 },
-            { status: 'Cancelled', count: 12 }
+            { method: 'SMS (WA/LINE)', count: 25, percentage: 25 },
+            { method: 'Call', count: 19, percentage: 19 },
+            { method: 'Visit', count: 11, percentage: 11 },
+            { method: 'Direct Touch', count: 45, percentage: 45 }
         ];
 
         totalRecords.value = dummyData.reduce((sum, item) => sum + item.count, 0);
 
-        const labels = dummyData.map(item => item.status);
+        const labels = dummyData.map(item => item.method);
         const values = dummyData.map(item => item.count);
         const colors = chartColors.slice(0, dummyData.length);
 
@@ -86,18 +89,10 @@ const fetchStatusSPKData = async () => {
             ]
         };
 
-        // Chart options
+        // Chart options for pie chart
         chartOptions.value = {
             responsive: true,
             maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    top: 20,
-                    bottom: 20,
-                    left: 20,
-                    right: 20
-                }
-            },
             plugins: {
                 legend: {
                     display: false
@@ -109,15 +104,15 @@ const fetchStatusSPKData = async () => {
                             const value = context.parsed;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
                             const percentage = ((value / total) * 100).toFixed(1);
-                            return `${label}: ${value} SPK (${percentage}%)`;
+                            return `${label}: ${value} (${percentage}%)`;
                         }
                     }
                 }
             }
         };
     } catch (err) {
-        console.error('Error fetching SPK status:', err);
-        error.value = 'Failed to fetch SPK status data';
+        console.error('Error fetching follow-up method data:', err);
+        error.value = 'Failed to fetch follow-up method data';
     } finally {
         loading.value = false;
     }
@@ -125,12 +120,12 @@ const fetchStatusSPKData = async () => {
 
 // Watch for prop changes
 watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchStatusSPKData();
+    fetchMetodeFollowUpData();
 }, { deep: true });
 
 // Lifecycle
 onMounted(() => {
-    fetchStatusSPKData();
+    fetchMetodeFollowUpData();
 });
 </script>
 
@@ -138,7 +133,7 @@ onMounted(() => {
     <Card class="h-full">
         <template #title>
             <div class="flex justify-between items-center">
-                <span>Status SPK</span>
+                <span class="text-sm font-bold uppercase">METODE FOLLOW UP</span>
                 <small v-if="totalRecords > 0" class="text-muted-color">
                     Total: {{ totalRecords }}
                 </small>
@@ -152,46 +147,35 @@ onMounted(() => {
             </Message>
 
             <!-- Chart and Legend Container -->
-            <div v-if="!error && Object.keys(chartData).length > 0" class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div v-if="!error && Object.keys(chartData).length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <!-- Pie Chart -->
-                <div class="lg:col-span-3">
-                    <div class="h-72 p-2">
-                        <Chart
-                            type="pie"
-                            :data="chartData"
-                            :options="chartOptions"
-                            class="h-full w-full"
-                        />
-                    </div>
+                <div class="h-48">
+                    <Chart
+                        type="pie"
+                        :data="chartData"
+                        :options="chartOptions"
+                        class="h-full"
+                    />
                 </div>
 
                 <!-- Custom Legend -->
-                <div class="lg:col-span-2 flex flex-col justify-center">
+                <div class="flex flex-col justify-center">
                     <div class="space-y-2">
                         <div
                             v-for="(item, index) in legendItems"
                             :key="index"
-                            class="flex items-center justify-between p-2 rounded border border-surface-200 hover:bg-surface-50 transition-colors"
+                            class="flex items-center justify-between p-2 rounded border border-surface-200"
                         >
-                            <div class="flex items-center space-x-2 min-w-0">
+                            <div class="flex items-center space-x-2">
                                 <div
-                                    class="w-3 h-3 rounded-full flex-shrink-0"
+                                    class="w-3 h-3 rounded-full"
                                     :style="{ backgroundColor: item.color }"
                                 ></div>
-                                <span class="text-xs font-medium truncate">{{ item.label }}</span>
+                                <span class="text-xs font-medium">{{ item.label }}</span>
                             </div>
-                            <div class="text-right ml-2 flex-shrink-0">
-                                <div class="font-bold text-sm">{{ item.count }}</div>
-                                <div class="text-xs text-muted-color">{{ item.percentage }}%</div>
+                            <div class="text-right">
+                                <div class="font-bold text-sm">{{ item.percentage }}%</div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Total Summary -->
-                    <div class="mt-3 p-2 bg-primary-50 rounded-lg border border-primary-200">
-                        <div class="flex justify-between items-center">
-                            <span class="font-semibold text-xs text-primary-700">Total</span>
-                            <span class="font-bold text-lg text-primary-700">{{ totalRecords }}</span>
                         </div>
                     </div>
                 </div>
@@ -207,26 +191,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.h-72 {
-    height: 18rem;
-}
-
-/* Ensure chart container doesn't overflow */
-:deep(.p-chart) {
-    position: relative;
-    overflow: hidden;
-}
-
-/* Responsive text sizing */
-@media (max-width: 1024px) {
-    .h-72 {
-        height: 16rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .h-72 {
-        height: 14rem;
-    }
+.h-48 {
+    height: 12rem;
 }
 </style>
