@@ -432,3 +432,46 @@ If migrating from the original single dashboard:
 ✅ **Reliability**: Service failures don't affect other services  
 
 This split architecture provides a robust, scalable foundation for the Dealer Dashboard system while maintaining the simplicity of the original design.
+
+## 🚀 Production Deployment
+
+### Quick Production Deployment
+```bash
+# 1. Build production images
+./build-production.sh v1.0.0        # Linux/macOS
+build-production.bat v1.0.0         # Windows
+
+# 2. Deploy to AWS
+./deploy-aws.sh ec2
+
+# 3. Access your application
+# URLs will be provided after deployment
+```
+
+### Manual Server Deployment
+```bash
+# 1. Copy files to server
+scp -r . user@your-server:/path/to/app
+
+# 2. Start production services
+./start-production.sh
+
+# 3. Configure domain and SSL
+# Update DNS and certificates
+```
+
+### Production Features
+- ✅ **Multi-stage Docker builds** for optimized images
+- ✅ **AWS automated deployment** with infrastructure setup
+- ✅ **Production environment** configuration
+- ✅ **Health checks** and monitoring
+- ✅ **SSL/TLS support** with Let's Encrypt
+- ✅ **Database backups** and log rotation
+- ✅ **Service management** scripts
+
+## 📚 Documentation
+
+- **[Production Deployment](README-DEPLOYMENT.md)** - Complete deployment guide
+- **[AWS Deployment](DEPLOYMENT-AWS.md)** - AWS-specific instructions
+- **[Startup Scripts](README-STARTUP.md)** - Development startup guide
+- **[Environment Configuration](.env.production)** - Production settings template
