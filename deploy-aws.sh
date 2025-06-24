@@ -22,8 +22,11 @@ DEPLOYMENT_TYPE=${1:-"ec2"}  # ec2, ecs, or fargate
 AWS_REGION=${AWS_REGION:-"us-east-1"}
 KEY_PAIR_NAME=${KEY_PAIR_NAME:-"dealer-dashboard-key"}
 SECURITY_GROUP_NAME=${SECURITY_GROUP_NAME:-"dealer-dashboard-sg"}
-INSTANCE_TYPE=${INSTANCE_TYPE:-"t3.large"}
+INSTANCE_TYPE=${INSTANCE_TYPE:-"t2.small"}
 DOMAIN_NAME=${DOMAIN_NAME:-""}
+SUBNET_ID=${SUBNET_ID:-"subnet-0bd15660208331a25"}
+VPC_ID=${VPC_ID:-"vpc-089407ad94cbeac85"}
+AMI_ID=${AMI_ID:-"ami-020cba7c55df1f615"}
 
 echo ""
 echo -e "${BLUE}========================================"
@@ -56,8 +59,15 @@ create_security_group() {
     echo -e "${YELLOW}🔒 Creating security group...${NC}"
     
     # Check if security group exists
-    if aws ec2 describe-security-groups --group-names "$SECURITY_GROUP_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
-        echo -e "${YELLOW}⚠️ Security group already exists${NC}"
+    EXISTING_SG=$(aws ec2 describe-security-groups \
+        --filters "Name=group-name,Values=$SECURITY_GROUP_NAME" "Name=vpc-id,Values=$VPC_ID" \
+        --region "$AWS_REGION" \
+        --query 'SecurityGroups[0].GroupId' \
+        --output text 2>/dev/null)
+    
+    if [ "$EXISTING_SG" != "None" ] && [ -n "$EXISTING_SG" ]; then
+        echo -e "${YELLOW}⚠️ Security group already exists: ${EXISTING_SG}${NC}"
+        SECURITY_GROUP_ID="$EXISTING_SG"
         return
     fi
     
@@ -65,6 +75,7 @@ create_security_group() {
     SECURITY_GROUP_ID=$(aws ec2 create-security-group \
         --group-name "$SECURITY_GROUP_NAME" \
         --description "Security group for Dealer Dashboard" \
+        --vpc-id "$VPC_ID" \
         --region "$AWS_REGION" \
         --query 'GroupId' \
         --output text)
@@ -128,14 +139,6 @@ create_key_pair() {
 deploy_ec2() {
     echo -e "${BLUE}🖥️ Deploying to EC2...${NC}"
     
-    # Get latest Amazon Linux 2 AMI
-    AMI_ID=$(aws ec2 describe-images \
-        --owners amazon \
-        --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" \
-        --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
-        --output text \
-        --region "$AWS_REGION")
-    
     echo -e "${YELLOW}📀 Using AMI: ${AMI_ID}${NC}"
     
     # Create user data script
@@ -181,7 +184,8 @@ EOF
         --count 1 \
         --instance-type "$INSTANCE_TYPE" \
         --key-name "$KEY_PAIR_NAME" \
-        --security-groups "$SECURITY_GROUP_NAME" \
+        --subnet-id "$SUBNET_ID" \
+        --security-group-ids "$SECURITY_GROUP_ID" \
         --user-data file://user-data.sh \
         --region "$AWS_REGION" \
         --query 'Instances[0].InstanceId' \
