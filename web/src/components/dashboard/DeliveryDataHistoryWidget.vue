@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -7,7 +7,7 @@ import Paginator from 'primevue/paginator';
 import Message from 'primevue/message';
 import Button from 'primevue/button';
 
-// Props from parent dashboard
+// Props from parent
 const props = defineProps({
     dealerId: {
         type: String,
@@ -26,13 +26,13 @@ const props = defineProps({
 // Reactive data
 const loading = ref(false);
 const error = ref('');
-const spkData = ref([]);
+const deliveryData = ref([]);
 const totalRecords = ref(0);
 const first = ref(0);
 const rows = ref(10);
 
 // Methods
-const fetchDataHistory = async () => {
+const fetchDeliveryDataHistory = async () => {
     if (!props.dealerId || !props.dateFrom || !props.dateTo) {
         error.value = 'Missing required parameters';
         return;
@@ -42,61 +42,76 @@ const fetchDataHistory = async () => {
     error.value = '';
 
     try {
-        // Dummy data matching the SPK dealing process table structure from the image
+        // Dummy data matching the table structure from the image
         const dummyData = [
             {
                 no: 1,
+                idDeliveryDoc: 'DD001',
+                tglPengiriman: '2024-01-15',
+                statusPengiriman: 'Completed',
+                namaDriver: 'Muhammad Naufal',
                 idSpk: 'SPK001',
-                namaCustomer: 'John Doe',
-                alamat: 'Jl. Sudirman No. 123, Jakarta',
-                noHp: '081234567890',
-                email: 'john.doe@email.com',
-                namaBpkb: 'John Doe'
+                namaPenerima: 'John Doe',
+                noHpPenerima: '081234567890',
+                alamatPenerima: 'Jl. Sudirman No. 123, Jakarta',
+                estimasiPengiriman: '2024-01-16'
             },
             {
                 no: 2,
+                idDeliveryDoc: 'DD002',
+                tglPengiriman: '2024-01-16',
+                statusPengiriman: 'In Progress',
+                namaDriver: 'Anton Rahmad',
                 idSpk: 'SPK002',
-                namaCustomer: 'Jane Smith',
-                alamat: 'Jl. Thamrin No. 456, Jakarta',
-                noHp: '081234567891',
-                email: 'jane.smith@email.com',
-                namaBpkb: 'Jane Smith'
+                namaPenerima: 'Jane Smith',
+                noHpPenerima: '081234567891',
+                alamatPenerima: 'Jl. Thamrin No. 456, Jakarta',
+                estimasiPengiriman: '2024-01-17'
             },
             {
                 no: 3,
+                idDeliveryDoc: 'DD003',
+                tglPengiriman: '2024-01-17',
+                statusPengiriman: 'Ready',
+                namaDriver: 'Valentio Nurul',
                 idSpk: 'SPK003',
-                namaCustomer: 'Bob Johnson',
-                alamat: 'Jl. Gatot Subroto No. 789, Jakarta',
-                noHp: '081234567892',
-                email: 'bob.johnson@email.com',
-                namaBpkb: 'Bob Johnson'
+                namaPenerima: 'Bob Johnson',
+                noHpPenerima: '081234567892',
+                alamatPenerima: 'Jl. Gatot Subroto No. 789, Jakarta',
+                estimasiPengiriman: '2024-01-18'
             },
             {
                 no: 4,
+                idDeliveryDoc: 'DD004',
+                tglPengiriman: '2024-01-18',
+                statusPengiriman: 'Back to Dealer',
+                namaDriver: 'Ahmad Rizki',
                 idSpk: 'SPK004',
-                namaCustomer: 'Alice Brown',
-                alamat: 'Jl. Kuningan No. 321, Jakarta',
-                noHp: '081234567893',
-                email: 'alice.brown@email.com',
-                namaBpkb: 'Alice Brown'
+                namaPenerima: 'Alice Brown',
+                noHpPenerima: '081234567893',
+                alamatPenerima: 'Jl. Kuningan No. 321, Jakarta',
+                estimasiPengiriman: '2024-01-19'
             },
             {
                 no: 5,
+                idDeliveryDoc: 'DD005',
+                tglPengiriman: '2024-01-19',
+                statusPengiriman: 'Completed',
+                namaDriver: 'Budi Santoso',
                 idSpk: 'SPK005',
-                namaCustomer: 'Charlie Wilson',
-                alamat: 'Jl. Senayan No. 654, Jakarta',
-                noHp: '081234567894',
-                email: 'charlie.wilson@email.com',
-                namaBpkb: 'Charlie Wilson'
+                namaPenerima: 'Charlie Wilson',
+                noHpPenerima: '081234567894',
+                alamatPenerima: 'Jl. Senayan No. 654, Jakarta',
+                estimasiPengiriman: '2024-01-20'
             }
         ];
 
-        spkData.value = dummyData;
+        deliveryData.value = dummyData;
         totalRecords.value = dummyData.length;
 
     } catch (err) {
-        console.error('Error fetching data history:', err);
-        error.value = 'Failed to fetch data history';
+        console.error('Error fetching delivery data history:', err);
+        error.value = 'Failed to fetch delivery data history';
     } finally {
         loading.value = false;
     }
@@ -108,16 +123,30 @@ const onPageChange = (event) => {
     rows.value = event.rows;
 };
 
-// Remove status badge styling as it's not needed for SPK data
+// Status badge styling
+const getStatusSeverity = (status) => {
+    switch (status) {
+        case 'Completed':
+            return 'success';
+        case 'In Progress':
+            return 'info';
+        case 'Ready':
+            return 'warning';
+        case 'Back to Dealer':
+            return 'danger';
+        default:
+            return 'secondary';
+    }
+};
 
 // Watch for prop changes
 watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchDataHistory();
+    fetchDeliveryDataHistory();
 }, { deep: true });
 
 // Lifecycle
 onMounted(() => {
-    fetchDataHistory();
+    fetchDeliveryDataHistory();
 });
 </script>
 
@@ -154,7 +183,7 @@ onMounted(() => {
             <!-- Data Table -->
             <div v-if="!error" class="space-y-4">
                 <DataTable
-                    :value="spkData"
+                    :value="deliveryData"
                     :loading="loading"
                     :paginator="false"
                     :rows="rows"
@@ -168,24 +197,35 @@ onMounted(() => {
                             {{ first + index + 1 }}
                         </template>
                     </Column>
+                    <Column field="idDeliveryDoc" header="ID Delivery Doc" style="width: 120px"></Column>
+                    <Column field="tglPengiriman" header="Tgl Pengiriman" style="width: 100px"></Column>
+                    <Column field="statusPengiriman" header="Status Pengiriman" style="width: 120px">
+                        <template #body="{ data }">
+                            <span 
+                                class="px-2 py-1 rounded-full text-xs font-medium"
+                                :class="{
+                                    'bg-green-100 text-green-800': data.statusPengiriman === 'Completed',
+                                    'bg-blue-100 text-blue-800': data.statusPengiriman === 'In Progress',
+                                    'bg-yellow-100 text-yellow-800': data.statusPengiriman === 'Ready',
+                                    'bg-red-100 text-red-800': data.statusPengiriman === 'Back to Dealer'
+                                }"
+                            >
+                                {{ data.statusPengiriman }}
+                            </span>
+                        </template>
+                    </Column>
+                    <Column field="namaDriver" header="Nama Driver" style="min-width: 120px"></Column>
                     <Column field="idSpk" header="ID SPK" style="width: 100px"></Column>
-                    <Column field="namaCustomer" header="Nama Customer" style="min-width: 150px"></Column>
-                    <Column field="alamat" header="Alamat" style="min-width: 200px">
+                    <Column field="namaPenerima" header="Nama Penerima" style="min-width: 120px"></Column>
+                    <Column field="noHpPenerima" header="No Hp Penerima" style="width: 120px"></Column>
+                    <Column field="alamatPenerima" header="Alamat Penerima" style="min-width: 200px">
                         <template #body="{ data }">
-                            <div class="truncate max-w-xs" :title="data.alamat">
-                                {{ data.alamat }}
+                            <div class="truncate max-w-xs" :title="data.alamatPenerima">
+                                {{ data.alamatPenerima }}
                             </div>
                         </template>
                     </Column>
-                    <Column field="noHp" header="No Hp" style="width: 120px"></Column>
-                    <Column field="email" header="Email" style="min-width: 150px">
-                        <template #body="{ data }">
-                            <div class="truncate max-w-xs" :title="data.email">
-                                {{ data.email }}
-                            </div>
-                        </template>
-                    </Column>
-                    <Column field="namaBpkb" header="Nama BPKB" style="min-width: 150px"></Column>
+                    <Column field="estimasiPengiriman" header="Estimasi Pengiriman" style="width: 120px"></Column>
                 </DataTable>
 
                 <!-- Custom Pagination -->

@@ -17,6 +17,10 @@ const props = defineProps({
     dateTo: {
         type: String,
         required: true
+    },
+    showTitle: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -136,16 +140,17 @@ onMounted(() => {
 
 <template>
     <Card class="h-full">
-        <template #title>
-            <div class="flex justify-between items-center">
-                <span>Status SPK</span>
-                <small v-if="totalRecords > 0" class="text-muted-color">
+        <template #title v-if="showTitle">
+            <span class="text-lg font-bold text-gray-800 uppercase tracking-wide">STATUS SPK</span>
+        </template>
+
+        <template #content>
+            <!-- Total Records Info -->
+            <div v-if="totalRecords > 0" class="flex justify-end mb-4">
+                <small class="text-muted-color">
                     Total: {{ totalRecords }}
                 </small>
             </div>
-        </template>
-        
-        <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}

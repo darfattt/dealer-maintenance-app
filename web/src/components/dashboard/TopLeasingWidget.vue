@@ -89,10 +89,6 @@ onMounted(() => {
 
 <template>
     <Card class="h-full">
-        <template #title>
-            <span>Top 5 Leasing</span>
-        </template>
-        
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">

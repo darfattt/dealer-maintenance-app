@@ -16,6 +16,10 @@ const props = defineProps({
     dateTo: {
         type: String,
         required: true
+    },
+    showTitle: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -97,7 +101,7 @@ onMounted(() => {
 
 <template>
     <Card class="h-full">
-        <template #title>
+        <template #title v-if="showTitle">
             <div class="flex items-center">
                 <span class="text-lg font-bold text-gray-800 uppercase tracking-wide">DELIVERY PROCESS</span>
             </div>

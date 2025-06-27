@@ -242,15 +242,6 @@ onMounted(async () => {
 
 <template>
     <Card class="h-full">
-        <template #title>
-            <div class="flex justify-between items-center">
-                <span>Unit Inbound Status Distribution</span>
-                <small v-if="totalRecords > 0" class="text-muted-color">
-                    Total Records: {{ totalRecords }}
-                </small>
-            </div>
-        </template>
-        
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">

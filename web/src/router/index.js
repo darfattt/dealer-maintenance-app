@@ -13,6 +13,21 @@ const router = createRouter({
                     path: '/',
                     name: 'dashboard',
                     component: () => import('@/views/Dashboard.vue')
+                },
+                {
+                    path: '/prospecting-activity',
+                    name: 'prospecting-activity',
+                    component: () => import('@/views/ProspectingActivity.vue')
+                },
+                {
+                    path: '/dealing-process',
+                    name: 'dealing-process',
+                    component: () => import('@/views/DealingProcess.vue')
+                },
+                {
+                    path: '/delivery-process-detail',
+                    name: 'delivery-process-detail',
+                    component: () => import('@/views/DeliveryProcessDetail.vue')
                 }
             ]
         },

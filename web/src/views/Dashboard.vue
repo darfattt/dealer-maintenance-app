@@ -10,11 +10,22 @@ import StatusProspectWidget from '@/components/dashboard/StatusProspectWidget.vu
 import TopLeasingWidget from '@/components/dashboard/TopLeasingWidget.vue';
 import DeliveryProcessWidget from '@/components/dashboard/DeliveryProcessWidget.vue';
 // New prospect-related widgets
-import StatusProspectBarWidget from '@/components/dashboard/StatusProspectBarWidget.vue';
-import MetodeFollowUpWidget from '@/components/dashboard/MetodeFollowUpWidget.vue';
-import SumberProspectWidget from '@/components/dashboard/SumberProspectWidget.vue';
-import DataHistoryWidget from '@/components/dashboard/DataHistoryWidget.vue';
-import SebaranDataWidget from '@/components/dashboard/SebaranDataMapWidget.vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+const navigateToProspectingActivity = () => {
+    router.push('/prospecting-activity');
+};
+
+const navigateToDealingProcess = () => {
+    router.push('/dealing-process');
+};
+
+const navigateToDeliveryProcessDetail = () => {
+    router.push('/delivery-process-detail');
+};
+
 import { useAuthStore } from '@/stores/auth';
 
 // Auth store
@@ -91,113 +102,200 @@ const formattedDateTo = computed(() => {
             </div>
         </div>
 
-        <!-- Dashboard Widgets Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Row 1: Top 4 widgets -->
-            <div class="lg:col-span-1">
-                <UnitInboundStatusWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
+        <!-- Dashboard Main Layout: 2 Columns -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <!-- 1st Column: Sales Section -->
+            <div class="space-y-6">
+                <!-- Sales Section Header -->
+                <div class="bg-surface-0 p-4 rounded-lg border border-surface-200 shadow-sm">
+                    <h2 class="text-xl font-bold text-surface-900 uppercase tracking-wide">Sales</h2>
+                </div>
+
+                <!-- Sales Row 1: Status Prospect & Status SPK (2 columns) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <!-- Status Prospect Title -->
+                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                            <h3
+                                class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
+                                @click="navigateToProspectingActivity"
+                            >
+                                Status Prospect
+                            </h3>
+                        </div>
+                        <!-- Widget -->
+                        <div class="widget-with-title">
+                            <StatusProspectWidget
+                                :dealerId="selectedDealer"
+                                :dateFrom="formattedDateFrom"
+                                :dateTo="formattedDateTo"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <!-- Status SPK Title -->
+                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                            <h3
+                                class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
+                                @click="navigateToDealingProcess"
+                            >
+                                Status SPK
+                            </h3>
+                        </div>
+                        <!-- Widget -->
+                        <div class="widget-with-title">
+                            <StatusSPKWidget
+                                :dealerId="selectedDealer"
+                                :dateFrom="formattedDateFrom"
+                                :dateTo="formattedDateTo"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Row 2: Payment Type, Top Leasing, Document Handling (3 columns) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <!-- Payment Type Title -->
+                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
+                                Tipe Pembayaran
+                            </h3>
+                        </div>
+                        <!-- Widget -->
+                        <div class="widget-with-title">
+                            <PaymentTypeWidget
+                                :dealerId="selectedDealer"
+                                :dateFrom="formattedDateFrom"
+                                :dateTo="formattedDateTo"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <!-- Top Leasing Title -->
+                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
+                                Top 5 Leasing
+                            </h3>
+                        </div>
+                        <!-- Widget -->
+                        <div class="widget-with-title">
+                            <TopLeasingWidget
+                                :dealerId="selectedDealer"
+                                :dateFrom="formattedDateFrom"
+                                :dateTo="formattedDateTo"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <!-- Document Handling Title -->
+                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
+                                Document Handling
+                            </h3>
+                        </div>
+                        <!-- Widget -->
+                        <div class="widget-with-title">
+                            <DocumentHandlingWidget
+                                :dealerId="selectedDealer"
+                                :dateFrom="formattedDateFrom"
+                                :dateTo="formattedDateTo"
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="lg:col-span-1">
-                <StatusSPKWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
+            <!-- 2nd Column: Inventory Section -->
+            <div class="space-y-6">
+                <!-- Inventory Section Header -->
+                <div class="bg-surface-0 p-4 rounded-lg border border-surface-200 shadow-sm">
+                    <h2 class="text-xl font-bold text-surface-900 uppercase tracking-wide">Inventory</h2>
+                </div>
 
-            <div class="lg:col-span-1">
-                <PaymentTypeWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
+                <!-- Inventory Row 1: Unit Inbound Status (1 column) -->
+                <div>
+                    <!-- Data Inbound Title -->
+                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
+                            Data Inbound
+                        </h3>
+                    </div>
+                    <!-- Widget -->
+                    <div class="widget-with-title">
+                        <UnitInboundStatusWidget
+                            :dealerId="selectedDealer"
+                            :dateFrom="formattedDateFrom"
+                            :dateTo="formattedDateTo"
+                        />
+                    </div>
+                </div>
 
-            <div class="lg:col-span-1">
-                <DocumentHandlingWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
+                <!-- Inventory Row 2: Delivery Process (1 column) -->
+                <div>
+                    <!-- Delivery Process Title -->
+                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                        <h3
+                            class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
+                            @click="navigateToDeliveryProcessDetail"
+                        >
+                            Delivery Process
+                        </h3>
+                    </div>
+                    <!-- Widget -->
+                    <div class="widget-with-title">
+                        <DeliveryProcessWidget
+                            :dealerId="selectedDealer"
+                            :dateFrom="formattedDateFrom"
+                            :dateTo="formattedDateTo"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Row 2: Bottom 3 widgets -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-1">
-                <StatusProspectWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
 
-            <div class="lg:col-span-1">
-                <TopLeasingWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
-
-            <div class="lg:col-span-1">
-                <DeliveryProcessWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
-        </div>
-
-        <!-- Row 3: New Prospect Analysis Widgets -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-1">
-                <StatusProspectBarWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
-
-            <div class="lg:col-span-1">
-                <MetodeFollowUpWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
-
-            <div class="lg:col-span-1">
-                <SumberProspectWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
-        </div>
-
-        <!-- Row 4: Data History and Map -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="lg:col-span-1">
-                <DataHistoryWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
-
-            <div class="lg:col-span-1">
-                <SebaranDataWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                />
-            </div>
-        </div>
     </div>
 </template>
+
+<style scoped>
+/* Custom styles for the dashboard */
+
+/* Widget with title styling */
+.widget-with-title :deep(.p-card) {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top: none;
+}
+
+/* Section spacing */
+.space-y-6 > * + * {
+    margin-top: 1.5rem;
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 1024px) {
+    .grid.lg\:grid-cols-2 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .grid.md\:grid-cols-2 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+
+    .grid.md\:grid-cols-3 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+}
+
+/* Section headers styling */
+.bg-surface-0 {
+    background-color: var(--surface-0);
+}
+</style>
