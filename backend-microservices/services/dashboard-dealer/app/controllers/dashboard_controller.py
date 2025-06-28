@@ -14,7 +14,7 @@ if utils_path not in sys.path:
 
 from utils.logger import setup_logger
 from app.repositories.dashboard_repository import DashboardRepository
-from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem
+from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, DeliveryProcessStatusResponse, DeliveryProcessStatusItem
 
 logger = setup_logger(__name__)
 
@@ -137,4 +137,56 @@ class DashboardController:
                 data=[],
                 total_records=0,
                 total_amount=0
+            )
+
+    async def get_delivery_process_status_statistics(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> DeliveryProcessStatusResponse:
+        """
+        Get delivery process status statistics for dashboard widget
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            DeliveryProcessStatusResponse with delivery status counts
+        """
+        try:
+            logger.info(f"Getting delivery process status statistics for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get delivery status counts
+            status_items = self.repository.get_delivery_process_status_counts(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            # Get total records
+            total_records = self.repository.get_total_delivery_process_records(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            logger.info(f"Found {len(status_items)} different delivery statuses with total {total_records} records")
+
+            return DeliveryProcessStatusResponse(
+                success=True,
+                message="Delivery process status statistics retrieved successfully",
+                data=status_items,
+                total_records=total_records
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting delivery process status statistics: {str(e)}")
+            return DeliveryProcessStatusResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[],
+                total_records=0
             )

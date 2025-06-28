@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
 
@@ -27,6 +28,7 @@ const props = defineProps({
 const loading = ref(false);
 const error = ref('');
 const deliveryData = ref([]);
+const totalRecords = ref(0);
 
 // Computed properties for stacked bar
 const totalCount = computed(() => {
@@ -53,39 +55,62 @@ const fetchDeliveryProcessData = async () => {
     error.value = '';
 
     try {
-        // Dummy data for now - matching the design colors
-        deliveryData.value = [
-            {
-                status: 'READY',
-                count: 72,
-                color: '#FCD34D', // Yellow
-                bgColor: '#FEF3C7'
+        // Call real API endpoint with cache-busting headers and timestamp
+        const timestamp = new Date().getTime();
+        const response = await axios.get('/delivery_process/dashboard/status-counts', {
+            params: {
+                dealer_id: props.dealerId,
+                date_from: props.dateFrom,
+                date_to: props.dateTo,
+                _t: timestamp // Cache buster with current timestamp
             },
-            {
-                status: 'IN PROGRESS',
-                count: 143,
-                color: '#22D3EE', // Cyan
-                bgColor: '#CFFAFE'
-            },
-            {
-                status: 'BACK TO DEALER',
-                count: 53,
-                color: '#D1D5DB', // Gray
-                bgColor: '#F3F4F6'
-            },
-            {
-                status: 'COMPLETED',
-                count: 213,
-                color: '#10B981', // Green
-                bgColor: '#D1FAE5'
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
             }
-        ];
+        });
+
+        if (response.data.success) {
+            const data = response.data.data;
+            totalRecords.value = response.data.total_records;
+
+            if (data.length === 0) {
+                error.value = 'No delivery process data found for the selected criteria';
+                deliveryData.value = [];
+                return;
+            }
+
+            // Transform API response to component format with predefined colors
+            const statusColorMapping = {
+                'Ready': { color: '#FCD34D', bgColor: '#FEF3C7' }, // Yellow
+                'In Progress': { color: '#22D3EE', bgColor: '#CFFAFE' }, // Cyan
+                'Back to Dealer': { color: '#D1D5DB', bgColor: '#F3F4F6' }, // Gray
+                'Completed': { color: '#10B981', bgColor: '#D1FAE5' } // Green
+            };
+
+            deliveryData.value = data.map(item => ({
+                status: item.status_label?.toUpperCase() || 'UNKNOWN',
+                count: item.count,
+                color: statusColorMapping[item.status_label]?.color || '#9CA3AF',
+                bgColor: statusColorMapping[item.status_label]?.bgColor || '#F3F4F6',
+                originalStatus: item.status_delivery_document
+            }));
+
+        } else {
+            error.value = response.data.message || 'Failed to fetch delivery process data';
+        }
     } catch (err) {
         console.error('Error fetching delivery process data:', err);
         error.value = 'Failed to fetch delivery process data';
     } finally {
         loading.value = false;
     }
+};
+
+// Force refresh method
+const forceRefresh = () => {
+    fetchDeliveryProcessData();
 };
 
 // Watch for prop changes
@@ -112,6 +137,22 @@ onMounted(() => {
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}
             </Message>
+
+            <!-- Total Records Info and Refresh Button -->
+            <div v-if="totalRecords > 0" class="flex justify-between items-center mb-4">
+                <button
+                    @click="forceRefresh"
+                    class="text-xs text-primary hover:text-primary-600 transition-colors"
+                    :disabled="loading"
+                    title="Refresh data"
+                >
+                    <i class="pi pi-refresh" :class="{ 'pi-spin': loading }"></i>
+                    Refresh
+                </button>
+                <small class="text-muted-color">
+                    Total Records: {{ totalRecords.toLocaleString() }}
+                </small>
+            </div>
 
             <!-- Stacked Bar Chart -->
             <div v-if="!error && deliveryData.length > 0" class="space-y-6">

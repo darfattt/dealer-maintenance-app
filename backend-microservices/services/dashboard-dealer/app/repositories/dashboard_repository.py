@@ -16,7 +16,8 @@ if utils_path not in sys.path:
 from utils.logger import setup_logger
 from app.models.unit_inbound import UnitInboundData
 from app.models.billing_process import BillingProcessData
-from app.schemas.dashboard import UnitInboundStatusItem, PaymentTypeItem
+from app.models.delivery_process import DeliveryProcessData
+from app.schemas.dashboard import UnitInboundStatusItem, PaymentTypeItem, DeliveryProcessStatusItem
 from app.utils.status_mapper import UnitInboundStatusMapper
 
 logger = setup_logger(__name__)
@@ -292,3 +293,92 @@ class DashboardRepository:
 
         except Exception as e:
             raise Exception(f"Error getting total billing amount: {str(e)}")
+
+    def get_delivery_process_status_counts(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> List[DeliveryProcessStatusItem]:
+        """
+        Get count of delivery process data grouped by status_delivery_document
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            List of DeliveryProcessStatusItem with status and count
+        """
+        try:
+            logger.info(f"Querying delivery process data for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}")
+
+            # Status mapping for delivery process
+            status_mapping = {
+                '1': 'Ready',
+                '2': 'In Progress',
+                '3': 'Back to Dealer',
+                '4': 'Completed'
+            }
+
+            # Query to get counts grouped by status_delivery_document
+            query = self.db.query(
+                DeliveryProcessData.status_delivery_document,
+                func.count(DeliveryProcessData.id).label('count')
+            ).filter(
+                DeliveryProcessData.dealer_id == dealer_id,
+                func.to_date(DeliveryProcessData.tanggal_pengiriman, 'DD/MM/YYYY') >= date_from,
+                func.to_date(DeliveryProcessData.tanggal_pengiriman, 'DD/MM/YYYY') <= date_to
+            ).group_by(DeliveryProcessData.status_delivery_document)
+
+            result = query.all()
+
+            logger.info(f"Found {len(result)} different delivery statuses")
+
+            # Convert to schema objects with status labels
+            status_items = []
+            for row in result:
+                print(row)
+                status_label = status_mapping.get(row.status_delivery_document, row.status_delivery_document or 'Unknown')
+
+                status_items.append(DeliveryProcessStatusItem(
+                    status_delivery_document=row.status_delivery_document,
+                    status_label=status_label,
+                    count=row.count
+                ))
+
+            return status_items
+
+        except Exception as e:
+            logger.error(f"Error in get_delivery_process_status_counts: {str(e)}")
+            raise
+
+    def get_total_delivery_process_records(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> int:
+        """
+        Get total count of delivery process records for the given criteria
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            Total number of delivery process records
+        """
+        try:
+            total = self.db.query(func.count(DeliveryProcessData.id)).filter(
+                DeliveryProcessData.dealer_id == dealer_id,
+                func.to_date(DeliveryProcessData.tanggal_pengiriman, 'DD/MM/YYYY') >= date_from,
+                func.to_date(DeliveryProcessData.tanggal_pengiriman, 'DD/MM/YYYY') <= date_to
+            ).scalar()
+
+            return total or 0
+
+        except Exception as e:
+            raise Exception(f"Error getting total delivery process records: {str(e)}")

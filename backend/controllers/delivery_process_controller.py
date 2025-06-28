@@ -5,7 +5,7 @@ This module provides REST API endpoints for delivery process data management.
 It handles CRUD operations and data retrieval for delivery process information.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_, func
 from typing import List, Optional
@@ -265,3 +265,111 @@ async def search_delivery_process_data(
     except Exception as e:
         logger.error(f"Error searching delivery process data: {e}")
         raise HTTPException(status_code=500, detail=f"Error searching: {str(e)}")
+
+
+@router.get("/dashboard/status-counts")
+async def get_delivery_process_status_counts(
+    response: Response,
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get delivery process data count grouped by status_delivery_document for dashboard visualization
+
+    This endpoint returns statistics about delivery process data grouped by delivery document status
+    for a specific dealer within a date range. The data is suitable for delivery process widgets.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        JSON response with delivery status counts and total records
+
+    Example:
+        GET /delivery_process/dashboard/status-counts?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        from datetime import datetime
+
+        # Set cache control headers to prevent caching
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Status mapping for delivery process
+        status_mapping = {
+            '1': 'Ready',
+            '2': 'In Progress',
+            '3': 'Back to Dealer',
+            '4': 'Completed'
+        }
+
+        # Query to get counts grouped by status_delivery_document
+        # Convert VARCHAR tanggal_pengiriman (DD/MM/YYYY format) to DATE for proper filtering
+        query = db.query(
+            DeliveryProcessData.status_delivery_document,
+            func.count(DeliveryProcessData.id).label('count')
+        ).filter(
+            DeliveryProcessData.dealer_id == dealer_id,
+            func.to_date(DeliveryProcessData.tanggal_pengiriman, 'DD/MM/YYYY') >= date_from,
+            func.to_date(DeliveryProcessData.tanggal_pengiriman, 'DD/MM/YYYY') <= date_to
+        ).group_by(DeliveryProcessData.status_delivery_document)
+
+        result = query.all()
+
+        logger.info(f"Found {len(result)} different delivery statuses for dealer {dealer_id}")
+
+        # Get total records
+        total_records = db.query(func.count(DeliveryProcessData.id)).filter(
+            DeliveryProcessData.dealer_id == dealer_id,
+            func.to_date(DeliveryProcessData.tanggal_pengiriman, 'DD/MM/YYYY') >= date_from,
+            func.to_date(DeliveryProcessData.tanggal_pengiriman, 'DD/MM/YYYY') <= date_to
+        ).scalar() or 0
+
+        # Convert to response format with status labels
+        status_items = []
+        for row in result:
+            status_label = status_mapping.get(row.status_delivery_document, row.status_delivery_document or 'Unknown')
+
+            status_items.append({
+                "status_delivery_document": row.status_delivery_document,
+                "status_label": status_label,
+                "count": row.count
+            })
+
+        return {
+            "success": True,
+            "message": "Delivery process status statistics retrieved successfully",
+            "data": status_items,
+            "total_records": total_records
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting delivery process status statistics: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )

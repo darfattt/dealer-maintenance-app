@@ -48,3 +48,24 @@ class PaymentTypeResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DeliveryProcessStatusItem(BaseModel):
+    """Individual status item for delivery process data"""
+    status_delivery_document: Optional[str] = Field(None, description="Original status of delivery document")
+    status_label: Optional[str] = Field(None, description="Human-readable status label")
+    count: int = Field(..., description="Number of records with this status")
+
+    class Config:
+        from_attributes = True
+
+
+class DeliveryProcessStatusResponse(BaseModel):
+    """Response schema for delivery process status statistics"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[DeliveryProcessStatusItem] = Field(..., description="List of delivery status counts")
+    total_records: int = Field(..., description="Total number of records")
+
+    class Config:
+        from_attributes = True

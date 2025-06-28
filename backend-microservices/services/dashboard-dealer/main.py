@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
     try:
         # Import models to register them with Base
         from app.models.unit_inbound import UnitInboundData, UnitInboundUnit, Dealer, Base
+        from app.models.delivery_process import DeliveryProcessData, DeliveryProcessDetail
 
         # Verify database connection
         db_session = next(db_manager.get_session())
