@@ -474,7 +474,6 @@ async def get_document_handling_count(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
         )
-EOF < /dev/null
 
 
 @router.get("/dashboard/prospect/status-counts", response_model=StatusProspectResponse)
@@ -695,4 +694,3 @@ async def get_prospect_sumber_top5(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
         )
-EOF < /dev/null
