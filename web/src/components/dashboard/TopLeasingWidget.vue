@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
 
@@ -23,6 +24,40 @@ const props = defineProps({
 const loading = ref(false);
 const error = ref('');
 const leasingData = ref([]);
+const totalRecords = ref(0);
+
+// Colors for top leasing companies
+const chartColors = [
+    '#3B82F6', // Blue
+    '#10B981', // Green  
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#8B5CF6', // Purple
+];
+
+// Company logos mapping (can be enhanced later)
+const companyLogos = {
+    'default': '🏦',
+    'adira': '🏛️',
+    'bca': '🏬',
+    'mega': '🏪',
+    'summit': '🏢',
+    'federal': '🏦'
+};
+
+// Get company logo based on name
+const getCompanyLogo = (companyName) => {
+    if (!companyName) return companyLogos.default;
+    
+    const name = companyName.toLowerCase();
+    if (name.includes('adira')) return companyLogos.adira;
+    if (name.includes('bca')) return companyLogos.bca;
+    if (name.includes('mega')) return companyLogos.mega;
+    if (name.includes('summit')) return companyLogos.summit;
+    if (name.includes('federal')) return companyLogos.federal;
+    
+    return companyLogos.default;
+};
 
 // Methods
 const fetchTopLeasingData = async () => {
@@ -35,39 +70,37 @@ const fetchTopLeasingData = async () => {
     error.value = '';
 
     try {
-        // Dummy data for now
-        leasingData.value = [
-            { 
-                name: 'PT. Federasi International Finance', 
-                count: 285, 
-                color: '#3B82F6',
-                logo: '🏦'
-            },
-            { 
-                name: 'Adira Finance', 
-                count: 146, 
-                color: '#10B981',
-                logo: '🏛️'
-            },
-            { 
-                name: 'PT. Summit Oto Finance', 
-                count: 120, 
-                color: '#F59E0B',
-                logo: '🏢'
-            },
-            { 
-                name: 'PT. Mega Finance', 
-                count: 98, 
-                color: '#EF4444',
-                logo: '🏪'
-            },
-            { 
-                name: 'PT. BCA Finance', 
-                count: 56, 
-                color: '#8B5CF6',
-                logo: '🏬'
+        // Call the new top leasing companies API
+        const response = await axios.get('/api/v1/dashboard/leasing/top-companies', {
+            params: {
+                dealer_id: props.dealerId,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
             }
-        ];
+        });
+
+        if (response.data.success) {
+            const data = response.data.data;
+            totalRecords.value = response.data.total_records;
+
+            if (data.length === 0) {
+                error.value = 'No leasing company data found for the selected criteria';
+                leasingData.value = [];
+                return;
+            }
+
+            // Transform API response to component format
+            const mappedData = data.map((item, index) => ({
+                name: item.nama_finance_company || 'Unknown Company',
+                count: item.count,
+                color: chartColors[index % chartColors.length],
+                logo: getCompanyLogo(item.nama_finance_company)
+            }));
+
+            leasingData.value = mappedData;
+        } else {
+            error.value = response.data.message || 'Failed to fetch top leasing data';
+        }
     } catch (err) {
         console.error('Error fetching top leasing data:', err);
         error.value = 'Failed to fetch top leasing data';
@@ -90,6 +123,13 @@ onMounted(() => {
 <template>
     <Card class="h-full">
         <template #content>
+            <!-- Total Records Info -->
+            <div v-if="totalRecords > 0" class="flex justify-end mb-4">
+                <small class="text-muted-color">
+                    Total: {{ totalRecords }}
+                </small>
+            </div>
+            
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}

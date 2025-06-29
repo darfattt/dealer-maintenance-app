@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
 
@@ -23,6 +24,7 @@ const props = defineProps({
 const loading = ref(false);
 const error = ref('');
 const documentData = ref({});
+const totalRecords = ref(0);
 
 // Methods
 const fetchDocumentHandlingData = async () => {
@@ -35,13 +37,29 @@ const fetchDocumentHandlingData = async () => {
     error.value = '';
 
     try {
-        // Dummy data for now
-        documentData.value = {
-            title: 'PENGAJUAN FAKTUR',
-            count: 153,
-            trend: 'up', // 'up', 'down', 'stable'
-            color: '#1E40AF'
-        };
+        // Call the new document handling count API
+        const response = await axios.get('/api/v1/dashboard/document-handling/count', {
+            params: {
+                dealer_id: props.dealerId,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
+
+        if (response.data.success) {
+            const count = response.data.count;
+            totalRecords.value = response.data.total_records;
+
+            // Transform API response to component format
+            documentData.value = {
+                title: 'PENGAJUAN FAKTUR STNK',
+                count: count,
+                trend: count > 0 ? 'up' : 'stable', // Simple trend logic
+                color: '#1E40AF'
+            };
+        } else {
+            error.value = response.data.message || 'Failed to fetch document handling data';
+        }
     } catch (err) {
         console.error('Error fetching document handling data:', err);
         error.value = 'Failed to fetch document handling data';
@@ -64,6 +82,13 @@ onMounted(() => {
 <template>
     <Card class="h-full">
         <template #content>
+            <!-- Total Records Info -->
+            <div v-if="totalRecords > 0" class="flex justify-end mb-4">
+                <small class="text-muted-color">
+                    Total: {{ totalRecords }}
+                </small>
+            </div>
+            
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}

@@ -7,13 +7,13 @@ from typing import Dict, List, Tuple
 
 # Job type mapping: code -> label
 JOB_TYPE_MAPPING = {
-    "prospect": "Prospect", #prospect_data
+    "prospect": "Prospect", #prospect_data ProspectData
     "pkb": "Manage WO - PKB",
     "parts_inbound": "Part Inbound - PINB",
-    "leasing": "Handle Leasing Requirement",
-    "doch_read": "Manage Document Handling",
+    "leasing": "Handle Leasing Requirement", #leasing_data LeasingData
+    "doch_read": "Manage Document Handling", #document_handling_data DocumentHandlingData
     "uinb_read": "Unit Inbound from Purchase Order", #UnitInboundData
-    "bast_read": "Manage Delivery Process",
+    "bast_read": "Manage Delivery Process", #delivery_process_data DeliveryProcessData
     "inv1_read": "Manage Billing Process", #billing_process_data BillingProcessData
     "mdinvh1_read": "Unit Invoice (MD to Dealer)",
     "prsl_read": "Manage Parts Sales",
@@ -21,7 +21,7 @@ JOB_TYPE_MAPPING = {
     "inv2_read": "Nota Jasa Bengkel & Nota Suku Cadang",
     "unpaidhlo_read": "Manage Document Handling",
     "mdinvh3_read": "Parts Invoice (MD to Dealer)",
-    "spk_read": "Manage Dealing Process"
+    "spk_read": "Manage Dealing Process" #spk_dealing_process_data SPKDealingProcessData
 }
 
 # Reverse mapping: label -> code

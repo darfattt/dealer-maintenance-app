@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import axios from 'axios';
 import Chart from 'primevue/chart';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
@@ -27,7 +28,7 @@ const loading = ref(false);
 const error = ref('');
 const totalRecords = ref(0);
 
-// Chart colors matching the image
+// Chart colors for metode follow up
 const chartColors = [
     '#E91E63', // Pink for SMS (WA/LINE)
     '#FFC107', // Yellow for Call
@@ -63,53 +64,75 @@ const fetchMetodeFollowUpData = async () => {
     error.value = '';
 
     try {
-        // Dummy data matching the image
-        const dummyData = [
-            { method: 'SMS (WA/LINE)', count: 25, percentage: 25 },
-            { method: 'Call', count: 19, percentage: 19 },
-            { method: 'Visit', count: 11, percentage: 11 },
-            { method: 'Direct Touch', count: 45, percentage: 45 }
-        ];
+        // Call the new metode follow up API
+        const response = await axios.get('/api/v1/dashboard/prospect/metode-followup-counts', {
+            params: {
+                dealer_id: props.dealerId,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
 
-        totalRecords.value = dummyData.reduce((sum, item) => sum + item.count, 0);
+        if (response.data.success) {
+            const data = response.data.data;
+            totalRecords.value = response.data.total_records;
 
-        const labels = dummyData.map(item => item.method);
-        const values = dummyData.map(item => item.count);
-        const colors = chartColors.slice(0, dummyData.length);
+            if (data.length === 0) {
+                error.value = 'No metode follow up data found for the selected criteria';
+                chartData.value = {};
+                return;
+            }
 
-        chartData.value = {
-            labels: labels,
-            datasets: [
-                {
-                    data: values,
-                    backgroundColor: colors,
-                    borderColor: colors,
-                    borderWidth: 1
-                }
-            ]
-        };
+            // Transform API response to component format
+            const mappedData = data.map(item => ({
+                method: item.metode_label || item.metode_follow_up || 'Unknown',
+                count: item.count,
+                originalMetode: item.metode_follow_up
+            }));
 
-        // Chart options for pie chart
-        chartOptions.value = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.parsed;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return `${label}: ${value} (${percentage}%)`;
+            // Sort by count descending for better visualization
+            mappedData.sort((a, b) => b.count - a.count);
+
+            const labels = mappedData.map(item => item.method);
+            const values = mappedData.map(item => item.count);
+            const colors = chartColors.slice(0, mappedData.length);
+
+            chartData.value = {
+                labels: labels,
+                datasets: [
+                    {
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            // Chart options for pie chart
+            chartOptions.value = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
+        } else {
+            error.value = response.data.message || 'Failed to fetch metode follow up data';
+        }
     } catch (err) {
         console.error('Error fetching follow-up method data:', err);
         error.value = 'Failed to fetch follow-up method data';

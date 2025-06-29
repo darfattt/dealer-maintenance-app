@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import axios from 'axios';
 import Chart from 'primevue/chart';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
@@ -27,13 +28,13 @@ const loading = ref(false);
 const error = ref('');
 const totalRecords = ref(0);
 
-// Chart colors matching the image
+// Chart colors for status prospect (ordered by priority)
 const chartColors = [
-    '#10B981', // Green for Done
-    '#84CC16', // Light Green for Hot Deal
-    '#FCD34D', // Yellow for Hot
+    '#EF4444', // Red for Low
     '#F59E0B', // Orange for Medium
-    '#EF4444'  // Red for Low
+    '#FCD34D', // Yellow for Hot
+    '#10B981', // Green for Deal
+    '#6B7280'  // Gray for Not Deal
 ];
 
 // Computed property for legend items
@@ -62,67 +63,88 @@ const fetchStatusProspectData = async () => {
     error.value = '';
 
     try {
-        // Dummy data matching the image
-        const dummyData = [
-            { status: 'Done', count: 45 },
-            { status: 'Hot Deal', count: 30 },
-            { status: 'Hot', count: 254 },
-            { status: 'Medium', count: 36 },
-            { status: 'Low', count: 36 }
-        ];
+        // Call the new status prospect API
+        const response = await axios.get('/api/v1/dashboard/prospect/status-counts', {
+            params: {
+                dealer_id: props.dealerId,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
 
-        totalRecords.value = dummyData.reduce((sum, item) => sum + item.count, 0);
+        if (response.data.success) {
+            const data = response.data.data;
+            totalRecords.value = response.data.total_records;
 
-        const labels = dummyData.map(item => item.status);
-        const values = dummyData.map(item => item.count);
-        const colors = chartColors.slice(0, dummyData.length);
+            if (data.length === 0) {
+                error.value = 'No status prospect data found for the selected criteria';
+                chartData.value = {};
+                return;
+            }
 
-        chartData.value = {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Prospect Count',
-                    data: values,
-                    backgroundColor: colors,
-                    borderColor: colors,
-                    borderWidth: 1
-                }
-            ]
-        };
+            // Transform API response to component format
+            const mappedData = data.map(item => ({
+                status: item.status_label || item.status_prospect || 'Unknown',
+                count: item.count,
+                originalStatus: item.status_prospect
+            }));
 
-        // Chart options for vertical bar chart
-        chartOptions.value = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
+            // Sort by count descending for better visualization
+            mappedData.sort((a, b) => b.count - a.count);
+
+            const labels = mappedData.map(item => item.status);
+            const values = mappedData.map(item => item.count);
+            const colors = chartColors.slice(0, mappedData.length);
+
+            chartData.value = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Prospect Count',
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            // Chart options for vertical bar chart
+            chartOptions.value = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed.y;
+                                return `${label}: ${value} prospects`;
+                            }
+                        }
+                    }
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.parsed.y;
-                            return `${label}: ${value} prospects`;
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: Math.max(1, Math.ceil(Math.max(...values) / 10))
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0
                         }
                     }
                 }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 50
-                    }
-                },
-                x: {
-                    ticks: {
-                        maxRotation: 45,
-                        minRotation: 0
-                    }
-                }
-            }
-        };
+            };
+        } else {
+            error.value = response.data.message || 'Failed to fetch status prospect data';
+        }
     } catch (err) {
         console.error('Error fetching prospect status:', err);
         error.value = 'Failed to fetch prospect status data';

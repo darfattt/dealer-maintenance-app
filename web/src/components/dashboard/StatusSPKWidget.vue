@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import axios from 'axios';
 import Chart from 'primevue/chart';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
@@ -31,9 +32,21 @@ const loading = ref(false);
 const error = ref('');
 const totalRecords = ref(0);
 
-// Chart colors
+// Status mapping for SPK status
+const statusMapping = {
+    '1': 'Open',
+    '2': 'Indent',
+    '3': 'Complete',
+    '4': 'Cancelled'
+};
+
+// Chart colors for SPK statuses
 const chartColors = [
-    '#FF6B9D', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'
+    '#FF6B9D', // Pink for Open
+    '#4ECDC4', // Teal for Indent  
+    '#45B7D1', // Blue for Complete
+    '#96CEB4', // Green for Cancelled
+    '#FFEAA7'  // Yellow (fallback)
 ];
 
 // Computed property for legend items
@@ -64,61 +77,83 @@ const fetchStatusSPKData = async () => {
     error.value = '';
 
     try {
-        // Dummy data for now
-        const dummyData = [
-            { status: 'Open', count: 45 },
-            { status: 'Indent', count: 28 },
-            { status: 'Complete', count: 15 },
-            { status: 'Cancelled', count: 12 }
-        ];
+        // Call the new SPK status API
+        const response = await axios.get('/api/v1/dashboard/spk/status-counts', {
+            params: {
+                dealer_id: props.dealerId,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
 
-        totalRecords.value = dummyData.reduce((sum, item) => sum + item.count, 0);
+        if (response.data.success) {
+            const data = response.data.data;
+            totalRecords.value = response.data.total_records;
 
-        const labels = dummyData.map(item => item.status);
-        const values = dummyData.map(item => item.count);
-        const colors = chartColors.slice(0, dummyData.length);
+            if (data.length === 0) {
+                error.value = 'No SPK status data found for the selected criteria';
+                chartData.value = {};
+                return;
+            }
 
-        chartData.value = {
-            labels: labels,
-            datasets: [
-                {
-                    data: values,
-                    backgroundColor: colors,
-                    borderColor: colors,
-                    borderWidth: 1
-                }
-            ]
-        };
+            // Transform API response to component format
+            const mappedData = data.map(item => ({
+                status: item.status_label || statusMapping[item.status_spk] || item.status_spk || 'Unknown',
+                count: item.count,
+                originalStatus: item.status_spk
+            }));
 
-        // Chart options
-        chartOptions.value = {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    top: 20,
-                    bottom: 20,
-                    left: 20,
-                    right: 20
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
+            // Sort by count descending for better visualization
+            mappedData.sort((a, b) => b.count - a.count);
+
+            const labels = mappedData.map(item => item.status);
+            const values = mappedData.map(item => item.count);
+            const colors = chartColors.slice(0, mappedData.length);
+
+            chartData.value = {
+                labels: labels,
+                datasets: [
+                    {
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            // Chart options
+            chartOptions.value = {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 20,
+                        bottom: 20,
+                        left: 20,
+                        right: 20
+                    }
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.parsed;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return `${label}: ${value} SPK (${percentage}%)`;
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} SPK (${percentage}%)`;
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
+        } else {
+            error.value = response.data.message || 'Failed to fetch SPK status data';
+        }
     } catch (err) {
         console.error('Error fetching SPK status:', err);
         error.value = 'Failed to fetch SPK status data';
