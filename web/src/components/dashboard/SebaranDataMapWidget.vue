@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
 import Chart from 'primevue/chart';
@@ -27,14 +28,8 @@ const regionData = ref([]);
 const chartData = ref({});
 const chartOptions = ref({});
 
-// West Java regions data
-const westJavaRegions = [
-    { name: 'Arcamanik', percentage: 30, color: '#10B981', x: 60, y: 30 },
-    { name: 'Astanaanyar', percentage: 15, color: '#F59E0B', x: 20, y: 40 },
-    { name: 'Bandung Kidul', percentage: 3, color: '#EF4444', x: 50, y: 70 },
-    { name: 'Andir', percentage: 5, color: '#3B82F6', x: 80, y: 50 },
-    { name: 'Others', percentage: 2, color: '#6B7280', x: 40, y: 60 }
-];
+// Chart colors for different regions
+const chartColors = ['#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6'];
 
 // Methods
 const fetchSebaranData = async () => {
@@ -47,65 +42,99 @@ const fetchSebaranData = async () => {
     error.value = '';
 
     try {
-        // Use the West Java regions data
-        regionData.value = westJavaRegions;
-        
-        // Create scatter plot data for map-like visualization
-        const scatterData = regionData.value.map(region => ({
-            x: region.x,
-            y: region.y,
-            r: Math.max(5, region.percentage * 0.8) // Bubble size based on percentage
-        }));
+        // Call real API endpoint
+        const response = await axios.get('/api/v1/dashboard/prospect/sebaran-kecamatan', {
+            params: {
+                dealer_id: props.dealerId,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
 
-        chartData.value = {
-            datasets: [{
-                label: 'West Java Regions',
-                data: scatterData,
-                backgroundColor: regionData.value.map(r => r.color),
-                borderColor: regionData.value.map(r => r.color),
-                borderWidth: 2
-            }]
-        };
+        if (response.data.success) {
+            const data = response.data.data;
+            
+            if (data.length === 0) {
+                error.value = 'No sebaran prospect data found for the selected criteria';
+                regionData.value = [];
+                chartData.value = {};
+                return;
+            }
 
-        chartOptions.value = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        title: function(context) {
-                            const index = context[0].dataIndex;
-                            return regionData.value[index]?.name || '';
-                        },
-                        label: function(context) {
-                            const index = context.dataIndex;
-                            const region = regionData.value[index];
-                            return `${region?.percentage}% of prospects`;
+            // Calculate percentages for each region
+            const totalCount = response.data.total_records;
+            
+            // Transform API response to component format
+            regionData.value = data.map((item, index) => ({
+                name: item.nama_kecamatan || `Kecamatan ${item.kode_kecamatan}`,
+                kode_kecamatan: item.kode_kecamatan,
+                count: item.count,
+                percentage: Math.round((item.count / totalCount) * 100),
+                color: chartColors[index % chartColors.length],
+                // Use coordinates from API or generate positions for visualization
+                x: item.latitude ? parseFloat(item.latitude) * 10 : (index + 1) * 15,
+                y: item.longitude ? parseFloat(item.longitude) * 10 : (index + 1) * 20
+            }));
+            
+            // Create scatter plot data for map-like visualization
+            const scatterData = regionData.value.map(region => ({
+                x: region.x,
+                y: region.y,
+                r: Math.max(8, region.percentage * 1.2) // Bubble size based on percentage
+            }));
+
+            chartData.value = {
+                datasets: [{
+                    label: 'Sebaran Prospect by Kecamatan',
+                    data: scatterData,
+                    backgroundColor: regionData.value.map(r => r.color),
+                    borderColor: regionData.value.map(r => r.color),
+                    borderWidth: 2
+                }]
+            };
+
+            chartOptions.value = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const index = context[0].dataIndex;
+                                return regionData.value[index]?.name || '';
+                            },
+                            label: function(context) {
+                                const index = context.dataIndex;
+                                const region = regionData.value[index];
+                                return `${region?.count} prospects (${region?.percentage}%)`;
+                            }
                         }
                     }
-                }
-            },
-            scales: {
-                x: {
-                    type: 'linear',
-                    position: 'bottom',
-                    min: 0,
-                    max: 100,
-                    display: false
                 },
-                y: {
-                    min: 0,
-                    max: 100,
-                    display: false
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        min: 0,
+                        max: 100,
+                        display: false
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        display: false
+                    }
                 }
-            }
-        };
+            };
+        } else {
+            error.value = response.data.message || 'Failed to fetch sebaran prospect data';
+        }
     } catch (err) {
-        console.error('Error fetching sebaran data:', err);
-        error.value = 'Failed to fetch distribution data';
+        console.error('Error fetching sebaran prospect data:', err);
+        error.value = 'Failed to fetch sebaran prospect data';
     } finally {
         loading.value = false;
     }
@@ -142,7 +171,7 @@ onMounted(() => {
                 <div class="lg:col-span-2">
                     <div class="h-64 w-full rounded-lg border border-surface-200 bg-surface-50 p-4 relative">
                         <div class="text-center mb-2">
-                            <h3 class="text-sm font-semibold text-muted-color">West Java Region</h3>
+                            <h3 class="text-sm font-semibold text-muted-color">Prospect Distribution by Kecamatan</h3>
                         </div>
                         
                         <div v-if="Object.keys(chartData).length > 0" class="h-48">
@@ -172,6 +201,9 @@ onMounted(() => {
                                 <span class="text-xs font-medium">{{ region.name }}</span>
                             </div>
                             <div class="text-right">
+                                <div class="text-xs text-muted-color mb-1">
+                                    {{ region.count }} prospects
+                                </div>
                                 <div 
                                     class="font-bold text-sm px-2 py-1 rounded text-white"
                                     :style="{ backgroundColor: region.color }"

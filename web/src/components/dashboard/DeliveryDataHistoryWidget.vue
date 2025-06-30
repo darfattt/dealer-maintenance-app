@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -29,11 +30,20 @@ const error = ref('');
 const deliveryData = ref([]);
 const totalRecords = ref(0);
 const first = ref(0);
-const rows = ref(10);
+const rows = ref(20);
+
+// Computed properties
+const effectiveDealerId = computed(() => {
+    return props.dealerId || '12284';
+});
+
+const currentPage = computed(() => {
+    return Math.floor(first.value / rows.value) + 1;
+});
 
 // Methods
 const fetchDeliveryDataHistory = async () => {
-    if (!props.dealerId || !props.dateFrom || !props.dateTo) {
+    if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
         error.value = 'Missing required parameters';
         return;
     }
@@ -42,73 +52,46 @@ const fetchDeliveryDataHistory = async () => {
     error.value = '';
 
     try {
-        // Dummy data matching the table structure from the image
-        const dummyData = [
-            {
-                no: 1,
-                idDeliveryDoc: 'DD001',
-                tglPengiriman: '2024-01-15',
-                statusPengiriman: 'Completed',
-                namaDriver: 'Muhammad Naufal',
-                idSpk: 'SPK001',
-                namaPenerima: 'John Doe',
-                noHpPenerima: '081234567890',
-                alamatPenerima: 'Jl. Sudirman No. 123, Jakarta',
-                estimasiPengiriman: '2024-01-16'
-            },
-            {
-                no: 2,
-                idDeliveryDoc: 'DD002',
-                tglPengiriman: '2024-01-16',
-                statusPengiriman: 'In Progress',
-                namaDriver: 'Anton Rahmad',
-                idSpk: 'SPK002',
-                namaPenerima: 'Jane Smith',
-                noHpPenerima: '081234567891',
-                alamatPenerima: 'Jl. Thamrin No. 456, Jakarta',
-                estimasiPengiriman: '2024-01-17'
-            },
-            {
-                no: 3,
-                idDeliveryDoc: 'DD003',
-                tglPengiriman: '2024-01-17',
-                statusPengiriman: 'Ready',
-                namaDriver: 'Valentio Nurul',
-                idSpk: 'SPK003',
-                namaPenerima: 'Bob Johnson',
-                noHpPenerima: '081234567892',
-                alamatPenerima: 'Jl. Gatot Subroto No. 789, Jakarta',
-                estimasiPengiriman: '2024-01-18'
-            },
-            {
-                no: 4,
-                idDeliveryDoc: 'DD004',
-                tglPengiriman: '2024-01-18',
-                statusPengiriman: 'Back to Dealer',
-                namaDriver: 'Ahmad Rizki',
-                idSpk: 'SPK004',
-                namaPenerima: 'Alice Brown',
-                noHpPenerima: '081234567893',
-                alamatPenerima: 'Jl. Kuningan No. 321, Jakarta',
-                estimasiPengiriman: '2024-01-19'
-            },
-            {
-                no: 5,
-                idDeliveryDoc: 'DD005',
-                tglPengiriman: '2024-01-19',
-                statusPengiriman: 'Completed',
-                namaDriver: 'Budi Santoso',
-                idSpk: 'SPK005',
-                namaPenerima: 'Charlie Wilson',
-                noHpPenerima: '081234567894',
-                alamatPenerima: 'Jl. Senayan No. 654, Jakarta',
-                estimasiPengiriman: '2024-01-20'
+        // Call real API endpoint
+        const response = await axios.get('/api/v1/dashboard/delivery/data-history', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo,
+                page: currentPage.value,
+                per_page: rows.value
             }
-        ];
+        });
 
-        deliveryData.value = dummyData;
-        totalRecords.value = dummyData.length;
+        if (response.data.success) {
+            const data = response.data.data;
+            
+            if (data.length === 0 && currentPage.value === 1) {
+                error.value = 'No delivery data found for the selected criteria';
+                deliveryData.value = [];
+                totalRecords.value = 0;
+                return;
+            }
 
+            // Transform API response to component format
+            deliveryData.value = data.map((item, index) => ({
+                no: first.value + index + 1,
+                idDeliveryDoc: item.delivery_document_id || '-',
+                tglPengiriman: item.tanggal_pengiriman || '-',
+                statusPengiriman: item.status_delivery_document || '-',
+                namaDriver: item.id_driver || '-',
+                idSpk: item.id_spk || '-',
+                namaPenerima: item.nama_penerima || '-',
+                noHpPenerima: item.no_kontak_penerima || '-',
+                alamatPenerima: item.lokasi_pengiriman || '-',
+                estimasiPengiriman: item.waktu_pengiriman || '-'
+            }));
+            
+            totalRecords.value = response.data.total_records;
+            
+        } else {
+            error.value = response.data.message || 'Failed to fetch delivery data history';
+        }
     } catch (err) {
         console.error('Error fetching delivery data history:', err);
         error.value = 'Failed to fetch delivery data history';
@@ -121,6 +104,7 @@ const fetchDeliveryDataHistory = async () => {
 const onPageChange = (event) => {
     first.value = event.first;
     rows.value = event.rows;
+    fetchDeliveryDataHistory(); // Fetch new data when page changes
 };
 
 // Status badge styling
@@ -237,7 +221,7 @@ onMounted(() => {
                         :first="first"
                         :rows="rows"
                         :totalRecords="totalRecords"
-                        :rowsPerPageOptions="[5, 10, 20]"
+                        :rowsPerPageOptions="[10, 20, 50]"
                         @page="onPageChange"
                         template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
                         class="text-xs"

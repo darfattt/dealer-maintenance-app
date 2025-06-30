@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
 
@@ -24,7 +25,11 @@ const loading = ref(false);
 const error = ref('');
 const totalRevenue = ref(0);
 
-// Computed property for formatted revenue
+// Computed properties
+const effectiveDealerId = computed(() => {
+    return props.dealerId || '12284';
+});
+
 const formattedRevenue = computed(() => {
     if (totalRevenue.value === 0) return 'Rp 0';
     
@@ -41,7 +46,7 @@ const formattedRevenue = computed(() => {
 
 // Methods
 const fetchRevenueData = async () => {
-    if (!props.dealerId || !props.dateFrom || !props.dateTo) {
+    if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
         error.value = 'Missing required parameters';
         return;
     }
@@ -50,15 +55,24 @@ const fetchRevenueData = async () => {
     error.value = '';
 
     try {
-        // Dummy data for now - replace with actual API call
-        // Simulating the revenue from the image: Rp 2.492.542
-        totalRevenue.value = 2492542;
-        
-        // You can replace this with actual API call:
-        // const response = await fetch(`/api/v1/revenue?dealerId=${props.dealerId}&dateFrom=${props.dateFrom}&dateTo=${props.dateTo}`);
-        // const data = await response.json();
-        // totalRevenue.value = data.totalRevenue;
-        
+        // Call real API endpoint
+        const response = await axios.get('/api/v1/dashboard/revenue', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
+
+        if (response.data.success) {
+            totalRevenue.value = response.data.total_revenue || 0;
+            
+            if (totalRevenue.value === 0) {
+                error.value = 'No revenue data found for the selected criteria';
+            }
+        } else {
+            error.value = response.data.message || 'Failed to fetch revenue data';
+        }
     } catch (err) {
         console.error('Error fetching revenue data:', err);
         error.value = 'Failed to fetch revenue data';

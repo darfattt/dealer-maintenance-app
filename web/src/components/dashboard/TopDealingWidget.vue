@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
 
@@ -24,9 +25,14 @@ const loading = ref(false);
 const error = ref('');
 const topDealingData = ref([]);
 
+// Computed properties
+const effectiveDealerId = computed(() => {
+    return props.dealerId || '12284';
+});
+
 // Methods
 const fetchTopDealingData = async () => {
-    if (!props.dealerId || !props.dateFrom || !props.dateTo) {
+    if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
         error.value = 'Missing required parameters';
         return;
     }
@@ -35,38 +41,61 @@ const fetchTopDealingData = async () => {
     error.value = '';
 
     try {
-        // Dummy data for now - replace with actual API call
-        const dummyData = [
-            {
-                id: 1,
-                name: 'SCOOPY XX',
-                image: 'https://via.placeholder.com/80x60/4CAF50/FFFFFF?text=SCOOPY',
-                totalData: 425,
-                brand: 'Honda'
-            },
-            {
-                id: 2,
-                name: 'Vario 160',
-                image: 'https://via.placeholder.com/80x60/2196F3/FFFFFF?text=VARIO',
-                totalData: 252,
-                brand: 'Honda'
-            },
-            {
-                id: 3,
-                name: 'Beat',
-                image: 'https://via.placeholder.com/80x60/FF9800/FFFFFF?text=BEAT',
-                totalData: 240,
-                brand: 'Honda'
+        // Call real API endpoint
+        const response = await axios.get('/api/v1/dashboard/dealing/top-units', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
             }
-        ];
+        });
 
-        topDealingData.value = dummyData;
+        if (response.data.success) {
+            const data = response.data.data;
+            
+            if (data.length === 0) {
+                error.value = 'No top dealing units data found for the selected criteria';
+                topDealingData.value = [];
+                return;
+            }
+
+            // Transform API response to component format
+            topDealingData.value = data.map((item, index) => ({
+                id: index + 1,
+                name: item.nama_unit || item.kode_tipe_unit,
+                kode_tipe_unit: item.kode_tipe_unit,
+                totalData: item.total_quantity,
+                brand: 'Honda', // Default brand
+                image: getUnitImage(item.kode_tipe_unit)
+            }));
+            
+        } else {
+            error.value = response.data.message || 'Failed to fetch top dealing units data';
+        }
     } catch (err) {
         console.error('Error fetching top dealing data:', err);
         error.value = 'Failed to fetch top dealing data';
     } finally {
         loading.value = false;
     }
+};
+
+// Helper function to get unit image based on type
+const getUnitImage = (kodeUnit) => {
+    const unitImages = {
+        'SCOOPY': 'https://via.placeholder.com/80x60/4CAF50/FFFFFF?text=SCOOPY',
+        'VARIO': 'https://via.placeholder.com/80x60/2196F3/FFFFFF?text=VARIO', 
+        'BEAT': 'https://via.placeholder.com/80x60/FF9800/FFFFFF?text=BEAT',
+        'PCX': 'https://via.placeholder.com/80x60/9C27B0/FFFFFF?text=PCX',
+        'GENIO': 'https://via.placeholder.com/80x60/00BCD4/FFFFFF?text=GENIO',
+        'CB150R': 'https://via.placeholder.com/80x60/FF5722/FFFFFF?text=CB150R',
+        'CBR150R': 'https://via.placeholder.com/80x60/F44336/FFFFFF?text=CBR150R',
+        'CRF150L': 'https://via.placeholder.com/80x60/795548/FFFFFF?text=CRF150L',
+        'FORZA': 'https://via.placeholder.com/80x60/607D8B/FFFFFF?text=FORZA',
+        'ADV': 'https://via.placeholder.com/80x60/3F51B5/FFFFFF?text=ADV'
+    };
+    
+    return unitImages[kodeUnit] || 'https://via.placeholder.com/80x60/cccccc/666666?text=Motor';
 };
 
 // Watch for prop changes
@@ -112,7 +141,8 @@ onMounted(() => {
                     <!-- Details -->
                     <div class="flex-grow min-w-0">
                         <h4 class="font-bold text-lg text-surface-900 truncate">{{ item.name }}</h4>
-                        <p class="text-sm text-surface-600 font-medium">{{ item.totalData }} data</p>
+                        <p class="text-sm text-surface-600 font-medium">{{ item.totalData }} units</p>
+                        <p class="text-xs text-surface-500">{{ item.kode_tipe_unit }}</p>
                     </div>
                 </div>
             </div>
@@ -126,7 +156,7 @@ onMounted(() => {
             <!-- Empty State -->
             <div v-if="!loading && !error && topDealingData.length === 0" class="text-center py-8">
                 <i class="pi pi-info-circle text-2xl text-muted-color mb-2"></i>
-                <p class="text-muted-color text-sm">No dealing data available</p>
+                <p class="text-muted-color text-sm">No dealing units data available</p>
             </div>
         </template>
     </Card>

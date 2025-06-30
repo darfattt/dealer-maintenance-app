@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -26,14 +27,21 @@ const props = defineProps({
 // Reactive data
 const loading = ref(false);
 const error = ref('');
-const spkData = ref([]);
+const prospectData = ref([]);
 const totalRecords = ref(0);
+const totalPages = ref(0);
+const currentPage = ref(1);
 const first = ref(0);
-const rows = ref(10);
+const rows = ref(20);
+
+// Computed properties
+const effectiveDealerId = computed(() => {
+    return props.dealerId || '12284';
+});
 
 // Methods
-const fetchDataHistory = async () => {
-    if (!props.dealerId || !props.dateFrom || !props.dateTo) {
+const fetchDataHistory = async (page = 1, perPage = rows.value) => {
+    if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
         error.value = 'Missing required parameters';
         return;
     }
@@ -42,61 +50,50 @@ const fetchDataHistory = async () => {
     error.value = '';
 
     try {
-        // Dummy data matching the SPK dealing process table structure from the image
-        const dummyData = [
-            {
-                no: 1,
-                idSpk: 'SPK001',
-                namaCustomer: 'John Doe',
-                alamat: 'Jl. Sudirman No. 123, Jakarta',
-                noHp: '081234567890',
-                email: 'john.doe@email.com',
-                namaBpkb: 'John Doe'
-            },
-            {
-                no: 2,
-                idSpk: 'SPK002',
-                namaCustomer: 'Jane Smith',
-                alamat: 'Jl. Thamrin No. 456, Jakarta',
-                noHp: '081234567891',
-                email: 'jane.smith@email.com',
-                namaBpkb: 'Jane Smith'
-            },
-            {
-                no: 3,
-                idSpk: 'SPK003',
-                namaCustomer: 'Bob Johnson',
-                alamat: 'Jl. Gatot Subroto No. 789, Jakarta',
-                noHp: '081234567892',
-                email: 'bob.johnson@email.com',
-                namaBpkb: 'Bob Johnson'
-            },
-            {
-                no: 4,
-                idSpk: 'SPK004',
-                namaCustomer: 'Alice Brown',
-                alamat: 'Jl. Kuningan No. 321, Jakarta',
-                noHp: '081234567893',
-                email: 'alice.brown@email.com',
-                namaBpkb: 'Alice Brown'
-            },
-            {
-                no: 5,
-                idSpk: 'SPK005',
-                namaCustomer: 'Charlie Wilson',
-                alamat: 'Jl. Senayan No. 654, Jakarta',
-                noHp: '081234567894',
-                email: 'charlie.wilson@email.com',
-                namaBpkb: 'Charlie Wilson'
+        // Call real API endpoint
+        const response = await axios.get('/api/v1/dashboard/prospect/data-table', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo,
+                page: page,
+                per_page: perPage
             }
-        ];
+        });
 
-        spkData.value = dummyData;
-        totalRecords.value = dummyData.length;
+        if (response.data.success) {
+            const data = response.data.data;
+            
+            if (data.length === 0 && page === 1) {
+                error.value = 'No prospect data found for the selected criteria';
+                prospectData.value = [];
+                totalRecords.value = 0;
+                totalPages.value = 0;
+                return;
+            }
 
+            // Transform API response to component format
+            prospectData.value = data.map((item, index) => ({
+                no: ((page - 1) * perPage) + index + 1,
+                id_prospect: item.id_prospect || '-',
+                nama_lengkap: item.nama_lengkap || '-',
+                alamat: item.alamat || '-',
+                no_kontak: item.no_kontak || '-',
+                tanggal_prospect: item.tanggal_prospect || '-',
+                status_prospect: item.status_prospect || '-',
+                tanggal_appointment: item.tanggal_appointment || '-'
+            }));
+
+            totalRecords.value = response.data.total_records;
+            totalPages.value = response.data.total_pages;
+            currentPage.value = response.data.current_page;
+            
+        } else {
+            error.value = response.data.message || 'Failed to fetch prospect data';
+        }
     } catch (err) {
-        console.error('Error fetching data history:', err);
-        error.value = 'Failed to fetch data history';
+        console.error('Error fetching prospect data:', err);
+        error.value = 'Failed to fetch prospect data';
     } finally {
         loading.value = false;
     }
@@ -106,13 +103,28 @@ const fetchDataHistory = async () => {
 const onPageChange = (event) => {
     first.value = event.first;
     rows.value = event.rows;
+    
+    const newPage = Math.floor(event.first / event.rows) + 1;
+    fetchDataHistory(newPage, event.rows);
 };
 
-// Remove status badge styling as it's not needed for SPK data
+// Status styling method for prospect status
+const getStatusClass = (status) => {
+    const statusClasses = {
+        '1': 'bg-green-100 text-green-800', // Active/New
+        '2': 'bg-blue-100 text-blue-800',   // In Progress
+        '3': 'bg-yellow-100 text-yellow-800', // Follow Up
+        '4': 'bg-red-100 text-red-800',    // Closed/Lost
+        '5': 'bg-purple-100 text-purple-800', // Won
+        '-': 'bg-gray-100 text-gray-800'   // Unknown/Default
+    };
+    return statusClasses[status] || 'bg-gray-100 text-gray-800';
+};
 
 // Watch for prop changes
 watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchDataHistory();
+    first.value = 0; // Reset to first page
+    fetchDataHistory(1, rows.value);
 }, { deep: true });
 
 // Lifecycle
@@ -125,7 +137,7 @@ onMounted(() => {
     <Card class="h-full">
         <template #title>
             <div class="flex justify-between items-center">
-                <span class="text-sm font-bold uppercase">DATA HISTORY</span>
+                <span class="text-sm font-bold uppercase">PROSPECT DATA HISTORY</span>
                 <div class="flex items-center space-x-2">
                     <Button 
                         icon="pi pi-filter" 
@@ -154,7 +166,7 @@ onMounted(() => {
             <!-- Data Table -->
             <div v-if="!error" class="space-y-4">
                 <DataTable
-                    :value="spkData"
+                    :value="prospectData"
                     :loading="loading"
                     :paginator="false"
                     :rows="rows"
@@ -164,12 +176,12 @@ onMounted(() => {
                     class="text-xs"
                 >
                     <Column field="no" header="No" style="width: 60px">
-                        <template #body="{ index }">
-                            {{ first + index + 1 }}
+                        <template #body="{ data }">
+                            {{ data.no }}
                         </template>
                     </Column>
-                    <Column field="idSpk" header="ID SPK" style="width: 100px"></Column>
-                    <Column field="namaCustomer" header="Nama Customer" style="min-width: 150px"></Column>
+                    <Column field="id_prospect" header="ID Prospect" style="width: 120px"></Column>
+                    <Column field="nama_lengkap" header="Nama Lengkap" style="min-width: 150px"></Column>
                     <Column field="alamat" header="Alamat" style="min-width: 200px">
                         <template #body="{ data }">
                             <div class="truncate max-w-xs" :title="data.alamat">
@@ -177,15 +189,16 @@ onMounted(() => {
                             </div>
                         </template>
                     </Column>
-                    <Column field="noHp" header="No Hp" style="width: 120px"></Column>
-                    <Column field="email" header="Email" style="min-width: 150px">
+                    <Column field="no_kontak" header="No Kontak" style="width: 120px"></Column>
+                    <Column field="tanggal_prospect" header="Tanggal Prospect" style="width: 120px"></Column>
+                    <Column field="status_prospect" header="Status" style="width: 100px">
                         <template #body="{ data }">
-                            <div class="truncate max-w-xs" :title="data.email">
-                                {{ data.email }}
-                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                  :class="getStatusClass(data.status_prospect)">
+                                {{ data.status_prospect }}
+                            </span>
                         </template>
                     </Column>
-                    <Column field="namaBpkb" header="Nama BPKB" style="min-width: 150px"></Column>
                 </DataTable>
 
                 <!-- Custom Pagination -->
@@ -197,7 +210,7 @@ onMounted(() => {
                         :first="first"
                         :rows="rows"
                         :totalRecords="totalRecords"
-                        :rowsPerPageOptions="[5, 10, 20]"
+                        :rowsPerPageOptions="[10, 20, 50]"
                         @page="onPageChange"
                         template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
                         class="text-xs"

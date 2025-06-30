@@ -7,7 +7,7 @@ from the dealer_integration schema.
 
 import os
 import sys
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Integer, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -67,5 +67,37 @@ class SPKDealingProcessData(Base):
     modified_time = Column(String(50), nullable=True)
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
+    # Relationships
+    units = relationship("SPKDealingProcessUnit", back_populates="spk_dealing_process_data", cascade="all, delete-orphan")
+
     def __repr__(self):
         return f"<SPKDealingProcessData(id={self.id}, dealer_id={self.dealer_id}, id_spk={self.id_spk})>"
+
+
+class SPKDealingProcessUnit(Base):
+    """Unit data for SPK dealing process"""
+    __tablename__ = "spk_dealing_process_units"
+    __table_args__ = {'schema': 'dealer_integration'}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    spk_dealing_process_data_id = Column(UUID(as_uuid=True), ForeignKey("dealer_integration.spk_dealing_process_data.id"), nullable=False)
+    kode_tipe_unit = Column(String(50), nullable=True, index=True)
+    kode_warna = Column(String(10), nullable=True)
+    quantity = Column(Integer, nullable=True)
+    harga_jual = Column(Numeric(15, 2), nullable=True)
+    diskon = Column(Numeric(15, 2), nullable=True)
+    amount_ppn = Column(Numeric(15, 2), nullable=True)
+    faktur_pajak = Column(String(100), nullable=True)
+    tipe_pembayaran = Column(String(10), nullable=True)
+    jumlah_tanda_jadi = Column(Numeric(15, 2), nullable=True)
+    tanggal_pengiriman = Column(String(50), nullable=True, index=True)
+    id_sales_program = Column(Text, nullable=True)
+    id_apparel = Column(Text, nullable=True)
+    created_time = Column(String(50), nullable=True)
+    modified_time = Column(String(50), nullable=True)
+
+    # Relationships
+    spk_dealing_process_data = relationship("SPKDealingProcessData", back_populates="units")
+
+    def __repr__(self):
+        return f"<SPKDealingProcessUnit(id={self.id}, kode_tipe_unit={self.kode_tipe_unit}, quantity={self.quantity})>"

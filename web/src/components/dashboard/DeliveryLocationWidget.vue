@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
 
@@ -24,9 +25,14 @@ const loading = ref(false);
 const error = ref('');
 const locationData = ref([]);
 
+// Computed properties
+const effectiveDealerId = computed(() => {
+    return props.dealerId || '12284';
+});
+
 // Methods
 const fetchLocationData = async () => {
-    if (!props.dealerId || !props.dateFrom || !props.dateTo) {
+    if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
         error.value = 'Missing required parameters';
         return;
     }
@@ -35,41 +41,38 @@ const fetchLocationData = async () => {
     error.value = '';
 
     try {
-        // Dummy data matching the image design
-        const dummyData = [
-            {
-                id: 1,
-                name: 'Batununggal',
-                percentage: 58,
-                color: '#4CAF50'
-            },
-            {
-                id: 2,
-                name: 'Sumatera',
-                percentage: 20,
-                color: '#F44336'
-            },
-            {
-                id: 3,
-                name: 'Merdeka',
-                percentage: 14,
-                color: '#FF9800'
-            },
-            {
-                id: 4,
-                name: 'Padjajaran',
-                percentage: 6,
-                color: '#2196F3'
-            },
-            {
-                id: 5,
-                name: 'Others',
-                percentage: 2,
-                color: '#9E9E9E'
+        // Call real API endpoint
+        const response = await axios.get('/api/v1/dashboard/delivery/locations', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
             }
-        ];
+        });
 
-        locationData.value = dummyData;
+        if (response.data.success) {
+            const data = response.data.data;
+            
+            if (data.length === 0) {
+                error.value = 'No delivery location data found for the selected criteria';
+                locationData.value = [];
+                return;
+            }
+
+            // Transform API response to component format with colors
+            const colors = ['#4CAF50', '#F44336', '#FF9800', '#2196F3', '#9C27B0'];
+            
+            locationData.value = data.map((item, index) => ({
+                id: index + 1,
+                name: item.location_name || item.lokasi_pengiriman,
+                percentage: item.percentage,
+                delivery_count: item.delivery_count,
+                color: colors[index] || '#9E9E9E'
+            }));
+            
+        } else {
+            error.value = response.data.message || 'Failed to fetch delivery location data';
+        }
     } catch (err) {
         console.error('Error fetching location data:', err);
         error.value = 'Failed to fetch location data';
