@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import StatusSPKWidget from '@/components/dashboard/StatusSPKWidget.vue';
 import TopDealingWidget from '@/components/dashboard/TopDealingWidget.vue';
 import RevenueWidget from '@/components/dashboard/RevenueWidget.vue';
-import DataHistoryWidget from '@/components/dashboard/DataHistoryWidget.vue';
+import DealingProcessDataHistoryWidget from '@/components/dashboard/DealingProcessDataHistoryWidget.vue';
 
 // Auth store
 const authStore = useAuthStore();
@@ -105,9 +105,9 @@ const formattedDateTo = computed(() => {
 
         <!-- Bottom Row (2 widgets) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Widget 3: Data History Table (Left) -->
+            <!-- Widget 3: SPK Dealing Process Data History Table (Left) -->
             <div class="lg:col-span-1">
-                <DataHistoryWidget
+                <DealingProcessDataHistoryWidget
                     :dealerId="selectedDealer"
                     :dateFrom="formattedDateFrom"
                     :dateTo="formattedDateTo"
