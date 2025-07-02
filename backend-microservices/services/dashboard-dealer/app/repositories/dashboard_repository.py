@@ -1637,8 +1637,10 @@ class DashboardRepository:
             # Count total delivery records with valid drivers
             query = self.db.query(
                 func.count(DeliveryProcessDetail.id_spk)
+            ).select_from(
+                DeliveryProcessData
             ).join(
-                DeliveryProcessDetail, 
+                DeliveryProcessDetail,
                 DeliveryProcessData.id == DeliveryProcessDetail.delivery_process_data_id
             ).filter(
                 and_(
