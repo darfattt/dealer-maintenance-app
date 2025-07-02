@@ -30,6 +30,10 @@ const navigateToUnitInboundDetail = () => {
     router.push('/unit-inbound-detail');
 };
 
+const navigateToPaymentTypeDetail = () => {
+    router.push('/payment-type-detail');
+};
+
 import { useAuthStore } from '@/stores/auth';
 
 // Auth store
@@ -163,7 +167,7 @@ const formattedDateTo = computed(() => {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                         <!-- Payment Type Title -->
-                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToPaymentTypeDetail">
                             <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
                                 Tipe Pembayaran
                             </h3>

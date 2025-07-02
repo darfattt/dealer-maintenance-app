@@ -33,6 +33,11 @@ const router = createRouter({
                     path: '/unit-inbound-detail',
                     name: 'unit-inbound-detail',
                     component: () => import('@/views/UnitInboundDetail.vue')
+                },
+                {
+                    path: '/payment-type-detail',
+                    name: 'payment-type-detail',
+                    component: () => import('@/views/PaymentTypeDetail.vue')
                 }
             ]
         },
