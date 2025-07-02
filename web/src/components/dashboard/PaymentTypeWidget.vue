@@ -232,7 +232,6 @@ onMounted(() => {
 
                 <!-- Custom Legend -->
                 <div class="lg:col-span-2 flex flex-col justify-center">
-                    <h4 class="text-sm font-semibold mb-3 text-center text-surface-700">Payment Distribution</h4>
                     <div class="space-y-2">
                         <div
                             v-for="(item, index) in legendItems"
