@@ -55,9 +55,9 @@ const fetchDeliveryProcessData = async () => {
     error.value = '';
 
     try {
-        // Call real API endpoint with cache-busting headers and timestamp
+        // Call API endpoint through proxy
         const timestamp = new Date().getTime();
-        const response = await axios.get('/delivery_process/dashboard/status-counts', {
+        const response = await axios.get('/api/v1/dashboard/delivery-process/status-counts', {
             params: {
                 dealer_id: props.dealerId,
                 date_from: props.dateFrom,
