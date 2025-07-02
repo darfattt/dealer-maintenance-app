@@ -38,6 +38,11 @@ const router = createRouter({
                     path: '/payment-type-detail',
                     name: 'payment-type-detail',
                     component: () => import('@/views/PaymentTypeDetail.vue')
+                },
+                {
+                    path: '/handle-leasing-detail',
+                    name: 'handle-leasing-detail',
+                    component: () => import('@/views/HandleLeasingDetail.vue')
                 }
             ]
         },

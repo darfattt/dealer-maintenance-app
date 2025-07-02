@@ -34,6 +34,10 @@ const navigateToPaymentTypeDetail = () => {
     router.push('/payment-type-detail');
 };
 
+const navigateToHandleLeasingDetail = () => {
+    router.push('/handle-leasing-detail');
+};
+
 import { useAuthStore } from '@/stores/auth';
 
 // Auth store
@@ -184,7 +188,8 @@ const formattedDateTo = computed(() => {
 
                     <div>
                         <!-- Top Leasing Title -->
-                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200"
+                             @click="navigateToHandleLeasingDetail">
                             <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
                                 Top 5 Leasing
                             </h3>
