@@ -48,7 +48,7 @@ const formattedDateTo = computed(() => {
 
 // Navigation methods
 const goBack = () => {
-    router.push('/dashboard');
+    router.push('/');
 };
 
 const refreshData = () => {
@@ -63,6 +63,15 @@ const refreshData = () => {
         <div class="flex items-center justify-between mb-8">
             <!-- Left Side: Back Button, Title, and Refresh -->
             <div class="flex items-center space-x-4">
+                
+                <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">
+                    DEALING PROCESS
+                </h1>
+                
+            </div>
+
+            <!-- Right Side: Filter Controls -->
+            <div class="flex items-center space-x-4">
                 <Button
                     icon="pi pi-arrow-left"
                     text
@@ -70,9 +79,6 @@ const refreshData = () => {
                     class="text-surface-600 hover:text-surface-900"
                     v-tooltip.top="'Back to Dashboard'"
                 />
-                <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">
-                    DEALING PROCESS
-                </h1>
                 <Button
                     icon="pi pi-refresh"
                     text
@@ -80,10 +86,6 @@ const refreshData = () => {
                     class="text-surface-600 hover:text-surface-900"
                     v-tooltip.top="'Refresh Data'"
                 />
-            </div>
-
-            <!-- Right Side: Filter Controls -->
-            <div class="flex items-center space-x-4">
                 <!-- Dealer Selection (only for non-DEALER_USER) -->
                 <div v-if="showDealerDropdown" class="flex items-center space-x-2">
                     <label for="dealer-filter" class="text-sm font-medium text-surface-700">Dealer:</label>

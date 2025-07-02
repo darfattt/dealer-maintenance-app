@@ -23,10 +23,8 @@ const selectedDateTo = ref(new Date()); // Today
 
 // Dealer options
 const dealerOptions = ref([
-    { label: 'All Dealers', value: '' },
-    { label: 'Dealer 12284', value: '12284' },
-    { label: 'Dealer 12285', value: '12285' },
-    { label: 'Dealer 12286', value: '12286' }
+   { label: 'Sample Dealer (12284)', value: '12284' },
+    { label: 'Test Dealer (00999)', value: '00999' }
 ]);
 
 // Check if user is DEALER_USER role
@@ -52,7 +50,7 @@ const formattedDateTo = computed(() => {
 
 // Navigation methods
 const goBack = () => {
-    router.push('/dashboard');
+    router.push('/');
 };
 
 const refreshData = () => {
@@ -69,16 +67,22 @@ const refreshData = () => {
             <div class="flex items-center justify-between mb-8">
                 <!-- Left Side: Back Button, Title, and Refresh -->
                 <div class="flex items-center space-x-4">
-                    <Button
+                   
+                    <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">
+                        PAYMENT TYPE DETAIL
+                    </h1>
+                    
+                </div>
+
+                <!-- Right Side: Filter Controls -->
+                <div class="flex items-center space-x-4">
+                     <Button
                         icon="pi pi-arrow-left"
                         text
                         @click="goBack"
                         class="text-surface-600 hover:text-surface-900"
                         v-tooltip.top="'Back to Dashboard'"
                     />
-                    <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">
-                        PAYMENT TYPE DETAIL
-                    </h1>
                     <Button
                         icon="pi pi-refresh"
                         text
@@ -86,10 +90,6 @@ const refreshData = () => {
                         class="text-surface-600 hover:text-surface-900"
                         v-tooltip.top="'Refresh Data'"
                     />
-                </div>
-
-                <!-- Right Side: Filter Controls -->
-                <div class="flex items-center space-x-4">
                     <!-- Dealer Dropdown (only for non-DEALER_USER roles) -->
                     <div v-if="showDealerDropdown" class="flex items-center space-x-2">
                         <label class="text-sm font-medium text-surface-700">Dealer:</label>

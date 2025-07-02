@@ -22,9 +22,8 @@ const selectedDateTo = ref(new Date()); // Today
 
 // Mock dealer options
 const dealerOptions = ref([
-    { label: 'Dealer A (12284)', value: '12284' },
-    { label: 'Dealer B (12285)', value: '12285' },
-    { label: 'Dealer C (12286)', value: '12286' }
+     { label: 'Sample Dealer (12284)', value: '12284' },
+    { label: 'Test Dealer (00999)', value: '00999' }
 ]);
 
 // Computed properties for formatted dates
