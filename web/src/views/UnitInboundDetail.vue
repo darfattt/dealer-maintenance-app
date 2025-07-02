@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import Button from 'primevue/button';
 import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
 import { useAuthStore } from '@/stores/auth';
@@ -7,7 +9,8 @@ import UnitInboundStatusWidget from '@/components/dashboard/UnitInboundStatusWid
 import Top5PenerimaanUnitWidget from '@/components/dashboard/Top5PenerimaanUnitWidget.vue';
 import UnitInboundDataHistoryWidget from '@/components/dashboard/UnitInboundDataHistoryWidget.vue';
 
-// Auth store
+// Router and Auth store
+const router = useRouter();
 const authStore = useAuthStore();
 
 // Filter controls
@@ -41,15 +44,44 @@ const formattedDateTo = computed(() => {
     if (!selectedDateTo.value) return '';
     return selectedDateTo.value.toISOString().split('T')[0];
 });
+
+// Navigation methods
+const goBack = () => {
+    router.push('/dashboard');
+};
+
+const refreshData = () => {
+    // Refresh logic here
+    console.log('Refreshing Unit Inbound data...');
+};
 </script>
 
 <template>
     <div class="space-y-6">
-        <!-- Header -->
-        <div class="flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">Unit Inbound</h1>
-            
-            <!-- Filter Controls -->
+        <!-- Header with Back Button, Title, Refresh and Filter Controls in One Row -->
+        <div class="flex items-center justify-between mb-8">
+            <!-- Left Side: Back Button, Title, and Refresh -->
+            <div class="flex items-center space-x-4">
+                <Button
+                    icon="pi pi-arrow-left"
+                    text
+                    @click="goBack"
+                    class="text-surface-600 hover:text-surface-900"
+                    v-tooltip.top="'Back to Dashboard'"
+                />
+                <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">
+                    UNIT INBOUND
+                </h1>
+                <Button
+                    icon="pi pi-refresh"
+                    text
+                    @click="refreshData"
+                    class="text-surface-600 hover:text-surface-900"
+                    v-tooltip.top="'Refresh Data'"
+                />
+            </div>
+
+            <!-- Right Side: Filter Controls -->
             <div class="flex items-center space-x-4">
                 <!-- Dealer Dropdown (only for non-DEALER_USER roles) -->
                 <div v-if="showDealerDropdown" class="flex items-center space-x-2">
@@ -70,16 +102,16 @@ const formattedDateTo = computed(() => {
                         v-model="selectedDateFrom"
                         placeholder="From Date"
                         dateFormat="dd-mm-yy"
-                        class="w-32"
-                        :showIcon="true"
+                        class="w-36"
+                        showIcon
                     />
-                    <span class="text-surface-600">s/d</span>
+                    <span class="text-sm text-surface-500">to</span>
                     <Calendar
                         v-model="selectedDateTo"
                         placeholder="To Date"
                         dateFormat="dd-mm-yy"
-                        class="w-32"
-                        :showIcon="true"
+                        class="w-36"
+                        showIcon
                     />
                 </div>
             </div>

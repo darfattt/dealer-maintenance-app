@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import Button from 'primevue/button';
 import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
 import { useAuthStore } from '@/stores/auth';
@@ -8,7 +10,8 @@ import DeliveryProcessWidget from '@/components/dashboard/DeliveryProcessWidget.
 import DeliveryLocationWidget from '@/components/dashboard/DeliveryLocationWidget.vue';
 import DeliveryDataHistoryWidget from '@/components/dashboard/DeliveryDataHistoryWidget.vue';
 
-// Auth store
+// Router and Auth store
+const router = useRouter();
 const authStore = useAuthStore();
 
 // Filter controls
@@ -42,43 +45,77 @@ const formattedDateTo = computed(() => {
     if (!selectedDateTo.value) return '';
     return selectedDateTo.value.toISOString().split('T')[0];
 });
+
+// Navigation methods
+const goBack = () => {
+    router.push('/dashboard');
+};
+
+const refreshData = () => {
+    // Refresh logic here
+    console.log('Refreshing Delivery Process data...');
+};
 </script>
 
 <template>
     <div class="space-y-6">
-        <!-- Filter Controls -->
-        <div class="flex justify-end items-center space-x-4 mb-6">
-            <!-- Dealer Selection (only for non-DEALER_USER) -->
-            <div v-if="showDealerDropdown" class="flex items-center space-x-2">
-                <label for="dealer-filter" class="text-sm font-medium">Dealer:</label>
-                <Dropdown
-                    id="dealer-filter"
-                    v-model="selectedDealer"
-                    :options="dealerOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Select Dealer"
-                    class="w-48"
+        <!-- Header with Back Button, Title, Refresh and Filter Controls in One Row -->
+        <div class="flex items-center justify-between mb-8">
+            <!-- Left Side: Back Button, Title, and Refresh -->
+            <div class="flex items-center space-x-4">
+                <Button
+                    icon="pi pi-arrow-left"
+                    text
+                    @click="goBack"
+                    class="text-surface-600 hover:text-surface-900"
+                    v-tooltip.top="'Back to Dashboard'"
+                />
+                <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">
+                    DELIVERY PROCESS
+                </h1>
+                <Button
+                    icon="pi pi-refresh"
+                    text
+                    @click="refreshData"
+                    class="text-surface-600 hover:text-surface-900"
+                    v-tooltip.top="'Refresh Data'"
                 />
             </div>
 
-            <!-- Date Range Filters -->
-            <div class="flex items-center space-x-2">
-                <Calendar
-                    v-model="selectedDateFrom"
-                    dateFormat="dd-mm-yy"
-                    placeholder="From Date"
-                    class="w-36"
-                    showIcon
-                />
-                <span class="text-sm text-muted-color">to</span>
-                <Calendar
-                    v-model="selectedDateTo"
-                    dateFormat="dd-mm-yy"
-                    placeholder="To Date"
-                    class="w-36"
-                    showIcon
-                />
+            <!-- Right Side: Filter Controls -->
+            <div class="flex items-center space-x-4">
+                <!-- Dealer Selection (only for non-DEALER_USER) -->
+                <div v-if="showDealerDropdown" class="flex items-center space-x-2">
+                    <label for="dealer-filter" class="text-sm font-medium text-surface-700">Dealer:</label>
+                    <Dropdown
+                        id="dealer-filter"
+                        v-model="selectedDealer"
+                        :options="dealerOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Select Dealer"
+                        class="w-48"
+                    />
+                </div>
+
+                <!-- Date Range Filters -->
+                <div class="flex items-center space-x-2">
+                    <Calendar
+                        v-model="selectedDateFrom"
+                        dateFormat="dd-mm-yy"
+                        placeholder="From Date"
+                        class="w-36"
+                        showIcon
+                    />
+                    <span class="text-sm text-surface-500">to</span>
+                    <Calendar
+                        v-model="selectedDateTo"
+                        dateFormat="dd-mm-yy"
+                        placeholder="To Date"
+                        class="w-36"
+                        showIcon
+                    />
+                </div>
             </div>
         </div>
 

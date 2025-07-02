@@ -1,16 +1,17 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import Button from 'primevue/button';
+import { useAuthStore } from '@/stores/auth';
 import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
-import { useAuthStore } from '@/stores/auth';
-import StatusSPKWidget from '@/components/dashboard/StatusSPKWidget.vue';
-import TopDealingWidget from '@/components/dashboard/TopDealingWidget.vue';
-import RevenueWidget from '@/components/dashboard/RevenueWidget.vue';
-import DealingProcessDataHistoryWidget from '@/components/dashboard/DealingProcessDataHistoryWidget.vue';
+import Button from 'primevue/button';
 
-// Router and Auth store
+// Import widgets
+import PermohonanFakturWidget from '@/components/dashboard/PermohonanFakturWidget.vue';
+import STNKDiterimaKonsumenWidget from '@/components/dashboard/STNKDiterimaKonsumenWidget.vue';
+import BPKBDiterimaKonsumenWidget from '@/components/dashboard/BPKBDiterimaKonsumenWidget.vue';
+import DocumentHandlingDataHistoryWidget from '@/components/dashboard/DocumentHandlingDataHistoryWidget.vue';
+
 const router = useRouter();
 const authStore = useAuthStore();
 
@@ -19,21 +20,12 @@ const selectedDealer = ref('12284'); // Default dealer
 const selectedDateFrom = ref(new Date(new Date().getFullYear(), 0, 1)); // Start of current year
 const selectedDateTo = ref(new Date()); // Today
 
-// Dealer options
+// Mock dealer options
 const dealerOptions = ref([
-    { label: 'Sample Dealer (12284)', value: '12284' },
-    { label: 'Test Dealer (00999)', value: '00999' }
+    { label: 'Dealer A (12284)', value: '12284' },
+    { label: 'Dealer B (12285)', value: '12285' },
+    { label: 'Dealer C (12286)', value: '12286' }
 ]);
-
-// Check if user is DEALER_USER role
-const isDealerUser = computed(() => {
-    return authStore.userRole === 'DEALER_USER';
-});
-
-// Show dealer dropdown only for non-DEALER_USER roles
-const showDealerDropdown = computed(() => {
-    return !isDealerUser.value;
-});
 
 // Computed properties for formatted dates
 const formattedDateFrom = computed(() => {
@@ -46,49 +38,62 @@ const formattedDateTo = computed(() => {
     return selectedDateTo.value.toISOString().split('T')[0];
 });
 
-// Navigation methods
+// Methods
 const goBack = () => {
-    router.push('/dashboard');
+    router.push('/');
 };
 
 const refreshData = () => {
-    // Refresh logic here
-    console.log('Refreshing Dealing Process data...');
+    // Force refresh by updating a reactive property
+    const currentDateFrom = selectedDateFrom.value;
+    selectedDateFrom.value = null;
+    setTimeout(() => {
+        selectedDateFrom.value = currentDateFrom;
+    }, 10);
 };
+
+// Lifecycle
+onMounted(() => {
+    // Set default dealer if user is DEALER_USER
+    if (authStore.userRole === 'DEALER_USER' && authStore.dealerId) {
+        selectedDealer.value = authStore.dealerId;
+    }
+});
 </script>
 
 <template>
-    <div class="space-y-6">
+    <div class="p-6 bg-surface-50 min-h-screen">
         <!-- Header with Back Button, Title, Refresh and Filter Controls in One Row -->
         <div class="flex items-center justify-between mb-8">
             <!-- Left Side: Back Button, Title, and Refresh -->
             <div class="flex items-center space-x-4">
-                <Button
+               
+                <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">
+                    DOCUMENT HANDLING
+                </h1>
+                
+            </div>
+
+            <!-- Right Side: Filter Controls -->
+            <div class="flex items-center space-x-4">
+                 <Button
                     icon="pi pi-arrow-left"
                     text
                     @click="goBack"
                     class="text-surface-600 hover:text-surface-900"
                     v-tooltip.top="'Back to Dashboard'"
                 />
-                <h1 class="text-2xl font-bold text-surface-900 uppercase tracking-wide">
-                    DEALING PROCESS
-                </h1>
-                <Button
+                 <Button
                     icon="pi pi-refresh"
                     text
                     @click="refreshData"
                     class="text-surface-600 hover:text-surface-900"
                     v-tooltip.top="'Refresh Data'"
                 />
-            </div>
-
-            <!-- Right Side: Filter Controls -->
-            <div class="flex items-center space-x-4">
                 <!-- Dealer Selection (only for non-DEALER_USER) -->
-                <div v-if="showDealerDropdown" class="flex items-center space-x-2">
+                <div v-if="authStore.userRole !== 'DEALER_USER'" class="flex items-center space-x-2">
                     <label for="dealer-filter" class="text-sm font-medium text-surface-700">Dealer:</label>
                     <Dropdown
-                        id="dealer-filter"
                         v-model="selectedDealer"
                         :options="dealerOptions"
                         optionLabel="label"
@@ -116,23 +121,35 @@ const refreshData = () => {
                         showIcon
                     />
                 </div>
+               
             </div>
         </div>
 
-        <!-- Dealing Process Layout - Top Row (2 widgets) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <!-- Widget 1: Top Dealing (Left) -->
-            <div class="lg:col-span-1">
-                <TopDealingWidget
+        <div class="space-y-6">
+
+        <!-- First Row: 3 Columns for Status Widgets -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Permohonan Faktur Widget -->
+            <div class="md:col-span-1">
+                <PermohonanFakturWidget
                     :dealerId="selectedDealer"
                     :dateFrom="formattedDateFrom"
                     :dateTo="formattedDateTo"
                 />
             </div>
 
-            <!-- Widget 2: Revenue (Right) -->
-            <div class="lg:col-span-1">
-                <RevenueWidget
+            <!-- STNK Diterima Konsumen Widget -->
+            <div class="md:col-span-1">
+                <STNKDiterimaKonsumenWidget
+                    :dealerId="selectedDealer"
+                    :dateFrom="formattedDateFrom"
+                    :dateTo="formattedDateTo"
+                />
+            </div>
+
+            <!-- BPKB Diterima Konsumen Widget -->
+            <div class="md:col-span-1">
+                <BPKBDiterimaKonsumenWidget
                     :dealerId="selectedDealer"
                     :dateFrom="formattedDateFrom"
                     :dateTo="formattedDateTo"
@@ -140,26 +157,41 @@ const refreshData = () => {
             </div>
         </div>
 
-        <!-- Bottom Row (2 widgets) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Widget 3: SPK Dealing Process Data History Table (Left) -->
-            <div class="lg:col-span-1">
-                <DealingProcessDataHistoryWidget
+        <!-- Second Row: 1 Column for Data History -->
+        <div class="grid grid-cols-1 gap-6">
+            <div class="col-span-1">
+                <DocumentHandlingDataHistoryWidget
                     :dealerId="selectedDealer"
                     :dateFrom="formattedDateFrom"
                     :dateTo="formattedDateTo"
                 />
             </div>
-
-            <!-- Widget 4: Status SPK (Right) -->
-            <div class="lg:col-span-1">
-                <StatusSPKWidget
-                    :dealerId="selectedDealer"
-                    :dateFrom="formattedDateFrom"
-                    :dateTo="formattedDateTo"
-                    :showTitle="true"
-                />
-            </div>
+        </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Custom styles for the detail view */
+.widget-with-title {
+    border-top: none;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .flex-wrap {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .flex-wrap > div {
+        width: 100%;
+    }
+}
+</style>

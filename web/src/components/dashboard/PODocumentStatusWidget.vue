@@ -169,15 +169,15 @@ onMounted(() => {
 
             <!-- Total Records Info and Refresh Button -->
             <div v-if="totalRecords > 0" class="flex justify-between items-center mb-4">
-                <button
+                <!-- <button
                     @click="forceRefresh"
                     class="text-xs text-primary hover:text-primary-600 transition-colors"
                     :disabled="loading"
                     title="Refresh data"
-                >
-                    <i class="pi pi-refresh" :class="{ 'pi-spin': loading }"></i>
-                    Refresh
-                </button>
+                > -->
+                    <i></i>
+                    
+                <!-- </button> -->
                 <small class="text-muted-color">
                     Total Records: {{ totalRecords.toLocaleString() }}
                 </small>
@@ -234,12 +234,12 @@ onMounted(() => {
                 </div>
 
                 <!-- Total Summary -->
-                <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <!-- <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <div class="flex justify-between items-center">
                         <span class="font-semibold text-gray-700">Total PO Documents</span>
                         <span class="text-xl font-bold text-primary">{{ totalCount.toLocaleString() }}</span>
                     </div>
-                </div>
+                </div> -->
             </div>
 
             <!-- Loading State -->

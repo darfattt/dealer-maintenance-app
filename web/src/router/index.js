@@ -43,6 +43,11 @@ const router = createRouter({
                     path: '/handle-leasing-detail',
                     name: 'handle-leasing-detail',
                     component: () => import('@/views/HandleLeasingDetail.vue')
+                },
+                {
+                    path: '/document-handling-detail',
+                    name: 'document-handling-detail',
+                    component: () => import('@/views/DocumentHandlingDetail.vue')
                 }
             ]
         },
