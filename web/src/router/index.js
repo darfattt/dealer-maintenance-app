@@ -28,6 +28,11 @@ const router = createRouter({
                     path: '/delivery-process-detail',
                     name: 'delivery-process-detail',
                     component: () => import('@/views/DeliveryProcessDetail.vue')
+                },
+                {
+                    path: '/unit-inbound-detail',
+                    name: 'unit-inbound-detail',
+                    component: () => import('@/views/UnitInboundDetail.vue')
                 }
             ]
         },

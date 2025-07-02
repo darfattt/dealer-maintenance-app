@@ -95,7 +95,7 @@ const getUnitImage = (kodeUnit) => {
         'ADV': 'https://via.placeholder.com/80x60/3F51B5/FFFFFF?text=ADV'
     };
     
-    return unitImages[kodeUnit] || 'https://via.placeholder.com/80x60/cccccc/666666?text=Motor';
+    return unitImages[kodeUnit] || 'https://via.placeholder.com/80x60/FF5722/FFFFFF?text=🏍️';
 };
 
 // Watch for prop changes
@@ -134,7 +134,7 @@ onMounted(() => {
                             :src="item.image"
                             :alt="item.name"
                             class="w-20 h-16 object-contain rounded"
-                            @error="$event.target.src = 'https://via.placeholder.com/80x60/cccccc/666666?text=Motor'"
+                            @error="$event.target.src = 'https://via.placeholder.com/80x60/FF5722/FFFFFF?text=🏍️'"
                         />
                     </div>
 

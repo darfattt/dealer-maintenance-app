@@ -26,6 +26,10 @@ const navigateToDeliveryProcessDetail = () => {
     router.push('/delivery-process-detail');
 };
 
+const navigateToUnitInboundDetail = () => {
+    router.push('/unit-inbound-detail');
+};
+
 import { useAuthStore } from '@/stores/auth';
 
 // Auth store
@@ -220,7 +224,7 @@ const formattedDateTo = computed(() => {
                 <!-- Inventory Row 1: Unit Inbound Status (1 column) -->
                 <div>
                     <!-- Data Inbound Title -->
-                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToUnitInboundDetail">
                         <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
                             Data Inbound
                         </h3>

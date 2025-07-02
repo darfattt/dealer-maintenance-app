@@ -74,9 +74,9 @@ Pasar, Alfamart, Indomart, Mall dll) \
 3. show only top 5 \
 3. apply integration for @SumberProspectWidget.vue
 
-Sebaran Prospect
-1. create new api that retrieve from prospect_data backend\database.py  ProspectData, that will count data group by kodeKecamatan and filter by dealer_id and date start/end tanggal_appointment (data type already date) and get latitude, longitude to map into map chart
-2. show only top 5
+Sebaran Prospect \n
+1. create new api that retrieve from prospect_data backend\database.py  ProspectData, that will count data group by kodeKecamatan and filter by dealer_id and date start/end tanggal_appointment (data type already date) and get latitude, longitude to map into map chart \n
+2. show only top 5 \n
 3. apply integration for 
 
 Data history
@@ -86,36 +86,36 @@ Data history
 
 ---- Dealing process
 
-Dealing top unit
-1. create new api that retrieve from spk_dealing_process_units @database.py  SPKDealingProcessUnit, that will sum(quantity)  group by kode_tipe_unit and filter by dealer_id and date start/end tanggal_pengiriman (data type  string, need to convert when filter)
-2. mapping data : None
-3. and apply integration for 
+Dealing top unit \
+1. create new api that retrieve from spk_dealing_process_units @database.py  SPKDealingProcessUnit, that will sum(quantity)  group by kode_tipe_unit and filter by dealer_id and date start/end tanggal_pengiriman (data type  string, need to convert when filter) \
+2. mapping data : None and \
+3. and apply integration for \ 
 
-Revenue 
-1. create new api that retrieve from spk_dealing_process_units @database.py  SPKDealingProcessUnit, that will sum(harga_jual)  filter by dealer_id and date start/end tanggal_pengiriman (data type  string, need to convert when filter)
-2. mapping data : None
-3. and apply integration for 
+Revenue \
+1. create new api that retrieve from spk_dealing_process_units @database.py  SPKDealingProcessUnit, that will sum(harga_jual)  filter by dealer_id and date start/end tanggal_pengiriman (data type  string, need to convert when filter) \
+2. mapping data : None \
+3. and apply integration for \ 
 
 
-Data history
-1. create new api that retrieve from spk_dealing_process_data database.py  SPKDealingProcessData, get all fields for tabular data with request param filter (id_spk, nama_customer, alamat,no_kontak,email,status_prosnama_bpkbpect)
-2. got pagination, per page default 20
-3. apply integration for 
+TODO   Data history \
+1. create new api that retrieve from spk_dealing_process_data database.py  SPKDealingProcessData, get all fields for tabular data with request param filter (id_spk, nama_customer, alamat,no_kontak,email,status_prospect,nama_bpkbp)
+2. got pagination, per page default 20 \
+3. apply integration for \
 
 
 
 -- Delivery Process -- 
-Driver
-1. create new api that retrieve from delivery_process_data @database.py  DeliveryProcessData join with DeliveryProcessDetail, that will count(DeliveryProcessDetail.id_spk) group by id_driver and filter by dealer_id and date start/end tanggal_pengiriman (data type  string, need to convert when filter)
-2. mapping data : None
-3. and apply integration for 
+Driver \
+1. create new api that retrieve from delivery_process_data @database.py  DeliveryProcessData join with DeliveryProcessDetail, that will count(DeliveryProcessDetail.id_spk) group by id_driver and filter by dealer_id and date start/end tanggal_pengiriman (data type  string, need to convert when filter) \
+2. mapping data : None, only show top 5 \ 
+3. and apply integration for \  
 
-Lokasi Pengiriman
-1. create new api that retrieve from delivery_process_data @database.py  DeliveryProcessData join with DeliveryProcessDetail, that will count(DeliveryProcessDetail.lokasi_pengiriman) group by lokasi_pengiriman and filter by dealer_id and date start/end tanggal_pengiriman (data type  string, need to convert when filter)
-2. Show top 5 only
-3. and apply integration for 
+Lokasi Pengiriman \
+1. create new api that retrieve from delivery_process_data @database.py  DeliveryProcessData join with DeliveryProcessDetail, that will count(DeliveryProcessDetail.lokasi_pengiriman) group by lokasi_pengiriman and filter by dealer_id and date start/end tanggal_pengiriman (data type  string, need to convert when filter) \
+2. Show top 5 only \
+3. and apply integration for  \
 
-Data history
-1. create new api that retrieve from delivery_process_data database.py  DeliveryProcessData join with DeliveryProcessDetail, get fields :delivery_document_id,tanggal_pengiriman,status_delivery_document,id_driver,id_spk,nama_pengerima,no_kontak_penerima, lokasi_pengiriman,waktu_pengiriman for tabular data with request param filter (delivery_document_id,tanggal_pengiriman,status_delivery_document,id_driver,id_spk,nama_pengerima,no_kontak_penerima, lokasi_pengiriman,waktu_pengiriman)
-2. got pagination, per page default 20
-3. apply integration for 
+Data history \
+1. create new api that retrieve from delivery_process_data database.py  DeliveryProcessData join with DeliveryProcessDetail, get fields :delivery_document_id,tanggal_pengiriman,status_delivery_document,id_driver,id_spk,nama_pengerima,no_kontak_penerima, lokasi_pengiriman,waktu_pengiriman for tabular data with request param filter (delivery_document_id,tanggal_pengiriman,status_delivery_document,id_driver,id_spk,nama_pengerima,no_kontak_penerima, lokasi_pengiriman,waktu_pengiriman) \
+2. got pagination, per page default 20 \
+3. apply integration for \

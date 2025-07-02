@@ -143,7 +143,7 @@ onMounted(() => {
                             :src="driver.image"
                             :alt="driver.name"
                             class="w-12 h-12 object-cover rounded-full border-2 border-surface-200"
-                            @error="$event.target.src = 'https://via.placeholder.com/48x48/cccccc/666666?text=D'"
+                            @error="$event.target.src = 'https://via.placeholder.com/48x48/607D8B/FFFFFF?text=👤'"
                         />
                     </div>
 
