@@ -6,7 +6,7 @@ import os
 import sys
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, text
+from sqlalchemy import func, and_, or_, text, case
 
 # Add parent directory to path for utils import
 parent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
@@ -14,7 +14,7 @@ if parent_path not in sys.path:
     sys.path.append(parent_path)
 
 from utils.logger import setup_logger
-from app.models.unit_inbound import UnitInboundData
+from app.models.unit_inbound import UnitInboundData, UnitInboundUnit
 from app.models.billing_process import BillingProcessData
 from app.models.delivery_process import DeliveryProcessData, DeliveryProcessDetail
 from app.models.prospect_data import ProspectData
@@ -1083,7 +1083,7 @@ class DashboardRepository:
                     item_desc = "Unknown Unit"
 
                 # Generate default motorcycle image URL
-                default_image = "https://via.placeholder.com/48x48/FF5722/FFFFFF?text=🏍️"
+                default_image = "/assets/images/motor.png"
 
                 item = {
                     'id': i,

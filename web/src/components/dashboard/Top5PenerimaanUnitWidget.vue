@@ -35,31 +35,31 @@ const mockTopUnitsData = [
     {
         id: 1,
         unit_name: 'Scoopy Black',
-        unit_image: 'https://via.placeholder.com/48x48/000000/ffffff?text=SB',
+        unit_image: '/assets/images/no-profile-picture-icon.svg',
         total_units: 341
     },
     {
         id: 2,
         unit_name: 'Vario 160 Navy',
-        unit_image: 'https://via.placeholder.com/48x48/000080/ffffff?text=VN',
+        unit_image: '/assets/images/no-profile-picture-icon.svg',
         total_units: 210
     },
     {
         id: 3,
         unit_name: 'Beat Cream',
-        unit_image: 'https://via.placeholder.com/48x48/F5F5DC/000000?text=BC',
+        unit_image: '/assets/images/no-profile-picture-icon.svg',
         total_units: 100
     },
     {
         id: 4,
         unit_name: 'Beat Cream',
-        unit_image: 'https://via.placeholder.com/48x48/F5F5DC/000000?text=BC',
+        unit_image: '/assets/images/no-profile-picture-icon.svg',
         total_units: 84
     },
     {
         id: 5,
         unit_name: 'Scoopy Black',
-        unit_image: 'https://via.placeholder.com/48x48/000000/ffffff?text=SB',
+        unit_image: '/assets/images/no-profile-picture-icon.svg',
         total_units: 64
     }
 ];
