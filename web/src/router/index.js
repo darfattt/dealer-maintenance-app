@@ -45,6 +45,16 @@ const router = createRouter({
                     component: () => import('@/views/HandleLeasingDetail.vue')
                 },
                 {
+                    path: '/test-payment-status-widget',
+                    name: 'test-payment-status-widget',
+                    component: () => import('@/views/TestPaymentStatusWidget.vue')
+                },
+                {
+                    path: '/test-payment-revenue-widget',
+                    name: 'test-payment-revenue-widget',
+                    component: () => import('@/views/test/PaymentRevenueTest.vue')
+                },
+                {
                     path: '/document-handling-detail',
                     name: 'document-handling-detail',
                     component: () => import('@/views/DocumentHandlingDetail.vue')

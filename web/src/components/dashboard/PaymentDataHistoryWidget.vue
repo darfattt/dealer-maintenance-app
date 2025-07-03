@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -36,33 +37,8 @@ const effectiveDealerId = computed(() => {
     return props.dealerId || '12284';
 });
 
-// Mock data for demonstration (will be replaced with real API later)
-const generateMockData = (page = 1, perPage = 20) => {
-    const paymentTypes = ['Cash', 'Credit'];
-    const paymentMethods = ['Cash', 'Transfer'];
-    const statuses = ['New', 'Process', 'Accepted', 'Done'];
-    
-    const mockData = [];
-    const startIndex = (page - 1) * perPage;
-    
-    for (let i = 1; i <= perPage; i++) {
-        const index = startIndex + i;
-        mockData.push({
-            no: index,
-            id_invoice: `INV-${String(index).padStart(6, '0')}`,
-            id_customer: `CUST-${String(index + 1000).padStart(4, '0')}`,
-            amount: Math.floor(Math.random() * 50000000) + 5000000, // 5M - 55M
-            tipe_pembayaran: paymentTypes[Math.floor(Math.random() * paymentTypes.length)],
-            cara_bayar: paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-            status: statuses[Math.floor(Math.random() * statuses.length)]
-        });
-    }
-    
-    return {
-        data: mockData,
-        total: 247 // Mock total records
-    };
-};
+// API configuration
+const API_ENDPOINT = `/api/v1/dashboard/payment-data-history`;
 
 // Methods
 const fetchData = async (page = 1, perPage = 20) => {
@@ -75,28 +51,44 @@ const fetchData = async (page = 1, perPage = 20) => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API call when backend is ready
-        // const response = await axios.get('/api/v1/dashboard/payment/data-history', {
-        //     params: {
-        //         dealer_id: effectiveDealerId.value,
-        //         date_from: props.dateFrom,
-        //         date_to: props.dateTo,
-        //         page: page,
-        //         per_page: perPage
-        //     }
-        // });
+        console.log(`Fetching payment data history for dealer ${effectiveDealerId.value}, page ${page}, per_page ${perPage}`);
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const response = await axios.get(API_ENDPOINT, {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo,
+                page: page,
+                per_page: perPage
+            }
+        });
 
-        // Use mock data for now
-        const mockResponse = generateMockData(page, perPage);
-        data.value = mockResponse.data;
-        totalRecords.value = mockResponse.total;
+        if (response.data && response.data.success) {
+            data.value = response.data.data || [];
+            totalRecords.value = response.data.total_records || 0;
+
+            console.log(`Successfully loaded ${data.value.length} payment records (total: ${totalRecords.value})`);
+        } else {
+            throw new Error(response.data?.message || 'Invalid response format');
+        }
 
     } catch (err) {
         console.error('Error fetching payment data:', err);
-        error.value = 'Failed to fetch payment data';
+
+        if (err.response) {
+            // Server responded with error status
+            error.value = `Server error: ${err.response.data?.detail || err.response.statusText}`;
+        } else if (err.request) {
+            // Request was made but no response received
+            error.value = 'Network error: Unable to connect to server';
+        } else {
+            // Something else happened
+            error.value = err.message || 'Failed to fetch payment data';
+        }
+
+        // Reset data on error
+        data.value = [];
+        totalRecords.value = 0;
     } finally {
         loading.value = false;
     }

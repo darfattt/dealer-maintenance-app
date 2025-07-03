@@ -14,7 +14,7 @@ if utils_path not in sys.path:
 
 from utils.logger import setup_logger
 from app.repositories.dashboard_repository import DashboardRepository
-from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, DeliveryProcessStatusResponse, DeliveryProcessStatusItem, ProspectFollowUpResponse, ProspectFollowUpItem, SPKStatusResponse, SPKStatusItem, TopLeasingResponse, TopLeasingItem, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, DeliveryProcessStatusResponse, DeliveryProcessStatusItem, ProspectFollowUpResponse, ProspectFollowUpItem, SPKStatusResponse, SPKStatusItem, TopLeasingResponse, TopLeasingItem, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
 
 logger = setup_logger(__name__)
 
@@ -137,6 +137,219 @@ class DashboardController:
                 data=[],
                 total_records=0,
                 total_amount=0
+            )
+
+    async def get_payment_method_statistics(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> PaymentMethodResponse:
+        """
+        Get payment method statistics for billing process data
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            PaymentMethodResponse with payment method counts
+        """
+        try:
+            logger.info(f"Getting payment method statistics for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get payment method statistics
+            payment_method_items = self.repository.get_payment_method_statistics(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            # Get total records
+            total_records = self.repository.get_total_billing_process_records(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            logger.info(f"Found {len(payment_method_items)} different payment methods with total {total_records} records")
+
+            return PaymentMethodResponse(
+                success=True,
+                message="Payment method statistics retrieved successfully",
+                data=payment_method_items,
+                total_records=total_records
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting payment method statistics: {str(e)}")
+            return PaymentMethodResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[],
+                total_records=0
+            )
+
+    async def get_payment_status_statistics(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> PaymentStatusResponse:
+        """
+        Get payment status statistics for billing process data
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            PaymentStatusResponse with payment status counts
+        """
+        try:
+            logger.info(f"Getting payment status statistics for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get payment status statistics
+            payment_status_items = self.repository.get_payment_status_statistics(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            # Get total records
+            total_records = self.repository.get_total_billing_process_records(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            logger.info(f"Found {len(payment_status_items)} different payment statuses with total {total_records} records")
+
+            return PaymentStatusResponse(
+                success=True,
+                message="Payment status statistics retrieved successfully",
+                data=payment_status_items,
+                total_records=total_records
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting payment status statistics: {str(e)}")
+            return PaymentStatusResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[],
+                total_records=0
+            )
+
+    async def get_payment_revenue_total(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> PaymentRevenueResponse:
+        """
+        Get total payment revenue from billing process data
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            PaymentRevenueResponse with total revenue amount
+        """
+        try:
+            logger.info(f"Getting payment revenue total for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get revenue total and record count
+            revenue_data = self.repository.get_payment_revenue_total(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            total_revenue = revenue_data.get('total_revenue', 0.0)
+            total_records = revenue_data.get('total_records', 0)
+
+            logger.info(f"Total revenue: {total_revenue}, Total records: {total_records}")
+
+            return PaymentRevenueResponse(
+                success=True,
+                message="Payment revenue total retrieved successfully",
+                total_revenue=total_revenue,
+                total_records=total_records
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting payment revenue total: {str(e)}")
+            return PaymentRevenueResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                total_revenue=0.0,
+                total_records=0
+            )
+
+    async def get_payment_data_history(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> PaymentDataHistoryResponse:
+        """
+        Get payment data history with pagination
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+            page: Page number (1-based)
+            per_page: Records per page (default 20)
+
+        Returns:
+            PaymentDataHistoryResponse with paginated payment data
+        """
+        try:
+            logger.info(f"Getting payment data history for dealer {dealer_id} from {date_from} to {date_to}, page {page}")
+
+            # Get payment data history from repository
+            history_data = self.repository.get_payment_data_history(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to,
+                page=page,
+                per_page=per_page
+            )
+
+            data = history_data.get('data', [])
+            total_records = history_data.get('total_records', 0)
+            total_pages = history_data.get('total_pages', 0)
+
+            logger.info(f"Found {len(data)} payment records on page {page} (total: {total_records})")
+
+            return PaymentDataHistoryResponse(
+                success=True,
+                message="Payment data history retrieved successfully",
+                data=data,
+                total_records=total_records,
+                page=page,
+                per_page=per_page,
+                total_pages=total_pages
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting payment data history: {str(e)}")
+            return PaymentDataHistoryResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[],
+                total_records=0,
+                page=page,
+                per_page=per_page,
+                total_pages=0
             )
 
     async def get_delivery_process_status_statistics(

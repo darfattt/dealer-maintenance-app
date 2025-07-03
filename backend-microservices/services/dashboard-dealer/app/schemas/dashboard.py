@@ -50,6 +50,88 @@ class PaymentTypeResponse(BaseModel):
         from_attributes = True
 
 
+class PaymentMethodItem(BaseModel):
+    """Individual payment method item for billing process data"""
+    cara_bayar: Optional[str] = Field(None, description="Payment method code (1, 2, etc.)")
+    cara_bayar_label: Optional[str] = Field(None, description="Payment method label (Cash, Transfer)")
+    count: int = Field(..., description="Number of records with this payment method")
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentMethodResponse(BaseModel):
+    """Response schema for payment method statistics"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[PaymentMethodItem] = Field([], description="List of payment method statistics")
+    total_records: int = Field(..., description="Total number of billing process records")
+
+    class Config:
+        from_attributes = True
+
+
+# Payment Status Schemas
+class PaymentStatusItem(BaseModel):
+    """Individual status item for payment status data"""
+    status: Optional[str] = Field(None, description="Payment status code (1, 2, 3, 4, etc.)")
+    status_label: Optional[str] = Field(None, description="Payment status label (New, Process, Accepted, Close)")
+    count: int = Field(..., description="Number of records with this payment status")
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentStatusResponse(BaseModel):
+    """Response schema for payment status statistics"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[PaymentStatusItem] = Field([], description="List of payment status statistics")
+    total_records: int = Field(..., description="Total number of billing process records")
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentRevenueResponse(BaseModel):
+    """Response schema for payment revenue statistics"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    total_revenue: float = Field(..., description="Total revenue amount from billing process data")
+    total_records: int = Field(..., description="Total number of billing process records")
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentDataHistoryItem(BaseModel):
+    """Individual payment data history item for table display"""
+    no: int = Field(..., description="Row number")
+    id_invoice: Optional[str] = Field(None, description="Invoice ID")
+    id_customer: Optional[str] = Field(None, description="Customer ID")
+    amount: Optional[float] = Field(None, description="Payment amount")
+    tipe_pembayaran: Optional[str] = Field(None, description="Payment type (Credit/Cash)")
+    cara_bayar: Optional[str] = Field(None, description="Payment method (Cash/Transfer)")
+    status: Optional[str] = Field(None, description="Payment status (New/Process/Accepted/Close)")
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentDataHistoryResponse(BaseModel):
+    """Response schema for payment data history with pagination"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[PaymentDataHistoryItem] = Field(..., description="List of payment data history items")
+    total_records: int = Field(..., description="Total number of records")
+    page: int = Field(..., description="Current page number")
+    per_page: int = Field(..., description="Records per page")
+    total_pages: int = Field(..., description="Total number of pages")
+
+    class Config:
+        from_attributes = True
+
+
 class DeliveryProcessStatusItem(BaseModel):
     """Individual status item for delivery process data"""
     status_delivery_document: Optional[str] = Field(None, description="Original status of delivery document")

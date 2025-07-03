@@ -8,10 +8,10 @@ from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, text
 
-# Add utils to path
-utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../utils'))
-if utils_path not in sys.path:
-    sys.path.append(utils_path)
+# Add parent directory to path for utils import
+parent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
+if parent_path not in sys.path:
+    sys.path.append(parent_path)
 
 from utils.logger import setup_logger
 from app.models.unit_inbound import UnitInboundData
@@ -21,7 +21,7 @@ from app.models.prospect_data import ProspectData
 from app.models.spk_dealing_process import SPKDealingProcessData, SPKDealingProcessUnit
 from app.models.leasing_data import LeasingData
 from app.models.document_handling import DocumentHandlingData, DocumentHandlingUnit
-from app.schemas.dashboard import UnitInboundStatusItem, PaymentTypeItem, DeliveryProcessStatusItem, ProspectFollowUpItem, SPKStatusItem, TopLeasingItem, StatusProspectItem, MetodeFollowUpItem, SumberProspectItem, SebaranProspectItem, ProspectDataTableItem, TopDealingUnitItem, TopDriverItem, DeliveryLocationItem, DeliveryDataHistoryItem, SPKDealingProcessDataItem
+from app.schemas.dashboard import UnitInboundStatusItem, PaymentTypeItem, PaymentMethodItem, PaymentStatusItem, DeliveryProcessStatusItem, ProspectFollowUpItem, SPKStatusItem, TopLeasingItem, StatusProspectItem, MetodeFollowUpItem, SumberProspectItem, SebaranProspectItem, ProspectDataTableItem, TopDealingUnitItem, TopDriverItem, DeliveryLocationItem, DeliveryDataHistoryItem, SPKDealingProcessDataItem
 from app.utils.status_mapper import UnitInboundStatusMapper
 
 logger = setup_logger(__name__)
@@ -297,6 +297,379 @@ class DashboardRepository:
 
         except Exception as e:
             raise Exception(f"Error getting total billing amount: {str(e)}")
+
+    def get_payment_method_statistics(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> List[PaymentMethodItem]:
+        """
+        Get count of billing process data grouped by cara_bayar (payment method)
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            List of PaymentMethodItem with payment method, count, and label
+        """
+        try:
+            logger.info(f"Querying billing process data for payment methods - dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}")
+
+            # Build the query with flexible date filtering to handle both formats
+            # Format 1: YYYY-MM-DD (test data)
+            # Format 2: DD/MM/YYYY (real API data)
+            query = self.db.query(
+                BillingProcessData.cara_bayar,
+                func.count(BillingProcessData.id).label('count')
+            ).filter(
+                and_(
+                    BillingProcessData.dealer_id == dealer_id,
+                    BillingProcessData.cara_bayar.isnot(None),  # Exclude null payment methods
+                    # Use regex to detect format and handle accordingly
+                    or_(
+                        # Handle YYYY-MM-DD format (contains 4 digits at start)
+                        and_(
+                            BillingProcessData.created_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
+                            BillingProcessData.created_time >= date_from,
+                            BillingProcessData.created_time <= date_to + ' 23:59:59'
+                        ),
+                        # Handle DD/MM/YYYY format (contains / separators)
+                        and_(
+                            BillingProcessData.created_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
+                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                        )
+                    )
+                )
+            ).group_by(BillingProcessData.cara_bayar)
+
+            # Execute query
+            results = query.all()
+            logger.info(f"Found {len(results)} different payment methods")
+
+            # Convert to schema objects with mapping
+            payment_method_items = []
+            for cara_bayar, count in results:
+                # Map payment method codes to labels
+                cara_bayar_label = self._map_payment_method_label(cara_bayar)
+
+                payment_method_items.append(PaymentMethodItem(
+                    cara_bayar=cara_bayar,
+                    cara_bayar_label=cara_bayar_label,
+                    count=count
+                ))
+
+            return payment_method_items
+
+        except Exception as e:
+            raise Exception(f"Error getting payment method statistics: {str(e)}")
+
+    def _map_payment_method_label(self, cara_bayar: str) -> str:
+        """
+        Map payment method codes to human-readable labels
+
+        Args:
+            cara_bayar: Payment method code
+
+        Returns:
+            Human-readable label
+        """
+        mapping = {
+            '1': 'Cash',
+            '2': 'Transfer'
+        }
+        return mapping.get(cara_bayar, cara_bayar or 'Unknown')
+
+    def get_payment_status_statistics(self, dealer_id: str, date_from: str, date_to: str) -> List[PaymentStatusItem]:
+        """
+        Get payment status statistics from billing process data
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            List of PaymentStatusItem with status distribution
+        """
+        try:
+            # Build the query with date filtering
+            query = self.db.query(
+                BillingProcessData.status,
+                func.count(BillingProcessData.id).label('count')
+            ).filter(
+                and_(
+                    BillingProcessData.dealer_id == dealer_id,
+                    BillingProcessData.status.isnot(None),
+                    # Date conversion logic for both YYYY-MM-DD and DD/MM/YYYY formats
+                    or_(
+                        # Handle YYYY-MM-DD format
+                        and_(
+                            func.length(BillingProcessData.created_time) >= 10,
+                            func.substring(BillingProcessData.created_time, 5, 1) == '-',
+                            func.substring(BillingProcessData.created_time, 8, 1) == '-',
+                            func.to_date(func.substring(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD').between(
+                                func.to_date(date_from, 'YYYY-MM-DD'),
+                                func.to_date(date_to, 'YYYY-MM-DD')
+                            )
+                        ),
+                        # Handle DD/MM/YYYY format
+                        and_(
+                            func.length(BillingProcessData.created_time) >= 10,
+                            func.substring(BillingProcessData.created_time, 3, 1) == '/',
+                            func.substring(BillingProcessData.created_time, 6, 1) == '/',
+                            func.to_date(func.substring(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY').between(
+                                func.to_date(date_from, 'YYYY-MM-DD'),
+                                func.to_date(date_to, 'YYYY-MM-DD')
+                            )
+                        )
+                    )
+                )
+            ).group_by(BillingProcessData.status)
+
+            results = query.all()
+
+            # Convert to PaymentStatusItem objects with mapping
+            payment_status_items = []
+            for status, count in results:
+                status_label = self._map_payment_status_label(status)
+                payment_status_items.append(PaymentStatusItem(
+                    status=status,
+                    status_label=status_label,
+                    count=count
+                ))
+
+            return payment_status_items
+
+        except Exception as e:
+            logger.error(f"Error getting payment status statistics: {str(e)}")
+            raise
+
+    def _map_payment_status_label(self, status: str) -> str:
+        """
+        Map payment status codes to human-readable labels
+
+        Args:
+            status: Payment status code
+
+        Returns:
+            Human-readable label
+        """
+        mapping = {
+            '1': 'New',
+            '2': 'Process',
+            '3': 'Accepted',
+            '4': 'Close'
+        }
+        return mapping.get(status, status or 'Unknown')
+
+    def get_payment_revenue_total(self, dealer_id: str, date_from: str, date_to: str) -> Dict[str, Any]:
+        """
+        Get total revenue from billing process data
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            Dictionary with total_revenue and total_records
+        """
+        try:
+            # Build date filter conditions for both YYYY-MM-DD and DD/MM/YYYY formats
+            date_conditions = []
+
+            # Handle YYYY-MM-DD format
+            date_conditions.append(
+                and_(
+                    func.length(BillingProcessData.created_time) >= 10,
+                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Handle DD/MM/YYYY format
+            date_conditions.append(
+                and_(
+                    func.length(BillingProcessData.created_time) >= 10,
+                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Get total revenue
+            revenue_query = self.db.query(
+                func.coalesce(func.sum(BillingProcessData.amount), 0).label('total_revenue')
+            ).filter(
+                and_(
+                    BillingProcessData.dealer_id == dealer_id,
+                    BillingProcessData.amount.isnot(None),
+                    or_(*date_conditions)
+                )
+            )
+
+            revenue_result = revenue_query.first()
+            total_revenue = float(revenue_result.total_revenue) if revenue_result and revenue_result.total_revenue else 0.0
+
+            # Get total records count
+            count_query = self.db.query(
+                func.count(BillingProcessData.id).label('total_records')
+            ).filter(
+                and_(
+                    BillingProcessData.dealer_id == dealer_id,
+                    or_(*date_conditions)
+                )
+            )
+
+            count_result = count_query.first()
+            total_records = count_result.total_records if count_result else 0
+
+            logger.info(f"Revenue calculation for dealer {dealer_id}: total_revenue={total_revenue}, total_records={total_records}")
+
+            return {
+                'total_revenue': total_revenue,
+                'total_records': total_records
+            }
+
+        except Exception as e:
+            logger.error(f"Error calculating payment revenue: {str(e)}")
+            return {
+                'total_revenue': 0.0,
+                'total_records': 0
+            }
+
+    def get_payment_data_history(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Get payment data history with pagination, joining BillingProcessData with DeliveryProcessDetail
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date in YYYY-MM-DD format
+            date_to: End date in YYYY-MM-DD format
+            page: Page number (1-based)
+            per_page: Records per page (default 20)
+
+        Returns:
+            Dict containing data list, total_records, page, per_page, total_pages
+        """
+        try:
+            logger.info(f"Getting payment data history for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}, page={page}, per_page={per_page}")
+
+            # Data mapping dictionaries
+            cara_bayar_mapping = {
+                '1': 'Cash',
+                '2': 'Transfer'
+            }
+
+            status_mapping = {
+                '1': 'New',
+                '2': 'Process',
+                '3': 'Accepted',
+                '4': 'Close'
+            }
+
+            tipe_pembayaran_mapping = {
+                '1': 'Credit',
+                '2': 'Cash'
+            }
+
+            # Build date filter conditions for created_time string field (same pattern as payment revenue)
+            date_conditions = []
+
+            # Handle YYYY-MM-DD format
+            date_conditions.append(
+                and_(
+                    func.length(BillingProcessData.created_time) >= 10,
+                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Handle DD/MM/YYYY format
+            date_conditions.append(
+                and_(
+                    func.length(BillingProcessData.created_time) >= 10,
+                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Build the main query joining BillingProcessData with DeliveryProcessDetail on id_spk
+            base_query = self.db.query(BillingProcessData).outerjoin(
+                DeliveryProcessDetail,
+                BillingProcessData.id_spk == DeliveryProcessDetail.id_spk
+            ).filter(
+                and_(
+                    BillingProcessData.dealer_id == dealer_id,
+                    or_(*date_conditions)
+                )
+            )
+
+            # Get total count for pagination
+            total_count = base_query.count()
+
+            # Calculate total pages
+            total_pages = (total_count + per_page - 1) // per_page
+
+            # Apply pagination and ordering
+            offset = (page - 1) * per_page
+            results = base_query.order_by(
+                BillingProcessData.created_time.desc(),
+                BillingProcessData.id_invoice
+            ).offset(offset).limit(per_page).all()
+
+            # Format the results
+            data = []
+            for i, billing in enumerate(results, start=offset + 1):
+                # Apply data mappings
+                cara_bayar_label = cara_bayar_mapping.get(billing.cara_bayar, billing.cara_bayar or 'Unknown')
+                status_label = status_mapping.get(billing.status, billing.status or 'Unknown')
+                tipe_pembayaran_label = tipe_pembayaran_mapping.get(billing.tipe_pembayaran, billing.tipe_pembayaran or 'Unknown')
+
+                item = {
+                    'no': i,
+                    'id_invoice': billing.id_invoice,
+                    'id_customer': billing.id_customer,
+                    'amount': float(billing.amount) if billing.amount else 0.0,
+                    'tipe_pembayaran': tipe_pembayaran_label,
+                    'cara_bayar': cara_bayar_label,
+                    'status': status_label
+                }
+                data.append(item)
+
+            logger.info(f"Found {len(data)} payment records on page {page} (total: {total_count})")
+
+            return {
+                'data': data,
+                'total_records': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting payment data history: {e}")
+            return {
+                'data': [],
+                'total_records': 0,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': 0
+            }
 
     def get_delivery_process_status_counts(
         self,

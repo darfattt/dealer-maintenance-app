@@ -9,7 +9,7 @@ from datetime import datetime, date
 
 from app.dependencies import get_db
 from app.controllers.dashboard_controller import DashboardController
-from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
 
 router = APIRouter(tags=["dashboard"])
 
@@ -321,6 +321,274 @@ async def get_payment_type_statistics(
             dealer_id=dealer_id,
             date_from=date_from,
             date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-method/statistics", response_model=PaymentMethodResponse)
+async def get_payment_method_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get payment method statistics from billing process data for dashboard visualization
+
+    This endpoint returns count grouped by cara_bayar (payment method) for a specific dealer
+    within a date range. The data is suitable for payment method widgets like pie charts.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PaymentMethodResponse: Contains payment method counts with mapped labels (1=Cash, 2=Transfer)
+
+    Example:
+        GET /api/v1/dashboard/payment-method/statistics?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_method_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-status/statistics", response_model=PaymentStatusResponse)
+async def get_payment_status_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get payment status statistics from billing process data for dashboard visualization
+
+    This endpoint returns count grouped by status (payment status) for a specific dealer
+    within a date range. The data is suitable for payment status widgets like horizontal bar charts.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PaymentStatusResponse: Contains payment status counts with mapped labels (1=New, 2=Process, 3=Accepted, 4=Close)
+
+    Example:
+        GET /api/v1/dashboard/payment-status/statistics?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_status_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-revenue/total", response_model=PaymentRevenueResponse)
+async def get_payment_revenue_total(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get total payment revenue from billing process data for dashboard visualization
+
+    This endpoint returns the sum of amount field from billing_process_data for a specific dealer
+    within a date range. The data is suitable for revenue widgets displaying total amounts.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PaymentRevenueResponse: Contains total revenue amount and record count
+
+    Example:
+        GET /api/v1/dashboard/payment-revenue/total?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_revenue_total(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-data-history", response_model=PaymentDataHistoryResponse)
+async def get_payment_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Get payment data history with pagination from billing process data joined with delivery process details
+
+    This endpoint returns paginated payment data history by joining billing_process_data with
+    delivery_process_details on id_spk field. Returns fields: No, id_invoice, id_customer, amount,
+    tipe_pembayaran (mapped to labels), cara_bayar (mapped to labels), status (mapped to labels).
+
+    Data mappings:
+    - Cara Bayar: 1=Cash, 2=Transfer
+    - Status: 1=New, 2=Process, 3=Accepted, 4=Close
+    - Tipe Pembayaran: 1=Credit, 2=Cash
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
+        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        page: Page number for pagination (1-based)
+        per_page: Number of records per page (default 20, max 100)
+
+    Returns:
+        PaymentDataHistoryResponse: Contains paginated payment data with mapped labels
+
+    Example:
+        GET /api/v1/dashboard/payment-data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page
         )
 
         if not result.success:

@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
+import axios from 'axios';
 
 // Props from parent
 const props = defineProps({
@@ -41,11 +42,6 @@ const formattedRevenue = computed(() => {
     }).format(totalRevenue.value);
 });
 
-// Mock data for demonstration (will be replaced with real API later)
-const mockRevenueData = {
-    total_revenue: 2492542
-};
-
 // Methods
 const fetchRevenueData = async () => {
     if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
@@ -57,25 +53,37 @@ const fetchRevenueData = async () => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API call when backend is ready
-        // const response = await axios.get('/api/v1/dashboard/payment/total-revenue', {
-        //     params: {
-        //         dealer_id: effectiveDealerId.value,
-        //         date_from: props.dateFrom,
-        //         date_to: props.dateTo
-        //     }
-        // });
+        console.log('Fetching revenue data for:', {
+            dealer_id: effectiveDealerId.value,
+            date_from: props.dateFrom,
+            date_to: props.dateTo
+        });
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+        const response = await axios.get('/api/v1/dashboard/payment-revenue/total', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
 
-        // Use mock data for now
-        const data = mockRevenueData;
-        totalRevenue.value = data.total_revenue;
+        console.log('Revenue API response:', response.data);
+
+        if (response.data && response.data.success) {
+            totalRevenue.value = response.data.total_revenue || 0;
+        } else {
+            throw new Error(response.data?.message || 'Invalid response format');
+        }
 
     } catch (err) {
         console.error('Error fetching revenue data:', err);
-        error.value = 'Failed to fetch revenue data';
+        if (err.response) {
+            error.value = `API Error: ${err.response.data?.detail || err.response.statusText}`;
+        } else if (err.request) {
+            error.value = 'Network error: Unable to connect to server';
+        } else {
+            error.value = err.message || 'Failed to fetch revenue data';
+        }
     } finally {
         loading.value = false;
     }

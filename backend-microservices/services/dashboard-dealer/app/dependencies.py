@@ -7,10 +7,10 @@ import sys
 from typing import Generator
 from sqlalchemy.orm import Session
 
-# Add utils to path
-utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../utils'))
-if utils_path not in sys.path:
-    sys.path.append(utils_path)
+# Add parent directory to path for utils import
+parent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+if parent_path not in sys.path:
+    sys.path.append(parent_path)
 
 from utils.database import DatabaseManager
 from app.config import settings

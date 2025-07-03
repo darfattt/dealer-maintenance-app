@@ -176,7 +176,9 @@ const formattedDateTo = computed(() => {
                     <div>
                         <!-- Payment Type Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToPaymentTypeDetail">
-                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
+                            <h3 
+                                class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
+                            >
                                 Tipe Pembayaran
                             </h3>
                         </div>
@@ -194,8 +196,9 @@ const formattedDateTo = computed(() => {
                         <!-- Top Leasing Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200"
                              @click="navigateToHandleLeasingDetail">
-                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
-                                Top 5 Leasing
+                            <h3 
+                            class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
+                            >    Top 5 Leasing
                             </h3>
                         </div>
                         <!-- Widget -->
@@ -211,8 +214,9 @@ const formattedDateTo = computed(() => {
                     <div>
                         <!-- Document Handling Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToDocumentHandlingDetail">
-                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
-                                Document Handling
+                            <h3 
+                            class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
+                            >    Document Handling
                             </h3>
                         </div>
                         <!-- Widget -->
@@ -238,7 +242,9 @@ const formattedDateTo = computed(() => {
                 <div>
                     <!-- Data Inbound Title -->
                     <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToUnitInboundDetail">
-                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">
+                        <h3 
+                            class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
+                            >    
                             Data Inbound
                         </h3>
                     </div>

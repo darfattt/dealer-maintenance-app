@@ -3,6 +3,7 @@ import { ref, onMounted, watch, computed } from 'vue';
 import Card from 'primevue/card';
 import Chart from 'primevue/chart';
 import Message from 'primevue/message';
+import axios from 'axios';
 
 // Props from parent
 const props = defineProps({
@@ -31,12 +32,6 @@ const effectiveDealerId = computed(() => {
     return props.dealerId || '12284';
 });
 
-// Mock data for demonstration (will be replaced with real API later)
-const mockPaymentMethodData = {
-    cash: 60,
-    transfer: 40
-};
-
 // Methods
 const fetchPaymentMethodData = async () => {
     if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
@@ -48,33 +43,70 @@ const fetchPaymentMethodData = async () => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API call when backend is ready
-        // const response = await axios.get('/api/v1/dashboard/payment/method-distribution', {
-        //     params: {
-        //         dealer_id: effectiveDealerId.value,
-        //         date_from: props.dateFrom,
-        //         date_to: props.dateTo
-        //     }
-        // });
+        // Call the real API endpoint
+        const response = await axios.get('/api/v1/dashboard/payment-method/statistics', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!response.data.success) {
+            throw new Error(response.data.message || 'Failed to fetch payment method data');
+        }
 
-        // Use mock data for now
-        const data = mockPaymentMethodData;
-        
-        // Setup chart data
-        chartData.value = {
-            labels: ['Cash', 'Transfer'],
-            datasets: [
-                {
-                    data: [data.cash, data.transfer],
-                    backgroundColor: ['#00BCD4', '#2196F3'],
-                    borderColor: ['#00ACC1', '#1976D2'],
-                    borderWidth: 2
-                }
-            ]
+        // Process the API response data
+        const apiData = response.data.data || [];
+
+        // Transform API data to chart format
+        const labels = [];
+        const data = [];
+        const backgroundColors = [];
+        const borderColors = [];
+
+        // Define colors for different payment methods
+        const colorMap = {
+            'Cash': { bg: '#00BCD4', border: '#00ACC1' },
+            'Transfer': { bg: '#2196F3', border: '#1976D2' },
+            'Unknown': { bg: '#9E9E9E', border: '#757575' }
         };
+
+        apiData.forEach(item => {
+            const label = item.cara_bayar_label || 'Unknown';
+            labels.push(label);
+            data.push(item.count);
+
+            const colors = colorMap[label] || colorMap['Unknown'];
+            backgroundColors.push(colors.bg);
+            borderColors.push(colors.border);
+        });
+
+        // Handle empty data case
+        if (data.length === 0) {
+            chartData.value = {
+                labels: ['No Data'],
+                datasets: [{
+                    data: [1],
+                    backgroundColor: ['#E0E0E0'],
+                    borderColor: ['#BDBDBD'],
+                    borderWidth: 2
+                }]
+            };
+        } else {
+            // Setup chart data with real API data
+            chartData.value = {
+                labels: labels,
+                datasets: [
+                    {
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 2
+                    }
+                ]
+            };
+        }
 
         // Setup chart options
         chartOptions.value = {
