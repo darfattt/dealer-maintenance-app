@@ -9,7 +9,7 @@ from datetime import datetime, date
 
 from app.dependencies import get_db
 from app.controllers.dashboard_controller import DashboardController
-from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, TopPenerimaanUnitResponse, PODocumentStatusResponse, TrenRevenueResponse, POCreationMonthlyResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
 
 router = APIRouter(tags=["dashboard"])
 
@@ -803,6 +803,251 @@ async def get_unit_inbound_data_history(
             date_to=date_to,
             page=page,
             per_page=per_page
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/top-penerimaan-unit", response_model=TopPenerimaanUnitResponse)
+async def get_top_penerimaan_unit(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top 5 penerimaan unit by total quantity received from unit_inbound_data joined with unit_inbound_units
+
+    This endpoint returns the top 5 units by total quantity received (sum of kuantitas_diterima),
+    grouped by kode_tipe_unit and kode_warna. The item description is created by concatenating
+    kode_tipe_unit and kode_warna.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
+        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+
+    Returns:
+        TopPenerimaanUnitResponse: Contains top 5 penerimaan unit data
+
+    Example:
+        GET /api/v1/dashboard/top-penerimaan-unit?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_penerimaan_unit(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/leasing/po-document-status", response_model=PODocumentStatusResponse)
+async def get_po_document_status(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get PO document status statistics from leasing_data with conditional logic
+
+    This endpoint returns PO document status counts based on conditional logic:
+    - If tanggal_pengiriman_po_finance_company is not null: Pengiriman PO (status 3)
+    - Else if tanggal_pembuatan_po is not null: Pembuatan PO (status 2)
+    - Else if tanggal_pengajuan is not null: Pengajuan PO (status 1)
+
+    The data is filtered by dealer_id and date range on any of the three date fields.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PODocumentStatusResponse: Contains PO document status counts
+
+    Example:
+        GET /api/v1/dashboard/leasing/po-document-status?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_po_document_status_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment/revenue-trend", response_model=TrenRevenueResponse)
+async def get_revenue_trend(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    current_year: str = Query(..., description="Current year in YYYY format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue trend data from billing_process_data grouped by month for current year
+
+    This endpoint returns monthly revenue trend data by summing the amount field
+    from billing_process_data, grouped by month (MMM format) for the current year only.
+    The data is sorted from January to December.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        current_year: Current year for filtering by created_time (YYYY format)
+
+    Returns:
+        TrenRevenueResponse: Contains monthly revenue trend data
+
+    Example:
+        GET /api/v1/dashboard/payment/revenue-trend?dealer_id=12284&current_year=2024
+    """
+    try:
+        # Validate year format
+        try:
+            year_int = int(current_year)
+            if year_int < 2000 or year_int > 2100:
+                raise ValueError("Year out of valid range")
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid year format. Use YYYY format (e.g., 2024)."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_trend_data(
+            dealer_id=dealer_id,
+            current_year=current_year
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/leasing/po-creation-monthly", response_model=POCreationMonthlyResponse)
+async def get_po_creation_monthly(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    current_year: str = Query(..., description="Current year in YYYY format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get PO creation monthly data from leasing_data grouped by month for current year
+
+    This endpoint returns monthly PO creation data by counting id_po_finance_company
+    from leasing_data, grouped by month (MMM format) extracted from tanggal_pembuatan_po
+    for the current year only. The data is sorted from January to December.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        current_year: Current year for filtering by tanggal_pembuatan_po (YYYY format)
+
+    Returns:
+        POCreationMonthlyResponse: Contains monthly PO creation counts
+
+    Example:
+        GET /api/v1/dashboard/leasing/po-creation-monthly?dealer_id=12284&current_year=2024
+    """
+    try:
+        # Validate year format
+        try:
+            year_int = int(current_year)
+            if year_int < 2000 or year_int > 2100:
+                raise ValueError("Year out of valid range")
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid year format. Use YYYY format (e.g., 2024)."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_po_creation_monthly_data(
+            dealer_id=dealer_id,
+            current_year=current_year
         )
 
         if not result.success:

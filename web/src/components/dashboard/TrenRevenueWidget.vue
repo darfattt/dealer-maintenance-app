@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Chart from 'primevue/chart';
 import Message from 'primevue/message';
@@ -49,20 +50,23 @@ const fetchTrenRevenueData = async () => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API call when backend is ready
-        // const response = await axios.get('/api/v1/dashboard/payment/revenue-trend', {
-        //     params: {
-        //         dealer_id: effectiveDealerId.value,
-        //         date_from: props.dateFrom,
-        //         date_to: props.dateTo
-        //     }
-        // });
+        // Get current year from date props
+        const currentYear = new Date(props.dateFrom).getFullYear().toString();
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        // Call the revenue trend API
+        const response = await axios.get('/api/v1/dashboard/payment/revenue-trend', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                current_year: currentYear
+            }
+        });
 
-        // Use mock data for now
-        const data = mockTrenRevenueData;
+        let data;
+        if (response.data.success) {
+            data = response.data.data;
+        } else {
+            throw new Error(response.data.message || 'Failed to fetch data');
+        }
         
         // Setup chart data with mixed chart types
         chartData.value = {
@@ -158,6 +162,100 @@ const fetchTrenRevenueData = async () => {
     } catch (err) {
         console.error('Error fetching revenue trend data:', err);
         error.value = 'Failed to fetch revenue trend data';
+
+        // Use mock data as fallback
+        const data = mockTrenRevenueData;
+
+        // Setup chart data with mixed chart types (fallback)
+        chartData.value = {
+            labels: data.months,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Revenue (Bar)',
+                    data: data.revenue_bars,
+                    backgroundColor: '#4CAF50',
+                    borderColor: '#388E3C',
+                    borderWidth: 1,
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'line',
+                    label: 'Revenue Trend (Line)',
+                    data: data.revenue_line,
+                    borderColor: '#F44336',
+                    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: '#F44336',
+                    pointBorderColor: '#D32F2F',
+                    pointRadius: 4,
+                    yAxisID: 'y'
+                }
+            ]
+        };
+
+        // Setup chart options (fallback)
+        chartOptions.value = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            return `${label}: ${value}M`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+                    max: 80,
+                    grid: {
+                        color: '#E5E7EB'
+                    },
+                    ticks: {
+                        font: {
+                            size: 10
+                        },
+                        callback: function(value) {
+                            return value + 'M';
+                        }
+                    }
+                }
+            }
+        };
     } finally {
         loading.value = false;
     }

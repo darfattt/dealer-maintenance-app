@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
 
@@ -74,19 +75,31 @@ const fetchTopUnitsData = async () => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API call when backend is ready
-        // const response = await axios.get('/api/v1/dashboard/unit-inbound/top-units', {
-        //     params: {
-        //         dealer_id: effectiveDealerId.value,
-        //         date_from: props.dateFrom,
-        //         date_to: props.dateTo
-        //     }
-        // });
+        // Call the top penerimaan unit API
+        const response = await axios.get('/api/v1/dashboard/top-penerimaan-unit', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo
+            }
+        });
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (response.data.success) {
+            topUnits.value = response.data.data.map((item, index) => ({
+                id: item.id,
+                rank: index + 1,
+                name: item.name,
+                image: item.image,
+                totalUnits: item.total_units,
+                description: item.description
+            }));
+        } else {
+            throw new Error(response.data.message || 'Failed to fetch data');
+        }
+    } catch (err) {
+        console.error('Error fetching top units data:', err);
 
-        // Use mock data for now
+        // Use mock data as fallback
         topUnits.value = mockTopUnitsData.map((item, index) => ({
             id: item.id,
             rank: index + 1,
@@ -96,8 +109,6 @@ const fetchTopUnitsData = async () => {
             description: `${item.total_units} Units`
         }));
 
-    } catch (err) {
-        console.error('Error fetching top units data:', err);
         error.value = 'Failed to fetch top units data';
     } finally {
         loading.value = false;

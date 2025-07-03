@@ -14,7 +14,7 @@ if utils_path not in sys.path:
 
 from utils.logger import setup_logger
 from app.repositories.dashboard_repository import DashboardRepository
-from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, DeliveryProcessStatusResponse, DeliveryProcessStatusItem, ProspectFollowUpResponse, ProspectFollowUpItem, SPKStatusResponse, SPKStatusItem, TopLeasingResponse, TopLeasingItem, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, TopPenerimaanUnitResponse, PODocumentStatusResponse, TrenRevenueResponse, POCreationMonthlyResponse, DeliveryProcessStatusResponse, DeliveryProcessStatusItem, ProspectFollowUpResponse, ProspectFollowUpItem, SPKStatusResponse, SPKStatusItem, TopLeasingResponse, TopLeasingItem, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
 
 logger = setup_logger(__name__)
 
@@ -533,6 +533,193 @@ class DashboardController:
                 page=page,
                 per_page=per_page,
                 total_pages=0
+            )
+
+    async def get_top_penerimaan_unit(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> TopPenerimaanUnitResponse:
+        """
+        Get top 5 penerimaan unit by total quantity received
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            TopPenerimaanUnitResponse with top 5 unit data
+        """
+        try:
+            logger.info(f"Getting top penerimaan unit for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get top penerimaan unit data from repository
+            unit_data = self.repository.get_top_penerimaan_unit(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            data = unit_data.get('data', [])
+
+            logger.info(f"Found {len(data)} top penerimaan unit records")
+
+            return TopPenerimaanUnitResponse(
+                success=True,
+                message="Top penerimaan unit data retrieved successfully",
+                data=data
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting top penerimaan unit: {str(e)}")
+            return TopPenerimaanUnitResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[]
+            )
+
+    async def get_po_document_status_statistics(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> PODocumentStatusResponse:
+        """
+        Get PO document status statistics with conditional logic
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+
+        Returns:
+            PODocumentStatusResponse with status counts
+        """
+        try:
+            logger.info(f"Getting PO document status statistics for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get PO document status data from repository
+            status_data = self.repository.get_po_document_status_counts(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            data = status_data.get('data', [])
+            total_records = status_data.get('total_records', 0)
+
+            logger.info(f"Found {len(data)} PO document status records, total: {total_records}")
+
+            return PODocumentStatusResponse(
+                success=True,
+                message="PO document status data retrieved successfully",
+                data=data,
+                total_records=total_records
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting PO document status statistics: {str(e)}")
+            return PODocumentStatusResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[],
+                total_records=0
+            )
+
+    async def get_revenue_trend_data(
+        self,
+        dealer_id: str,
+        current_year: str
+    ) -> TrenRevenueResponse:
+        """
+        Get revenue trend data by month for current year
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            current_year: Current year (YYYY format)
+
+        Returns:
+            TrenRevenueResponse with monthly revenue trend data
+        """
+        try:
+            logger.info(f"Getting revenue trend data for dealer {dealer_id} for year {current_year}")
+
+            # Get revenue trend data from repository
+            trend_data = self.repository.get_revenue_trend_data(
+                dealer_id=dealer_id,
+                current_year=current_year
+            )
+
+            logger.info(f"Retrieved revenue trend data for {len(trend_data.get('months', []))} months")
+
+            return TrenRevenueResponse(
+                success=True,
+                message="Revenue trend data retrieved successfully",
+                data=trend_data
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting revenue trend data: {str(e)}")
+            # Return empty data structure on error
+            empty_data = {
+                'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                'revenue_bars': [0.0] * 12,
+                'revenue_line': [0.0] * 12
+            }
+            return TrenRevenueResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=empty_data
+            )
+
+    async def get_po_creation_monthly_data(
+        self,
+        dealer_id: str,
+        current_year: str
+    ) -> POCreationMonthlyResponse:
+        """
+        Get PO creation monthly data by month for current year
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            current_year: Current year (YYYY format)
+
+        Returns:
+            POCreationMonthlyResponse with monthly PO creation data
+        """
+        try:
+            logger.info(f"Getting PO creation monthly data for dealer {dealer_id} for year {current_year}")
+
+            # Get PO creation monthly data from repository
+            monthly_data = self.repository.get_po_creation_monthly_data(
+                dealer_id=dealer_id,
+                current_year=current_year
+            )
+
+            data = monthly_data.get('data', [])
+            total_records = monthly_data.get('total_records', 0)
+
+            logger.info(f"Retrieved PO creation data for {len(data)} months, total: {total_records}")
+
+            return POCreationMonthlyResponse(
+                success=True,
+                message="PO creation monthly data retrieved successfully",
+                data=data,
+                total_records=total_records
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting PO creation monthly data: {str(e)}")
+            # Return empty data structure on error
+            empty_months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+            empty_data = [{'month': month, 'count': 0} for month in empty_months]
+            return POCreationMonthlyResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=empty_data,
+                total_records=0
             )
 
     async def get_delivery_process_status_statistics(

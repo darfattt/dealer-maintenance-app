@@ -71,7 +71,7 @@ const fetchPOStatusData = async () => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API endpoint
+        // Call the PO document status API
         const response = await axios.get('/api/v1/dashboard/leasing/po-document-status', {
             params: {
                 dealer_id: props.dealerId,
@@ -103,8 +103,9 @@ const fetchPOStatusData = async () => {
         }
     } catch (err) {
         console.error('Error fetching PO status data:', err);
-        
-        // Mock data for development
+        error.value = 'Failed to fetch PO status data';
+
+        // Use mock data as fallback for development
         const mockData = [
             {
                 status: 'PENGAJUAN PO',
@@ -128,10 +129,9 @@ const fetchPOStatusData = async () => {
                 originalStatus: 3
             }
         ];
-        
+
         poStatusData.value = mockData;
         totalRecords.value = mockData.reduce((sum, item) => sum + item.count, 0);
-        error.value = '';
     } finally {
         loading.value = false;
     }

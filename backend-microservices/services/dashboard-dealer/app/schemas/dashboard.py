@@ -208,6 +208,77 @@ class UnitInboundDataHistoryResponse(BaseModel):
     per_page: int = Field(..., description="Records per page")
     total_pages: int = Field(..., description="Total number of pages")
 
+
+class TopPenerimaanUnitItem(BaseModel):
+    """Individual top penerimaan unit item for top 5 display"""
+    id: int = Field(..., description="Rank/ID number")
+    name: str = Field(..., description="Unit name (kode_tipe_unit + kode_warna)")
+    image: str = Field(..., description="Unit image URL")
+    total_units: int = Field(..., description="Total units received (sum of kuantitas_diterima)")
+    description: str = Field(..., description="Description text")
+
+    class Config:
+        from_attributes = True
+
+
+class TopPenerimaanUnitResponse(BaseModel):
+    """Response schema for top 5 penerimaan unit"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[TopPenerimaanUnitItem] = Field(..., description="List of top 5 penerimaan unit items")
+
+
+class PODocumentStatusItem(BaseModel):
+    """Individual PO document status item for status display"""
+    status_label: str = Field(..., description="Status label (Pengajuan PO, Pembuatan PO, Pengiriman PO)")
+    status_code: int = Field(..., description="Status code (1=Pengajuan, 2=Pembuatan, 3=Pengiriman)")
+    count: int = Field(..., description="Count of records for this status")
+
+    class Config:
+        from_attributes = True
+
+
+class PODocumentStatusResponse(BaseModel):
+    """Response schema for PO document status"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[PODocumentStatusItem] = Field(..., description="List of PO document status items")
+    total_records: int = Field(..., description="Total number of records")
+
+
+class TrenRevenueData(BaseModel):
+    """Revenue trend data for mixed chart display"""
+    months: List[str] = Field(..., description="List of month names (Jan, Feb, etc.)")
+    revenue_bars: List[float] = Field(..., description="Revenue data for bar chart (in millions)")
+    revenue_line: List[float] = Field(..., description="Revenue data for line chart (in millions)")
+
+    class Config:
+        from_attributes = True
+
+
+class TrenRevenueResponse(BaseModel):
+    """Response schema for revenue trend data"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: TrenRevenueData = Field(..., description="Revenue trend data")
+
+
+class POCreationMonthlyItem(BaseModel):
+    """Individual PO creation monthly item"""
+    month: str = Field(..., description="Month name (Jan, Feb, etc.)")
+    count: int = Field(..., description="Count of PO created in this month")
+
+    class Config:
+        from_attributes = True
+
+
+class POCreationMonthlyResponse(BaseModel):
+    """Response schema for PO creation monthly data"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[POCreationMonthlyItem] = Field(..., description="List of PO creation monthly items")
+    total_records: int = Field(..., description="Total number of PO created")
+
     class Config:
         from_attributes = True
 

@@ -1006,6 +1006,443 @@ class DashboardRepository:
                 'total_pages': 0
             }
 
+    def get_top_penerimaan_unit(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> Dict[str, Any]:
+        """
+        Get top 5 penerimaan unit by summing kuantitas_diterima, grouped by kode_tipe_unit and kode_warna
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date in YYYY-MM-DD format
+            date_to: End date in YYYY-MM-DD format
+
+        Returns:
+            Dict containing top 5 unit data with total quantities
+        """
+        try:
+            logger.info(f"Getting top penerimaan unit for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}")
+
+            # Build date filter conditions for created_time string field
+            date_conditions = []
+
+            # Handle YYYY-MM-DD format
+            date_conditions.append(
+                and_(
+                    func.length(UnitInboundData.created_time) >= 10,
+                    func.substr(UnitInboundData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Handle DD/MM/YYYY format
+            date_conditions.append(
+                and_(
+                    func.length(UnitInboundData.created_time) >= 10,
+                    func.substr(UnitInboundData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Build query to get top units by total quantity received
+            # Join UnitInboundData with UnitInboundUnit, group by kode_tipe_unit and kode_warna
+            query = self.db.query(
+                UnitInboundUnit.kode_tipe_unit,
+                UnitInboundUnit.kode_warna,
+                func.sum(UnitInboundUnit.kuantitas_diterima).label('total_kuantitas')
+            ).join(
+                UnitInboundData,
+                UnitInboundUnit.unit_inbound_data_id == UnitInboundData.id
+            ).filter(
+                and_(
+                    UnitInboundData.dealer_id == dealer_id,
+                    or_(*date_conditions),
+                    UnitInboundUnit.kuantitas_diterima.isnot(None),
+                    UnitInboundUnit.kuantitas_diterima > 0
+                )
+            ).group_by(
+                UnitInboundUnit.kode_tipe_unit,
+                UnitInboundUnit.kode_warna
+            ).order_by(
+                func.sum(UnitInboundUnit.kuantitas_diterima).desc()
+            ).limit(5)
+
+            results = query.all()
+
+            # Format the results
+            data = []
+            for i, (kode_tipe_unit, kode_warna, total_kuantitas) in enumerate(results, start=1):
+                # Create item description by concatenating kode_tipe_unit and kode_warna
+                item_desc = f"{kode_tipe_unit or ''} {kode_warna or ''}".strip()
+                if not item_desc:
+                    item_desc = "Unknown Unit"
+
+                # Generate default motorcycle image URL
+                default_image = "https://via.placeholder.com/48x48/FF5722/FFFFFF?text=🏍️"
+
+                item = {
+                    'id': i,
+                    'name': item_desc,
+                    'image': default_image,
+                    'total_units': int(total_kuantitas or 0),
+                    'description': f"{int(total_kuantitas or 0)} Units"
+                }
+                data.append(item)
+
+            logger.info(f"Found {len(data)} top penerimaan unit records")
+
+            return {
+                'data': data
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting top penerimaan unit: {e}")
+            return {
+                'data': []
+            }
+
+    def get_po_document_status_counts(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> Dict[str, Any]:
+        """
+        Get PO document status counts from leasing_data with conditional logic
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date in YYYY-MM-DD format
+            date_to: End date in YYYY-MM-DD format
+
+        Returns:
+            Dict containing PO document status counts
+        """
+        try:
+            logger.info(f"Getting PO document status counts for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}")
+
+            # Build date filter conditions for multiple date fields (all string type)
+            date_conditions = []
+
+            # For each date field, check both YYYY-MM-DD and DD/MM/YYYY formats
+            date_fields = ['tanggal_pengiriman_po_finance_company', 'tanggal_pembuatan_po', 'tanggal_pengajuan']
+
+            for field in date_fields:
+                field_attr = getattr(LeasingData, field)
+
+                # YYYY-MM-DD format conditions
+                date_conditions.append(
+                    and_(
+                        func.length(field_attr) >= 10,
+                        func.substr(field_attr, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                        func.to_date(func.substr(field_attr, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                        func.to_date(func.substr(field_attr, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    )
+                )
+
+                # DD/MM/YYYY format conditions
+                date_conditions.append(
+                    and_(
+                        func.length(field_attr) >= 10,
+                        func.substr(field_attr, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                        func.to_date(func.substr(field_attr, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                        func.to_date(func.substr(field_attr, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    )
+                )
+
+            # Build query with CASE logic for status determination
+            # Priority: tanggal_pengiriman_po_finance_company > tanggal_pembuatan_po > tanggal_pengajuan
+            status_case = case(
+                (LeasingData.tanggal_pengiriman_po_finance_company.isnot(None), 3),  # Pengiriman PO
+                (LeasingData.tanggal_pembuatan_po.isnot(None), 2),  # Pembuatan PO
+                (LeasingData.tanggal_pengajuan.isnot(None), 1),  # Pengajuan PO
+                else_=0  # Unknown status
+            ).label('status_code')
+
+            # Query to count records by status
+            query = self.db.query(
+                status_case,
+                func.count(LeasingData.id).label('count')
+            ).filter(
+                and_(
+                    LeasingData.dealer_id == dealer_id,
+                    or_(*date_conditions),
+                    # At least one of the date fields should not be null
+                    or_(
+                        LeasingData.tanggal_pengajuan.isnot(None),
+                        LeasingData.tanggal_pembuatan_po.isnot(None),
+                        LeasingData.tanggal_pengiriman_po_finance_company.isnot(None)
+                    )
+                )
+            ).group_by(status_case).having(status_case > 0)
+
+            results = query.all()
+
+            # Status mapping
+            status_mapping = {
+                1: "Pengajuan PO",
+                2: "Pembuatan PO",
+                3: "Pengiriman PO"
+            }
+
+            # Format the results
+            data = []
+            total_records = 0
+
+            for status_code, count in results:
+                if status_code in status_mapping:
+                    item = {
+                        'status_label': status_mapping[status_code],
+                        'status_code': status_code,
+                        'count': int(count)
+                    }
+                    data.append(item)
+                    total_records += int(count)
+
+            # Ensure all statuses are represented (with 0 count if needed)
+            existing_codes = {item['status_code'] for item in data}
+            for code, label in status_mapping.items():
+                if code not in existing_codes:
+                    data.append({
+                        'status_label': label,
+                        'status_code': code,
+                        'count': 0
+                    })
+
+            # Sort by status code for consistent ordering
+            data.sort(key=lambda x: x['status_code'])
+
+            logger.info(f"Found {len(data)} PO document status records, total: {total_records}")
+
+            return {
+                'data': data,
+                'total_records': total_records
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting PO document status counts: {e}")
+            return {
+                'data': [],
+                'total_records': 0
+            }
+
+    def get_revenue_trend_data(
+        self,
+        dealer_id: str,
+        current_year: str
+    ) -> Dict[str, Any]:
+        """
+        Get revenue trend data from billing_process_data grouped by month for current year
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            current_year: Current year (YYYY format)
+
+        Returns:
+            Dict containing revenue trend data by month
+        """
+        try:
+            logger.info(f"Getting revenue trend data for dealer_id={dealer_id}, year={current_year}")
+
+            # Build date filter conditions for current year (string type created_time)
+            date_conditions = []
+
+            # YYYY-MM-DD format conditions for current year
+            date_conditions.append(
+                and_(
+                    func.length(BillingProcessData.created_time) >= 10,
+                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.substr(BillingProcessData.created_time, 1, 4) == current_year
+                )
+            )
+
+            # DD/MM/YYYY format conditions for current year
+            date_conditions.append(
+                and_(
+                    func.length(BillingProcessData.created_time) >= 10,
+                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.substr(BillingProcessData.created_time, 7, 4) == current_year
+                )
+            )
+
+            # Extract month from created_time for both date formats
+            month_case_yyyy_mm_dd = func.substr(BillingProcessData.created_time, 6, 2)
+            month_case_dd_mm_yyyy = func.substr(BillingProcessData.created_time, 4, 2)
+
+            # Determine which format to use based on the string pattern
+            month_extract = case(
+                (func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'), month_case_yyyy_mm_dd),
+                (func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'), month_case_dd_mm_yyyy),
+                else_='00'
+            ).label('month_num')
+
+            # Query to sum amount by month
+            query = self.db.query(
+                month_extract,
+                func.sum(func.coalesce(BillingProcessData.amount, 0)).label('total_amount')
+            ).filter(
+                and_(
+                    BillingProcessData.dealer_id == dealer_id,
+                    or_(*date_conditions)
+                )
+            ).group_by(month_extract).order_by(month_extract)
+
+            results = query.all()
+
+            # Month mapping
+            month_mapping = {
+                '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr',
+                '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Aug',
+                '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
+            }
+
+            # Initialize data for all 12 months
+            months = []
+            revenue_bars = []
+            revenue_line = []
+
+            # Create a dict from results for easy lookup
+            results_dict = {month_num: float(total_amount or 0) for month_num, total_amount in results}
+
+            # Build data for all 12 months (Jan to Dec)
+            for month_num in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']:
+                month_name = month_mapping[month_num]
+                amount = results_dict.get(month_num, 0.0)
+
+                # Convert to millions for display
+                amount_millions = round(amount / 1000000, 2) if amount > 0 else 0.0
+
+                months.append(month_name)
+                revenue_bars.append(amount_millions)
+                # For line chart, use the same data (could be modified for different trend logic)
+                revenue_line.append(amount_millions)
+
+            logger.info(f"Found revenue trend data for {len([x for x in revenue_bars if x > 0])} months with data")
+
+            return {
+                'months': months,
+                'revenue_bars': revenue_bars,
+                'revenue_line': revenue_line
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting revenue trend data: {e}")
+            return {
+                'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                'revenue_bars': [0.0] * 12,
+                'revenue_line': [0.0] * 12
+            }
+
+    def get_po_creation_monthly_data(
+        self,
+        dealer_id: str,
+        current_year: str
+    ) -> Dict[str, Any]:
+        """
+        Get PO creation monthly data from leasing_data grouped by month for current year
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            current_year: Current year (YYYY format)
+
+        Returns:
+            Dict containing PO creation monthly data
+        """
+        try:
+            logger.info(f"Getting PO creation monthly data for dealer_id={dealer_id}, year={current_year}")
+
+            # Build date filter conditions for current year (string type tanggal_pembuatan_po)
+            date_conditions = []
+
+            # YYYY-MM-DD format conditions for current year
+            date_conditions.append(
+                and_(
+                    func.length(LeasingData.tanggal_pembuatan_po) >= 10,
+                    func.substr(LeasingData.tanggal_pembuatan_po, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.substr(LeasingData.tanggal_pembuatan_po, 1, 4) == current_year
+                )
+            )
+
+            # DD/MM/YYYY format conditions for current year
+            date_conditions.append(
+                and_(
+                    func.length(LeasingData.tanggal_pembuatan_po) >= 10,
+                    func.substr(LeasingData.tanggal_pembuatan_po, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.substr(LeasingData.tanggal_pembuatan_po, 7, 4) == current_year
+                )
+            )
+
+            # Extract month from tanggal_pembuatan_po for both date formats
+            month_case_yyyy_mm_dd = func.substr(LeasingData.tanggal_pembuatan_po, 6, 2)
+            month_case_dd_mm_yyyy = func.substr(LeasingData.tanggal_pembuatan_po, 4, 2)
+
+            # Determine which format to use based on the string pattern
+            month_extract = case(
+                (func.substr(LeasingData.tanggal_pembuatan_po, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'), month_case_yyyy_mm_dd),
+                (func.substr(LeasingData.tanggal_pembuatan_po, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'), month_case_dd_mm_yyyy),
+                else_='00'
+            ).label('month_num')
+
+            # Query to count id_po_finance_company by month
+            query = self.db.query(
+                month_extract,
+                func.count(LeasingData.id_po_finance_company).label('po_count')
+            ).filter(
+                and_(
+                    LeasingData.dealer_id == dealer_id,
+                    LeasingData.id_po_finance_company.isnot(None),  # Only count records with PO finance company ID
+                    or_(*date_conditions)
+                )
+            ).group_by(month_extract).order_by(month_extract)
+
+            results = query.all()
+
+            # Month mapping
+            month_mapping = {
+                '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr',
+                '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Aug',
+                '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
+            }
+
+            # Initialize data for all 12 months
+            monthly_data = []
+            total_records = 0
+
+            # Create a dict from results for easy lookup
+            results_dict = {month_num: int(po_count or 0) for month_num, po_count in results}
+
+            # Build data for all 12 months (Jan to Dec)
+            for month_num in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']:
+                month_name = month_mapping[month_num]
+                count = results_dict.get(month_num, 0)
+
+                monthly_data.append({
+                    'month': month_name,
+                    'count': count
+                })
+                total_records += count
+
+            logger.info(f"Found PO creation data for {len([x for x in monthly_data if x['count'] > 0])} months with data, total: {total_records}")
+
+            return {
+                'data': monthly_data,
+                'total_records': total_records
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting PO creation monthly data: {e}")
+            # Return empty data structure on error
+            empty_months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+            return {
+                'data': [{'month': month, 'count': 0} for month in empty_months],
+                'total_records': 0
+            }
+
     def get_delivery_process_status_counts(
         self,
         dealer_id: str,

@@ -81,12 +81,14 @@ const fetchPOCreationData = async () => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API endpoint
+        // Get current year from date props
+        const currentYear = new Date(props.dateFrom).getFullYear().toString();
+
+        // Call the PO creation monthly API
         const response = await axios.get('/api/v1/dashboard/leasing/po-creation-monthly', {
             params: {
                 dealer_id: props.dealerId,
-                date_from: props.dateFrom,
-                date_to: props.dateTo
+                current_year: currentYear
             }
         });
 
