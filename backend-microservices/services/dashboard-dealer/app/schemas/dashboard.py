@@ -128,6 +128,86 @@ class PaymentDataHistoryResponse(BaseModel):
     per_page: int = Field(..., description="Records per page")
     total_pages: int = Field(..., description="Total number of pages")
 
+
+class LeasingDataHistoryItem(BaseModel):
+    """Individual leasing data history item for table display"""
+    no: int = Field(..., description="Row number")
+    id_spk: Optional[str] = Field(None, description="SPK ID")
+    id_dokumen_pengajuan: Optional[str] = Field(None, description="Document submission ID")
+    tgl_pengajuan: Optional[str] = Field(None, description="Submission date")
+    jumlah_dp: Optional[float] = Field(None, description="Down payment amount")
+    tenor: Optional[int] = Field(None, description="Tenor in months")
+    jumlah_cicilan: Optional[float] = Field(None, description="Installment amount")
+    nama_finance_company: Optional[str] = Field(None, description="Finance company name")
+
+    class Config:
+        from_attributes = True
+
+
+class LeasingDataHistoryResponse(BaseModel):
+    """Response schema for leasing data history with pagination"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[LeasingDataHistoryItem] = Field(..., description="List of leasing data history items")
+    total_records: int = Field(..., description="Total number of records")
+    page: int = Field(..., description="Current page number")
+    per_page: int = Field(..., description="Records per page")
+    total_pages: int = Field(..., description="Total number of pages")
+
+
+class DocumentHandlingDataHistoryItem(BaseModel):
+    """Individual document handling data history item for table display"""
+    no: int = Field(..., description="Row number")
+    id_spk: Optional[str] = Field(None, description="SPK ID")
+    id_so: Optional[str] = Field(None, description="SO ID")
+    tgl_pengajuan_stnk: Optional[str] = Field(None, description="STNK submission date")
+    status_faktur_stnk: Optional[str] = Field(None, description="STNK invoice status")
+    nomor_stnk: Optional[str] = Field(None, description="STNK number")
+    plat_nomor: Optional[str] = Field(None, description="License plate number")
+    tgl_terima_stnk: Optional[str] = Field(None, description="STNK received date")
+    nama_penerima_stnk: Optional[str] = Field(None, description="STNK recipient name")
+    tgl_terima_bpkb: Optional[str] = Field(None, description="BPKB received date")
+    nama_penerima_bpkb: Optional[str] = Field(None, description="BPKB recipient name")
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentHandlingDataHistoryResponse(BaseModel):
+    """Response schema for document handling data history with pagination"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[DocumentHandlingDataHistoryItem] = Field(..., description="List of document handling data history items")
+    total_records: int = Field(..., description="Total number of records")
+    page: int = Field(..., description="Current page number")
+    per_page: int = Field(..., description="Records per page")
+    total_pages: int = Field(..., description="Total number of pages")
+
+
+class UnitInboundDataHistoryItem(BaseModel):
+    """Individual unit inbound data history item for table display"""
+    no: int = Field(..., description="Row number")
+    no_shipping_list: Optional[str] = Field(None, description="Shipping list number")
+    tgl_terima: Optional[str] = Field(None, description="Received date")
+    no_invoice: Optional[str] = Field(None, description="Invoice number")
+    status_shipping_list: Optional[str] = Field(None, description="Shipping list status")
+    tipe_unit: Optional[str] = Field(None, description="Unit type")
+    kuantitas_unit_diterima: Optional[int] = Field(None, description="Quantity of units received")
+
+    class Config:
+        from_attributes = True
+
+
+class UnitInboundDataHistoryResponse(BaseModel):
+    """Response schema for unit inbound data history with pagination"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[UnitInboundDataHistoryItem] = Field(..., description="List of unit inbound data history items")
+    total_records: int = Field(..., description="Total number of records")
+    page: int = Field(..., description="Current page number")
+    per_page: int = Field(..., description="Records per page")
+    total_pages: int = Field(..., description="Total number of pages")
+
     class Config:
         from_attributes = True
 

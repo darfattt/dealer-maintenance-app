@@ -14,7 +14,7 @@ if utils_path not in sys.path:
 
 from utils.logger import setup_logger
 from app.repositories.dashboard_repository import DashboardRepository
-from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, DeliveryProcessStatusResponse, DeliveryProcessStatusItem, ProspectFollowUpResponse, ProspectFollowUpItem, SPKStatusResponse, SPKStatusItem, TopLeasingResponse, TopLeasingItem, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, DeliveryProcessStatusResponse, DeliveryProcessStatusItem, ProspectFollowUpResponse, ProspectFollowUpItem, SPKStatusResponse, SPKStatusItem, TopLeasingResponse, TopLeasingItem, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
 
 logger = setup_logger(__name__)
 
@@ -343,6 +343,189 @@ class DashboardController:
         except Exception as e:
             logger.error(f"Error getting payment data history: {str(e)}")
             return PaymentDataHistoryResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[],
+                total_records=0,
+                page=page,
+                per_page=per_page,
+                total_pages=0
+            )
+
+    async def get_leasing_data_history(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> LeasingDataHistoryResponse:
+        """
+        Get leasing data history with pagination
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+            page: Page number (1-based)
+            per_page: Records per page (default 20)
+
+        Returns:
+            LeasingDataHistoryResponse with paginated leasing data
+        """
+        try:
+            logger.info(f"Getting leasing data history for dealer {dealer_id} from {date_from} to {date_to}, page {page}")
+
+            # Get leasing data history from repository
+            history_data = self.repository.get_leasing_data_history(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to,
+                page=page,
+                per_page=per_page
+            )
+
+            data = history_data.get('data', [])
+            total_records = history_data.get('total_records', 0)
+            total_pages = history_data.get('total_pages', 0)
+
+            logger.info(f"Found {len(data)} leasing records on page {page} (total: {total_records})")
+
+            return LeasingDataHistoryResponse(
+                success=True,
+                message="Leasing data history retrieved successfully",
+                data=data,
+                total_records=total_records,
+                page=page,
+                per_page=per_page,
+                total_pages=total_pages
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting leasing data history: {str(e)}")
+            return LeasingDataHistoryResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[],
+                total_records=0,
+                page=page,
+                per_page=per_page,
+                total_pages=0
+            )
+
+    async def get_document_handling_data_history(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> DocumentHandlingDataHistoryResponse:
+        """
+        Get document handling data history with pagination
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+            page: Page number (1-based)
+            per_page: Records per page (default 20)
+
+        Returns:
+            DocumentHandlingDataHistoryResponse with paginated document handling data
+        """
+        try:
+            logger.info(f"Getting document handling data history for dealer {dealer_id} from {date_from} to {date_to}, page {page}")
+
+            # Get document handling data history from repository
+            history_data = self.repository.get_document_handling_data_history(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to,
+                page=page,
+                per_page=per_page
+            )
+
+            data = history_data.get('data', [])
+            total_records = history_data.get('total_records', 0)
+            total_pages = history_data.get('total_pages', 0)
+
+            logger.info(f"Found {len(data)} document handling records on page {page} (total: {total_records})")
+
+            return DocumentHandlingDataHistoryResponse(
+                success=True,
+                message="Document handling data history retrieved successfully",
+                data=data,
+                total_records=total_records,
+                page=page,
+                per_page=per_page,
+                total_pages=total_pages
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting document handling data history: {str(e)}")
+            return DocumentHandlingDataHistoryResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                data=[],
+                total_records=0,
+                page=page,
+                per_page=per_page,
+                total_pages=0
+            )
+
+    async def get_unit_inbound_data_history(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> UnitInboundDataHistoryResponse:
+        """
+        Get unit inbound data history with pagination
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date (YYYY-MM-DD format)
+            date_to: End date (YYYY-MM-DD format)
+            page: Page number (1-based)
+            per_page: Records per page (default 20)
+
+        Returns:
+            UnitInboundDataHistoryResponse with paginated unit inbound data
+        """
+        try:
+            logger.info(f"Getting unit inbound data history for dealer {dealer_id} from {date_from} to {date_to}, page {page}")
+
+            # Get unit inbound data history from repository
+            history_data = self.repository.get_unit_inbound_data_history(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to,
+                page=page,
+                per_page=per_page
+            )
+
+            data = history_data.get('data', [])
+            total_records = history_data.get('total_records', 0)
+            total_pages = history_data.get('total_pages', 0)
+
+            logger.info(f"Found {len(data)} unit inbound records on page {page} (total: {total_records})")
+
+            return UnitInboundDataHistoryResponse(
+                success=True,
+                message="Unit inbound data history retrieved successfully",
+                data=data,
+                total_records=total_records,
+                page=page,
+                per_page=per_page,
+                total_pages=total_pages
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting unit inbound data history: {str(e)}")
+            return UnitInboundDataHistoryResponse(
                 success=False,
                 message=f"Error retrieving data: {str(e)}",
                 data=[],

@@ -50,8 +50,8 @@ const fetchDocumentHistoryData = async (page = 1, perPageValue = perPage.value) 
     error.value = '';
 
     try {
-        // Try to call the document handling data history API
-        const response = await axios.get('/api/v1/dashboard/document-handling/data-history', {
+        // Call the document handling data history API
+        const response = await axios.get('/api/v1/dashboard/document-handling-data-history', {
             params: {
                 dealer_id: effectiveDealerId.value,
                 date_from: props.dateFrom,

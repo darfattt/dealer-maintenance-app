@@ -69,6 +69,29 @@ const mockUnitInboundData = [
     }
 ];
 
+// Generate mock data for fallback
+const generateMockUnitInboundData = (page, perPage) => {
+    const startIndex = (page - 1) * perPage;
+    const endIndex = startIndex + perPage;
+    const paginatedData = mockUnitInboundData.slice(startIndex, endIndex);
+
+    // Transform mock data to component format
+    const data = paginatedData.map((item, index) => ({
+        no: startIndex + index + 1,
+        no_shipping_list: item.no_shipping_list || '-',
+        tgl_terima: item.tgl_terima || '-',
+        no_invoice: item.no_invoice || '-',
+        status_shipping_list: item.status_shipping_list || '-',
+        tipe_unit: item.tipe_unit || '-',
+        kuantitas_unit_diterima: item.kuantitas_unit_diterima || 0
+    }));
+
+    return {
+        data: data,
+        totalRecords: mockUnitInboundData.length
+    };
+};
+
 // Methods
 const fetchUnitInboundData = async (page = 1, perPage = rows.value) => {
     if (!effectiveDealerId.value || !props.dateFrom || !props.dateTo) {
@@ -80,42 +103,35 @@ const fetchUnitInboundData = async (page = 1, perPage = rows.value) => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API call when backend is ready
-        // const response = await axios.get('/api/v1/dashboard/unit-inbound/data-history', {
-        //     params: {
-        //         dealer_id: effectiveDealerId.value,
-        //         date_from: props.dateFrom,
-        //         date_to: props.dateTo,
-        //         page: page,
-        //         per_page: perPage
-        //     }
-        // });
+        // Call the unit inbound data history API
+        const response = await axios.get('/api/v1/dashboard/unit-inbound-data-history', {
+            params: {
+                dealer_id: effectiveDealerId.value,
+                date_from: props.dateFrom,
+                date_to: props.dateTo,
+                page: page,
+                per_page: perPage
+            }
+        });
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Use mock data for now
-        const startIndex = (page - 1) * perPage;
-        const endIndex = startIndex + perPage;
-        const paginatedData = mockUnitInboundData.slice(startIndex, endIndex);
-
-        // Transform mock data to component format
-        unitInboundData.value = paginatedData.map((item, index) => ({
-            no: startIndex + index + 1,
-            no_shipping_list: item.no_shipping_list || '-',
-            tgl_terima: item.tgl_terima || '-',
-            no_invoice: item.no_invoice || '-',
-            status_shipping_list: item.status_shipping_list || '-',
-            tipe_unit: item.tipe_unit || '-',
-            kuantitas_unit_diterima: item.kuantitas_unit_diterima || 0
-        }));
-
-        totalRecords.value = mockUnitInboundData.length;
-        totalPages.value = Math.ceil(totalRecords.value / perPage);
-        currentPage.value = page;
-
+        if (response.data.success) {
+            unitInboundData.value = response.data.data || [];
+            totalRecords.value = response.data.total_records || 0;
+            totalPages.value = response.data.total_pages || 0;
+            currentPage.value = response.data.page || 1;
+        } else {
+            throw new Error(response.data.message || 'Failed to fetch data');
+        }
     } catch (err) {
         console.error('Error fetching unit inbound data:', err);
+
+        // Use mock data as fallback
+        const mockData = generateMockUnitInboundData(page, perPage);
+        unitInboundData.value = mockData.data;
+        totalRecords.value = mockData.totalRecords;
+        totalPages.value = Math.ceil(mockData.totalRecords / perPage);
+        currentPage.value = page;
+
         error.value = 'Failed to fetch unit inbound data';
     } finally {
         loading.value = false;

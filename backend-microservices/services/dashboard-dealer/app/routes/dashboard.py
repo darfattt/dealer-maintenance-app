@@ -9,7 +9,7 @@ from datetime import datetime, date
 
 from app.dependencies import get_db
 from app.controllers.dashboard_controller import DashboardController
-from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
 
 router = APIRouter(tags=["dashboard"])
 
@@ -584,6 +584,220 @@ async def get_payment_data_history(
         # Create controller and get data
         controller = DashboardController(db)
         result = await controller.get_payment_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/leasing-data-history", response_model=LeasingDataHistoryResponse)
+async def get_leasing_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Get leasing data history with pagination from leasing_data table
+
+    This endpoint returns paginated leasing data history from the leasing_data table.
+    Returns fields: No, id_spk, id_dokumen_pengajuan, tgl_pengajuan, jumlah_dp,
+    tenor, jumlah_cicilan, nama_finance_company.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
+        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        page: Page number for pagination (1-based)
+        per_page: Number of records per page (default 20, max 100)
+
+    Returns:
+        LeasingDataHistoryResponse: Contains paginated leasing data
+
+    Example:
+        GET /api/v1/dashboard/leasing-data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_leasing_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/document-handling-data-history", response_model=DocumentHandlingDataHistoryResponse)
+async def get_document_handling_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Get document handling data history with pagination from document_handling_data joined with document_handling_unit
+
+    This endpoint returns paginated document handling data history from the document_handling_data table
+    joined with document_handling_unit table. Returns fields: No, id_spk, id_so, tgl_pengajuan_stnk,
+    status_faktur_stnk, nomor_stnk, plat_nomor, tgl_terima_stnk, nama_penerima_stnk,
+    tgl_terima_bpkb, nama_penerima_bpkb.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
+        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        page: Page number for pagination (1-based)
+        per_page: Number of records per page (default 20, max 100)
+
+    Returns:
+        DocumentHandlingDataHistoryResponse: Contains paginated document handling data
+
+    Example:
+        GET /api/v1/dashboard/document-handling-data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_document_handling_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/unit-inbound-data-history", response_model=UnitInboundDataHistoryResponse)
+async def get_unit_inbound_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Get unit inbound data history with pagination from unit_inbound_data joined with unit_inbound_units
+
+    This endpoint returns paginated unit inbound data history from the unit_inbound_data table
+    joined with unit_inbound_units table. Returns fields: No, no_shipping_list, tgl_terima,
+    no_invoice, status_shipping_list, tipe_unit, kuantitas_unit_diterima.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
+        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        page: Page number for pagination (1-based)
+        per_page: Number of records per page (default 20, max 100)
+
+    Returns:
+        UnitInboundDataHistoryResponse: Contains paginated unit inbound data
+
+    Example:
+        GET /api/v1/dashboard/unit-inbound-data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_unit_inbound_data_history(
             dealer_id=dealer_id,
             date_from=date_from,
             date_to=date_to,

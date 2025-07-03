@@ -52,8 +52,8 @@ const fetchLeasingHistoryData = async () => {
     error.value = '';
 
     try {
-        // TODO: Replace with real API endpoint
-        const response = await axios.get('/api/v1/dashboard/leasing/data-history', {
+        // Call the leasing data history API
+        const response = await axios.get('/api/v1/dashboard/leasing-data-history', {
             params: {
                 dealer_id: props.dealerId,
                 date_from: props.dateFrom,

@@ -671,6 +671,341 @@ class DashboardRepository:
                 'total_pages': 0
             }
 
+    def get_leasing_data_history(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Get leasing data history with pagination from leasing_data table
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date in YYYY-MM-DD format
+            date_to: End date in YYYY-MM-DD format
+            page: Page number (1-based)
+            per_page: Records per page (default 20)
+
+        Returns:
+            Dict containing data list, total_records, page, per_page, total_pages
+        """
+        try:
+            logger.info(f"Getting leasing data history for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}, page={page}, per_page={per_page}")
+
+            # Build date filter conditions for created_time string field
+            date_conditions = []
+
+            # Handle YYYY-MM-DD format
+            date_conditions.append(
+                and_(
+                    func.length(LeasingData.created_time) >= 10,
+                    func.substr(LeasingData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(LeasingData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(LeasingData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Handle DD/MM/YYYY format
+            date_conditions.append(
+                and_(
+                    func.length(LeasingData.created_time) >= 10,
+                    func.substr(LeasingData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(LeasingData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(LeasingData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Build the main query for leasing data
+            base_query = self.db.query(LeasingData).filter(
+                and_(
+                    LeasingData.dealer_id == dealer_id,
+                    or_(*date_conditions)
+                )
+            )
+
+            # Get total count for pagination
+            total_count = base_query.count()
+
+            # Calculate total pages
+            total_pages = (total_count + per_page - 1) // per_page
+
+            # Apply pagination and ordering
+            offset = (page - 1) * per_page
+            results = base_query.order_by(
+                LeasingData.created_time.desc(),
+                LeasingData.id_spk
+            ).offset(offset).limit(per_page).all()
+
+            # Format the results
+            data = []
+            for i, leasing in enumerate(results, start=offset + 1):
+                item = {
+                    'no': i,
+                    'id_spk': leasing.id_spk,
+                    'id_dokumen_pengajuan': leasing.id_dokumen_pengajuan,
+                    'tgl_pengajuan': leasing.tanggal_pengajuan,
+                    'jumlah_dp': float(leasing.jumlah_dp) if leasing.jumlah_dp else 0.0,
+                    'tenor': leasing.tenor,
+                    'jumlah_cicilan': float(leasing.jumlah_cicilan) if leasing.jumlah_cicilan else 0.0,
+                    'nama_finance_company': leasing.nama_finance_company
+                }
+                data.append(item)
+
+            logger.info(f"Found {len(data)} leasing records on page {page} (total: {total_count})")
+
+            return {
+                'data': data,
+                'total_records': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting leasing data history: {e}")
+            return {
+                'data': [],
+                'total_records': 0,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': 0
+            }
+
+    def get_document_handling_data_history(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Get document handling data history with pagination, joining DocumentHandlingData with DocumentHandlingUnit
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date in YYYY-MM-DD format
+            date_to: End date in YYYY-MM-DD format
+            page: Page number (1-based)
+            per_page: Records per page (default 20)
+
+        Returns:
+            Dict containing data list, total_records, page, per_page, total_pages
+        """
+        try:
+            logger.info(f"Getting document handling data history for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}, page={page}, per_page={per_page}")
+
+            # Build date filter conditions for created_time string field
+            date_conditions = []
+
+            # Handle YYYY-MM-DD format
+            date_conditions.append(
+                and_(
+                    func.length(DocumentHandlingData.created_time) >= 10,
+                    func.substr(DocumentHandlingData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(DocumentHandlingData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(DocumentHandlingData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Handle DD/MM/YYYY format
+            date_conditions.append(
+                and_(
+                    func.length(DocumentHandlingData.created_time) >= 10,
+                    func.substr(DocumentHandlingData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(DocumentHandlingData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(DocumentHandlingData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Build the main query joining DocumentHandlingData with DocumentHandlingUnit
+            base_query = self.db.query(DocumentHandlingData).outerjoin(
+                DocumentHandlingUnit,
+                DocumentHandlingData.id == DocumentHandlingUnit.document_handling_data_id
+            ).filter(
+                and_(
+                    DocumentHandlingData.dealer_id == dealer_id,
+                    or_(*date_conditions)
+                )
+            )
+
+            # Get total count for pagination
+            total_count = base_query.count()
+
+            # Calculate total pages
+            total_pages = (total_count + per_page - 1) // per_page
+
+            # Apply pagination and ordering
+            offset = (page - 1) * per_page
+            results = base_query.order_by(
+                DocumentHandlingData.created_time.desc(),
+                DocumentHandlingData.id_spk
+            ).offset(offset).limit(per_page).all()
+
+            # Format the results
+            data = []
+            for i, doc_data in enumerate(results, start=offset + 1):
+                # Get the associated unit data (if any)
+                unit_data = None
+                if hasattr(doc_data, 'document_handling_units') and doc_data.document_handling_units:
+                    unit_data = doc_data.document_handling_units[0]  # Take first unit if multiple
+
+                item = {
+                    'no': i,
+                    'id_spk': doc_data.id_spk,
+                    'id_so': doc_data.id_so,
+                    'tgl_pengajuan_stnk': unit_data.tanggal_pengajuan_stnk if unit_data else None,
+                    'status_faktur_stnk': unit_data.status_faktur_stnk if unit_data else None,
+                    'nomor_stnk': unit_data.nomor_stnk if unit_data else None,
+                    'plat_nomor': unit_data.plat_nomor if unit_data else None,
+                    'tgl_terima_stnk': unit_data.tanggal_terima_stnk if unit_data else None,
+                    'nama_penerima_stnk': unit_data.nama_penerima_stnk if unit_data else None,
+                    'tgl_terima_bpkb': unit_data.tanggal_terima_bpkb if unit_data else None,
+                    'nama_penerima_bpkb': unit_data.nama_penerima_bpkb if unit_data else None
+                }
+                data.append(item)
+
+            logger.info(f"Found {len(data)} document handling records on page {page} (total: {total_count})")
+
+            return {
+                'data': data,
+                'total_records': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting document handling data history: {e}")
+            return {
+                'data': [],
+                'total_records': 0,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': 0
+            }
+
+    def get_unit_inbound_data_history(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str,
+        page: int = 1,
+        per_page: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Get unit inbound data history with pagination, joining UnitInboundData with UnitInboundUnit
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date in YYYY-MM-DD format
+            date_to: End date in YYYY-MM-DD format
+            page: Page number (1-based)
+            per_page: Records per page (default 20)
+
+        Returns:
+            Dict containing data list, total_records, page, per_page, total_pages
+        """
+        try:
+            logger.info(f"Getting unit inbound data history for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}, page={page}, per_page={per_page}")
+
+            # Build date filter conditions for created_time string field
+            date_conditions = []
+
+            # Handle YYYY-MM-DD format
+            date_conditions.append(
+                and_(
+                    func.length(UnitInboundData.created_time) >= 10,
+                    func.substr(UnitInboundData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Handle DD/MM/YYYY format
+            date_conditions.append(
+                and_(
+                    func.length(UnitInboundData.created_time) >= 10,
+                    func.substr(UnitInboundData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                )
+            )
+
+            # Build the main query joining UnitInboundData with UnitInboundUnit
+            base_query = self.db.query(UnitInboundData).outerjoin(
+                UnitInboundUnit,
+                UnitInboundData.id == UnitInboundUnit.unit_inbound_data_id
+            ).filter(
+                and_(
+                    UnitInboundData.dealer_id == dealer_id,
+                    or_(*date_conditions)
+                )
+            )
+
+            # Get total count for pagination
+            total_count = base_query.count()
+
+            # Calculate total pages
+            total_pages = (total_count + per_page - 1) // per_page
+
+            # Apply pagination and ordering
+            offset = (page - 1) * per_page
+            results = base_query.order_by(
+                UnitInboundData.created_time.desc(),
+                UnitInboundData.no_shipping_list
+            ).offset(offset).limit(per_page).all()
+
+            # Format the results
+            data = []
+            for i, inbound_data in enumerate(results, start=offset + 1):
+                # Get the associated unit data (if any) - aggregate quantities
+                total_kuantitas_diterima = 0
+                tipe_unit = None
+
+                if hasattr(inbound_data, 'units') and inbound_data.units:
+                    # Sum up all quantities received from all units
+                    for unit in inbound_data.units:
+                        if unit.kuantitas_diterima:
+                            total_kuantitas_diterima += unit.kuantitas_diterima
+                        # Use the first unit's type as representative
+                        if not tipe_unit and unit.kode_tipe_unit:
+                            tipe_unit = unit.kode_tipe_unit
+
+                item = {
+                    'no': i,
+                    'no_shipping_list': inbound_data.no_shipping_list,
+                    'tgl_terima': inbound_data.tanggal_terima,
+                    'no_invoice': inbound_data.no_invoice,
+                    'status_shipping_list': inbound_data.status_shipping_list,
+                    'tipe_unit': tipe_unit,
+                    'kuantitas_unit_diterima': total_kuantitas_diterima
+                }
+                data.append(item)
+
+            logger.info(f"Found {len(data)} unit inbound records on page {page} (total: {total_count})")
+
+            return {
+                'data': data,
+                'total_records': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting unit inbound data history: {e}")
+            return {
+                'data': [],
+                'total_records': 0,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': 0
+            }
+
     def get_delivery_process_status_counts(
         self,
         dealer_id: str,
