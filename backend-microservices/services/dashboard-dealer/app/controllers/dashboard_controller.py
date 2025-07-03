@@ -14,7 +14,7 @@ if utils_path not in sys.path:
 
 from utils.logger import setup_logger
 from app.repositories.dashboard_repository import DashboardRepository
-from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, TopPenerimaanUnitResponse, PODocumentStatusResponse, TrenRevenueResponse, POCreationMonthlyResponse, DeliveryProcessStatusResponse, DeliveryProcessStatusItem, ProspectFollowUpResponse, ProspectFollowUpItem, SPKStatusResponse, SPKStatusItem, TopLeasingResponse, TopLeasingItem, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+from app.schemas.dashboard import UnitInboundStatusResponse, UnitInboundStatusItem, PaymentTypeResponse, PaymentTypeItem, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, TopPenerimaanUnitResponse, PODocumentStatusResponse, TrenRevenueResponse, POCreationMonthlyResponse, PermohonanFakturResponse, STNKDiterimaResponse, BPKBDiterimaResponse, DeliveryProcessStatusResponse, DeliveryProcessStatusItem, ProspectFollowUpResponse, ProspectFollowUpItem, SPKStatusResponse, SPKStatusItem, TopLeasingResponse, TopLeasingItem, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
 
 logger = setup_logger(__name__)
 
@@ -720,6 +720,159 @@ class DashboardController:
                 message=f"Error retrieving data: {str(e)}",
                 data=empty_data,
                 total_records=0
+            )
+
+    async def get_permohonan_faktur_data(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> PermohonanFakturResponse:
+        """
+        Get Permohonan Faktur count with trend indicator
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date for filtering
+            date_to: End date for filtering
+
+        Returns:
+            PermohonanFakturResponse with count, trend, and percentage
+        """
+        try:
+            logger.info(f"Getting Permohonan Faktur data for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get Permohonan Faktur count with trend from repository
+            result = self.repository.get_permohonan_faktur_count_with_trend(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            count = result.get('count', 0)
+            trend = result.get('trend', 'stable')
+            percentage = result.get('percentage', 0.0)
+
+            logger.info(f"Retrieved Permohonan Faktur data: count={count}, trend={trend}, percentage={percentage}")
+
+            return PermohonanFakturResponse(
+                success=True,
+                message="Permohonan Faktur data retrieved successfully",
+                count=count,
+                trend=trend,
+                percentage=percentage
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting Permohonan Faktur data: {str(e)}")
+            return PermohonanFakturResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                count=0,
+                trend='stable',
+                percentage=0.0
+            )
+
+    async def get_stnk_diterima_data(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> STNKDiterimaResponse:
+        """
+        Get STNK Diterima Konsumen count with trend indicator
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date for filtering
+            date_to: End date for filtering
+
+        Returns:
+            STNKDiterimaResponse with count, trend, and percentage
+        """
+        try:
+            logger.info(f"Getting STNK Diterima data for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get STNK Diterima count with trend from repository
+            result = self.repository.get_stnk_diterima_count_with_trend(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            count = result.get('count', 0)
+            trend = result.get('trend', 'stable')
+            percentage = result.get('percentage', 0.0)
+
+            logger.info(f"Retrieved STNK Diterima data: count={count}, trend={trend}, percentage={percentage}")
+
+            return STNKDiterimaResponse(
+                success=True,
+                message="STNK Diterima data retrieved successfully",
+                count=count,
+                trend=trend,
+                percentage=percentage
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting STNK Diterima data: {str(e)}")
+            return STNKDiterimaResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                count=0,
+                trend='stable',
+                percentage=0.0
+            )
+
+    async def get_bpkb_diterima_data(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> BPKBDiterimaResponse:
+        """
+        Get BPKB Diterima Konsumen count with trend indicator
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date for filtering
+            date_to: End date for filtering
+
+        Returns:
+            BPKBDiterimaResponse with count, trend, and percentage
+        """
+        try:
+            logger.info(f"Getting BPKB Diterima data for dealer {dealer_id} from {date_from} to {date_to}")
+
+            # Get BPKB Diterima count with trend from repository
+            result = self.repository.get_bpkb_diterima_count_with_trend(
+                dealer_id=dealer_id,
+                date_from=date_from,
+                date_to=date_to
+            )
+
+            count = result.get('count', 0)
+            trend = result.get('trend', 'stable')
+            percentage = result.get('percentage', 0.0)
+
+            logger.info(f"Retrieved BPKB Diterima data: count={count}, trend={trend}, percentage={percentage}")
+
+            return BPKBDiterimaResponse(
+                success=True,
+                message="BPKB Diterima data retrieved successfully",
+                count=count,
+                trend=trend,
+                percentage=percentage
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting BPKB Diterima data: {str(e)}")
+            return BPKBDiterimaResponse(
+                success=False,
+                message=f"Error retrieving data: {str(e)}",
+                count=0,
+                trend='stable',
+                percentage=0.0
             )
 
     async def get_delivery_process_status_statistics(

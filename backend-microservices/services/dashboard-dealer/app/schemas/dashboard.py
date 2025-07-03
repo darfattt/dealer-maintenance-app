@@ -279,6 +279,42 @@ class POCreationMonthlyResponse(BaseModel):
     data: List[POCreationMonthlyItem] = Field(..., description="List of PO creation monthly items")
     total_records: int = Field(..., description="Total number of PO created")
 
+
+class PermohonanFakturResponse(BaseModel):
+    """Response schema for Permohonan Faktur data with trend indicator"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    count: int = Field(..., description="Current period count of document handling units")
+    trend: str = Field(..., description="Trend indicator: 'up', 'down', or 'stable'")
+    percentage: float = Field(..., description="Percentage change compared to previous period")
+
+    class Config:
+        from_attributes = True
+
+
+class STNKDiterimaResponse(BaseModel):
+    """Response schema for STNK Diterima Konsumen data with trend indicator"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    count: int = Field(..., description="Current period count of STNK received by consumers")
+    trend: str = Field(..., description="Trend indicator: 'up', 'down', or 'stable'")
+    percentage: float = Field(..., description="Percentage change compared to previous period")
+
+    class Config:
+        from_attributes = True
+
+
+class BPKBDiterimaResponse(BaseModel):
+    """Response schema for BPKB Diterima Konsumen data with trend indicator"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    count: int = Field(..., description="Current period count of BPKB received by consumers")
+    trend: str = Field(..., description="Trend indicator: 'up', 'down', or 'stable'")
+    percentage: float = Field(..., description="Percentage change compared to previous period")
+
+    class Config:
+        from_attributes = True
+
     class Config:
         from_attributes = True
 

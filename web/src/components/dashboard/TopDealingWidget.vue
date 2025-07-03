@@ -83,19 +83,19 @@ const fetchTopDealingData = async () => {
 // Helper function to get unit image based on type
 const getUnitImage = (kodeUnit) => {
     const unitImages = {
-        'SCOOPY': 'https://via.placeholder.com/80x60/4CAF50/FFFFFF?text=SCOOPY',
-        'VARIO': 'https://via.placeholder.com/80x60/2196F3/FFFFFF?text=VARIO', 
-        'BEAT': 'https://via.placeholder.com/80x60/FF9800/FFFFFF?text=BEAT',
-        'PCX': 'https://via.placeholder.com/80x60/9C27B0/FFFFFF?text=PCX',
-        'GENIO': 'https://via.placeholder.com/80x60/00BCD4/FFFFFF?text=GENIO',
-        'CB150R': 'https://via.placeholder.com/80x60/FF5722/FFFFFF?text=CB150R',
-        'CBR150R': 'https://via.placeholder.com/80x60/F44336/FFFFFF?text=CBR150R',
-        'CRF150L': 'https://via.placeholder.com/80x60/795548/FFFFFF?text=CRF150L',
-        'FORZA': 'https://via.placeholder.com/80x60/607D8B/FFFFFF?text=FORZA',
-        'ADV': 'https://via.placeholder.com/80x60/3F51B5/FFFFFF?text=ADV'
+        'SCOOPY': '/assets/images/motor.png',
+        'VARIO': '/assets/images/motor.png', 
+        'BEAT': '/assets/images/motor.png',
+        'PCX': '/assets/images/motor.png',
+        'GENIO': '/assets/images/motor.png',
+        'CB150R': '/assets/images/motor.png',
+        'CBR150R': '/assets/images/motor.png',
+        'CRF150L': '/assets/images/motor.png',
+        'FORZA': '/assets/images/motor.png',
+        'ADV': '/assets/images/motor.png'
     };
     
-    return unitImages[kodeUnit] || 'https://via.placeholder.com/80x60/FF5722/FFFFFF?text=🏍️';
+    return unitImages[kodeUnit] || '/assets/images/motor.png';
 };
 
 // Watch for prop changes
@@ -134,7 +134,7 @@ onMounted(() => {
                             :src="item.image"
                             :alt="item.name"
                             class="w-20 h-16 object-contain rounded"
-                            @error="$event.target.src = 'https://via.placeholder.com/80x60/FF5722/FFFFFF?text=🏍️'"
+                            @error="$event.target.src = '/assets/images/motor.png'"
                         />
                     </div>
 

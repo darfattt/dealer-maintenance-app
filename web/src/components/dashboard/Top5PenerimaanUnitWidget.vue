@@ -118,11 +118,11 @@ const fetchTopUnitsData = async () => {
 // Get unit image based on unit name
 const getUnitImage = (unitName) => {
     const unitImages = {
-        'Scoopy Black': 'https://via.placeholder.com/48x48/000000/ffffff?text=SB',
-        'Vario 160 Navy': 'https://via.placeholder.com/48x48/000080/ffffff?text=VN',
-        'Beat Cream': 'https://via.placeholder.com/48x48/F5F5DC/000000?text=BC'
+        'Scoopy Black': '/assets/images/motor.png',
+        'Vario 160 Navy': '/assets/images/motor.png',
+        'Beat Cream': '/assets/images/motor.png'
     };
-    return unitImages[unitName] || 'https://via.placeholder.com/48x48/FF5722/FFFFFF?text=🏍️';
+    return unitImages[unitName] || '/assets/images/motor.png';
 };
 
 // Watch for prop changes

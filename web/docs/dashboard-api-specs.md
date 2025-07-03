@@ -119,3 +119,108 @@ Data history \
 1. create new api that retrieve from delivery_process_data database.py  DeliveryProcessData join with DeliveryProcessDetail, get fields :delivery_document_id,tanggal_pengiriman,status_delivery_document,id_driver,id_spk,nama_pengerima,no_kontak_penerima, lokasi_pengiriman,waktu_pengiriman for tabular data with request param filter (delivery_document_id,tanggal_pengiriman,status_delivery_document,id_driver,id_spk,nama_pengerima,no_kontak_penerima, lokasi_pengiriman,waktu_pengiriman) \
 2. got pagination, per page default 20 \
 3. apply integration for \
+
+
+
+
+
+
+
+
+
+
+-----------------------
+
+Cara Bayar 
+
+1. create new api that retrieve from billing_process_data backend/database.py  BillingProcessData, that will count(cara_bayar)  group by cara_bayar and filter by dealer_id and date start/end created_time (data type  string, need to convert when filter)
+2. mapping data : 1 = Cash 2 = Transfer 
+3. and apply integration for  
+
+Status Bayar 
+1. create new api that retrieve from billing_process_data backend/database.py  BillingProcessData, that will count(status)  group by status and filter by dealer_id and date start/end created_time (data type  string, need to convert when filter)
+2. mapping data : 1 = New 2 = Process 3 = Accepted 4 = Close
+3. and apply integration for  
+
+Revenue 
+billing_process_data backend/database.py  BillingProcessData, that will sum(amount)  filter by dealer_id and date start/end created_time (data type  string, need to convert when filter) nd filter by dealer_id and date start/end created_time (data type  string, need to convert when filter)
+2. mapping data : None 
+3. and apply integration for 
+
+Data History
+1. create new api that retrieve from billing_process_data backend/database.py  BillingProcessData join with DeliveryProcessDetail, get fields :No,id invoice, id customer, amount, tipe pembayaran (show mapping label), cara bayar(show mapping label) , status (show mapping label) 
+2. got pagination, per page default 20 
+3. Cara Bayar : 1 = Cash 2 = Transfer 
+   Status : 1 = New 2 = Process 3 = Accepted 4 = Close
+   Tipe Pembayaran : 1 = Credit 2 = Cash
+4. apply integration for 
+
+Tren Revenue 
+
+1. create new api that retrieve from billing_process_data backend/database.py  BillingProcessData, that will sum(amount)  group by periodmonth of created_time (MMM) and filter by dealer_id and date start/end yyyy(created_time) = now (this year only) (data type  string, need to convert when filter), sort from jan to dec.
+2. mapping data : None
+3. and apply integration for  
+
+----------
+leasing
+
+Leasing
+Data History
+1. create new api that retrieve from leasing_data backend/database.py  LeasingData, get all fields (for the api)
+and filter by dealer_id and date start/end created_time (data type  string, need to convert when filter)
+2. got pagination, per page default 20
+3. apply integration for 
+
+Status Dokumen PO
+1. create new api that retrieve from leasing_data backend/database.py  LeasingData, that will 
+count(id) with case
+if tanggal_pengiriman_po_finance_company not null > pengirimanPO++
+else if tanggal_pembuatan_po not null > pembuatanPO++
+else if tanggal_pengajuan not null > pengajuanPO++
+group by and filter by dealer_id and date start/end tanggal_pengiriman_po_finance_company or tanggal_pembuatan_po or tanggal_pengajuan (data type  string, need to convert when filter) \
+2. and apply integration for  \
+
+Pembuatan PO
+1. create new api that retrieve from leasing_data backend/database.py  LeasingData, that will count(id_po_finance_company)  group by periodmonth of tanggal_pembuatan_po (MMM) and filter by dealer_id and date start/end yyyy(creattanggal_pembuatan_poed_time) = now (this year only) (data type  string, need to convert when filter), sort from jan to dec.
+2. mapping data : None
+3. and apply integration for  
+
+
+------
+Document Handling
+
+1. create new api that retrieve from billing_process_data backend/database.py  BillingProcessData, that will count(cara_bayar)  group by cara_bayar and filter by dealer_id and date start/end created_time (data type  string, need to convert when filter)
+2. mapping data : 1 = Cash 2 = Transfer 
+3. and apply integration for  
+
+Permohonan Faktur
+1. create new api that retrieve from document_handling_data backend/database.py  count(DocumentHandlingUnit.id)DocumentHandlingData join with DocumentHandlingUnit no grouping just count all, 
+and filter by dealer_id and date start/end tanggal_pengajuan_stnk_ke_biro (data type  string, need to convert when filter)
+2. include the indicator with same calculation but date minus 1 month, for example : filter date from 02/01/2024 to 01/02/2024, then the indicator will be filter date from 02/12/2023 to 01/01/2024 , indicator will be compare with the current date filter value will show up/down/remain and percentage value.
+3. apply integration for 
+
+
+1. STNK Diterima
+1. create new api that retrieve from document_handling_data backend/database.py  count(DocumentHandlingUnit.id)DocumentHandlingData join with DocumentHandlingUnit no grouping just count all, 
+and filter by dealer_id and date start/end tanggal_penerimaan_bpkb_dari_biro (data type  string, need to convert when filter)
+2. include the indicator with same calculation but date minus 1 month, for example : filter date from 02/01/2024 to 01/02/2024, then the indicator will be filter date from 02/12/2023 to 01/01/2024 , indicator will be compare with the current date filter value will show up/down/remain and percentage value.
+3. apply integration for @STNKDIterimaKonsumenWidget.vue
+
+2. BPKB Diterima
+1. create new api that retrieve from document_handling_data backend/database.py  count(DocumentHandlingUnit.id)DocumentHandlingData join with DocumentHandlingUnit no grouping just count all, 
+and filter by dealer_id and date start/end tanggal_terima_bpkb_oleh_konsumen (data type  string, need to convert when filter)
+2. include the indicator with same calculation but date minus 1 month, for example : filter date from 02/01/2024 to 01/02/2024, then the indicator will be filter date from 02/12/2023 to 01/01/2024 , indicator will be compare with the current date filter value will show up/down/remain and percentage value.
+3. apply integration for @BPKBDiterimaKonsumenWidget.vue
+-------
+
+Unit Inbound (Done all)
+Data History
+1. create new api that retrieve from unit_inbound_data backend/database.py  UnitInboundData join with UnitInboundUnit, get all fields (for the api), 
+and filter by dealer_id and date start/end created_time (data type  string, need to convert when filter)
+2. got pagination, per page default 20
+3. apply integration for , since api return all columns, but dashboard only show certain fields then follow the dashboard to show on UI
+
+Top Penerimaan unit
+1. create new api that retrieve from unit_inbound_data backend/database.py  UnitInboundData join with UnitInboundUnit, that will sum(kuantitas_diterima), item_desc (concat kode_tipe_unit,kode_warna) group by kode_tipe_unit,kode_warna and filter by dealer_id and date start/end created_time (data type  string, need to convert when filter) \
+2. Show top 5 only \
+3. and apply integration for  \

@@ -6,6 +6,7 @@ import Column from 'primevue/column';
 import Paginator from 'primevue/paginator';
 import Message from 'primevue/message';
 import Button from 'primevue/button';
+import axios from 'axios';
 
 // Props from parent dashboard
 const props = defineProps({

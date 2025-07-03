@@ -88,7 +88,7 @@ const getDriverImage = (idDriver) => {
     const color = colors[colorIndex];
     const initials = idDriver ? idDriver.substring(0, 2).toUpperCase() : 'DR';
     
-    return `https://via.placeholder.com/60x60/${color}/FFFFFF?text=${initials}`;
+    return `/assets/images/no-profile-picture-icon.svg`;
 };
 
 // String hash function for consistent color assignment

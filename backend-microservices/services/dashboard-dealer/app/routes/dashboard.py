@@ -9,7 +9,7 @@ from datetime import datetime, date
 
 from app.dependencies import get_db
 from app.controllers.dashboard_controller import DashboardController
-from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, TopPenerimaanUnitResponse, PODocumentStatusResponse, TrenRevenueResponse, POCreationMonthlyResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, TopPenerimaanUnitResponse, PODocumentStatusResponse, TrenRevenueResponse, POCreationMonthlyResponse, PermohonanFakturResponse, STNKDiterimaResponse, BPKBDiterimaResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
 
 router = APIRouter(tags=["dashboard"])
 
@@ -552,8 +552,8 @@ async def get_payment_data_history(
 
     Args:
         dealer_id: The dealer ID to filter records
-        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
-        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
         page: Page number for pagination (1-based)
         per_page: Number of records per page (default 20, max 100)
 
@@ -623,8 +623,8 @@ async def get_leasing_data_history(
 
     Args:
         dealer_id: The dealer ID to filter records
-        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
-        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
         page: Page number for pagination (1-based)
         per_page: Number of records per page (default 20, max 100)
 
@@ -695,8 +695,8 @@ async def get_document_handling_data_history(
 
     Args:
         dealer_id: The dealer ID to filter records
-        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
-        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
         page: Page number for pagination (1-based)
         per_page: Number of records per page (default 20, max 100)
 
@@ -766,8 +766,8 @@ async def get_unit_inbound_data_history(
 
     Args:
         dealer_id: The dealer ID to filter records
-        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
-        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
         page: Page number for pagination (1-based)
         per_page: Number of records per page (default 20, max 100)
 
@@ -835,8 +835,8 @@ async def get_top_penerimaan_unit(
 
     Args:
         dealer_id: The dealer ID to filter records
-        date_from: Start date for filtering by created_time (YYYY-MM-DD format)
-        date_to: End date for filtering by created_time (YYYY-MM-DD format)
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
 
     Returns:
         TopPenerimaanUnitResponse: Contains top 5 penerimaan unit data
@@ -967,7 +967,7 @@ async def get_revenue_trend(
 
     Args:
         dealer_id: The dealer ID to filter records
-        current_year: Current year for filtering by created_time (YYYY format)
+        current_year: Current year for filtering by modified_time (YYYY format)
 
     Returns:
         TrenRevenueResponse: Contains monthly revenue trend data
@@ -1048,6 +1048,197 @@ async def get_po_creation_monthly(
         result = await controller.get_po_creation_monthly_data(
             dealer_id=dealer_id,
             current_year=current_year
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/document-handling/permohonan-faktur", response_model=PermohonanFakturResponse)
+async def get_permohonan_faktur_data(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date for filtering (YYYY-MM-DD format)"),
+    date_to: str = Query(..., description="End date for filtering (YYYY-MM-DD format)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get Permohonan Faktur count with trend indicator from document_handling_data
+
+    This endpoint returns the count of document handling units with trend comparison
+    to the previous month period. It joins document_handling_data with document_handling_units
+    and filters by tanggal_pengajuan_stnk_ke_biro date field.
+
+    The trend indicator compares current period with previous month:
+    - If current period is 02/01/2024 to 01/02/2024
+    - Previous period will be 02/12/2023 to 01/01/2024
+    - Returns trend: 'up', 'down', or 'stable' with percentage change
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for current period filtering (YYYY-MM-DD format)
+        date_to: End date for current period filtering (YYYY-MM-DD format)
+
+    Returns:
+        PermohonanFakturResponse: Contains count, trend, and percentage
+
+    Example:
+        GET /api/v1/dashboard/document-handling/permohonan-faktur?dealer_id=12284&date_from=2024-01-02&date_to=2024-02-01
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_permohonan_faktur_data(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/document-handling/stnk-diterima", response_model=STNKDiterimaResponse)
+async def get_stnk_diterima_data(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date for filtering (YYYY-MM-DD format)"),
+    date_to: str = Query(..., description="End date for filtering (YYYY-MM-DD format)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get STNK Diterima Konsumen count with trend indicator from document_handling_data
+
+    This endpoint returns the count of document handling units where STNK was received
+    by consumers with trend comparison to the previous month period. It joins
+    document_handling_data with document_handling_units and filters by
+    tanggal_penerimaan_bpkb_dari_biro date field.
+
+    The trend indicator compares current period with previous month:
+    - If current period is 02/01/2024 to 01/02/2024
+    - Previous period will be 02/12/2023 to 01/01/2024
+    - Returns trend: 'up', 'down', or 'stable' with percentage change
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for current period filtering (YYYY-MM-DD format)
+        date_to: End date for current period filtering (YYYY-MM-DD format)
+
+    Returns:
+        STNKDiterimaResponse: Contains count, trend, and percentage
+
+    Example:
+        GET /api/v1/dashboard/document-handling/stnk-diterima?dealer_id=12284&date_from=2024-01-02&date_to=2024-02-01
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_stnk_diterima_data(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/document-handling/bpkb-diterima", response_model=BPKBDiterimaResponse)
+async def get_bpkb_diterima_data(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date for filtering (YYYY-MM-DD format)"),
+    date_to: str = Query(..., description="End date for filtering (YYYY-MM-DD format)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get BPKB Diterima Konsumen count with trend indicator from document_handling_data
+
+    This endpoint returns the count of document handling units where BPKB was received
+    by consumers with trend comparison to the previous month period. It joins
+    document_handling_data with document_handling_units and filters by
+    tanggal_terima_bpkb_oleh_konsumen date field.
+
+    The trend indicator compares current period with previous month:
+    - If current period is 02/01/2024 to 01/02/2024
+    - Previous period will be 02/12/2023 to 01/01/2024
+    - Returns trend: 'up', 'down', or 'stable' with percentage change
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for current period filtering (YYYY-MM-DD format)
+        date_to: End date for current period filtering (YYYY-MM-DD format)
+
+    Returns:
+        BPKBDiterimaResponse: Contains count, trend, and percentage
+
+    Example:
+        GET /api/v1/dashboard/document-handling/bpkb-diterima?dealer_id=12284&date_from=2024-01-02&date_to=2024-02-01
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_bpkb_diterima_data(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
         )
 
         if not result.success:

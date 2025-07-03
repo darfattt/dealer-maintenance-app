@@ -178,15 +178,15 @@ class DashboardRepository:
                     or_(
                         # Handle YYYY-MM-DD format (contains 4 digits at start)
                         and_(
-                            BillingProcessData.created_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
-                            BillingProcessData.created_time >= date_from,
-                            BillingProcessData.created_time <= date_to + ' 23:59:59'
+                            BillingProcessData.modified_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
+                            BillingProcessData.modified_time >= date_from,
+                            BillingProcessData.modified_time <= date_to + ' 23:59:59'
                         ),
                         # Handle DD/MM/YYYY format (contains / separators)
                         and_(
-                            BillingProcessData.created_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
-                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                            BillingProcessData.modified_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
+                            func.to_date(BillingProcessData.modified_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                            func.to_date(BillingProcessData.modified_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                         )
                     )
                 )
@@ -235,15 +235,15 @@ class DashboardRepository:
                     or_(
                         # Handle YYYY-MM-DD format (contains 4 digits at start)
                         and_(
-                            BillingProcessData.created_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
-                            BillingProcessData.created_time >= date_from,
-                            BillingProcessData.created_time <= date_to + ' 23:59:59'
+                            BillingProcessData.modified_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
+                            BillingProcessData.modified_time >= date_from,
+                            BillingProcessData.modified_time <= date_to + ' 23:59:59'
                         ),
                         # Handle DD/MM/YYYY format (contains / separators)
                         and_(
-                            BillingProcessData.created_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
-                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                            BillingProcessData.modified_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
+                            func.to_date(BillingProcessData.modified_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                            func.to_date(BillingProcessData.modified_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                         )
                     )
                 )
@@ -279,15 +279,15 @@ class DashboardRepository:
                     or_(
                         # Handle YYYY-MM-DD format (contains 4 digits at start)
                         and_(
-                            BillingProcessData.created_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
-                            BillingProcessData.created_time >= date_from,
-                            BillingProcessData.created_time <= date_to + ' 23:59:59'
+                            BillingProcessData.modified_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
+                            BillingProcessData.modified_time >= date_from,
+                            BillingProcessData.modified_time <= date_to + ' 23:59:59'
                         ),
                         # Handle DD/MM/YYYY format (contains / separators)
                         and_(
-                            BillingProcessData.created_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
-                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                            BillingProcessData.modified_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
+                            func.to_date(BillingProcessData.modified_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                            func.to_date(BillingProcessData.modified_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                         )
                     )
                 )
@@ -332,15 +332,15 @@ class DashboardRepository:
                     or_(
                         # Handle YYYY-MM-DD format (contains 4 digits at start)
                         and_(
-                            BillingProcessData.created_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
-                            BillingProcessData.created_time >= date_from,
-                            BillingProcessData.created_time <= date_to + ' 23:59:59'
+                            BillingProcessData.modified_time.op('~')(r'^\d{4}-\d{2}-\d{2}'),
+                            BillingProcessData.modified_time >= date_from,
+                            BillingProcessData.modified_time <= date_to + ' 23:59:59'
                         ),
                         # Handle DD/MM/YYYY format (contains / separators)
                         and_(
-                            BillingProcessData.created_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
-                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                            func.to_date(BillingProcessData.created_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                            BillingProcessData.modified_time.op('~')(r'^\d{2}/\d{2}/\d{4}'),
+                            func.to_date(BillingProcessData.modified_time, 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                            func.to_date(BillingProcessData.modified_time, 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                         )
                     )
                 )
@@ -408,20 +408,20 @@ class DashboardRepository:
                     or_(
                         # Handle YYYY-MM-DD format
                         and_(
-                            func.length(BillingProcessData.created_time) >= 10,
-                            func.substring(BillingProcessData.created_time, 5, 1) == '-',
-                            func.substring(BillingProcessData.created_time, 8, 1) == '-',
-                            func.to_date(func.substring(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD').between(
+                            func.length(BillingProcessData.modified_time) >= 10,
+                            func.substring(BillingProcessData.modified_time, 5, 1) == '-',
+                            func.substring(BillingProcessData.modified_time, 8, 1) == '-',
+                            func.to_date(func.substring(BillingProcessData.modified_time, 1, 10), 'YYYY-MM-DD').between(
                                 func.to_date(date_from, 'YYYY-MM-DD'),
                                 func.to_date(date_to, 'YYYY-MM-DD')
                             )
                         ),
                         # Handle DD/MM/YYYY format
                         and_(
-                            func.length(BillingProcessData.created_time) >= 10,
-                            func.substring(BillingProcessData.created_time, 3, 1) == '/',
-                            func.substring(BillingProcessData.created_time, 6, 1) == '/',
-                            func.to_date(func.substring(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY').between(
+                            func.length(BillingProcessData.modified_time) >= 10,
+                            func.substring(BillingProcessData.modified_time, 3, 1) == '/',
+                            func.substring(BillingProcessData.modified_time, 6, 1) == '/',
+                            func.to_date(func.substring(BillingProcessData.modified_time, 1, 10), 'DD/MM/YYYY').between(
                                 func.to_date(date_from, 'YYYY-MM-DD'),
                                 func.to_date(date_to, 'YYYY-MM-DD')
                             )
@@ -485,20 +485,20 @@ class DashboardRepository:
             # Handle YYYY-MM-DD format
             date_conditions.append(
                 and_(
-                    func.length(BillingProcessData.created_time) >= 10,
-                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
-                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(BillingProcessData.modified_time) >= 10,
+                    func.substr(BillingProcessData.modified_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(BillingProcessData.modified_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(BillingProcessData.modified_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
             # Handle DD/MM/YYYY format
             date_conditions.append(
                 and_(
-                    func.length(BillingProcessData.created_time) >= 10,
-                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
-                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(BillingProcessData.modified_time) >= 10,
+                    func.substr(BillingProcessData.modified_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(BillingProcessData.modified_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(BillingProcessData.modified_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
@@ -585,26 +585,26 @@ class DashboardRepository:
                 '2': 'Cash'
             }
 
-            # Build date filter conditions for created_time string field (same pattern as payment revenue)
+            # Build date filter conditions for modified_time string field (same pattern as payment revenue)
             date_conditions = []
 
             # Handle YYYY-MM-DD format
             date_conditions.append(
                 and_(
-                    func.length(BillingProcessData.created_time) >= 10,
-                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
-                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(BillingProcessData.modified_time) >= 10,
+                    func.substr(BillingProcessData.modified_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(BillingProcessData.modified_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(BillingProcessData.modified_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
             # Handle DD/MM/YYYY format
             date_conditions.append(
                 and_(
-                    func.length(BillingProcessData.created_time) >= 10,
-                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
-                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(BillingProcessData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(BillingProcessData.modified_time) >= 10,
+                    func.substr(BillingProcessData.modified_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(BillingProcessData.modified_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(BillingProcessData.modified_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
@@ -628,7 +628,7 @@ class DashboardRepository:
             # Apply pagination and ordering
             offset = (page - 1) * per_page
             results = base_query.order_by(
-                BillingProcessData.created_time.desc(),
+                BillingProcessData.modified_time.desc(),
                 BillingProcessData.id_invoice
             ).offset(offset).limit(per_page).all()
 
@@ -695,26 +695,26 @@ class DashboardRepository:
         try:
             logger.info(f"Getting leasing data history for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}, page={page}, per_page={per_page}")
 
-            # Build date filter conditions for created_time string field
+            # Build date filter conditions for modified_time string field
             date_conditions = []
 
             # Handle YYYY-MM-DD format
             date_conditions.append(
                 and_(
-                    func.length(LeasingData.created_time) >= 10,
-                    func.substr(LeasingData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
-                    func.to_date(func.substr(LeasingData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(LeasingData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(LeasingData.modified_time) >= 10,
+                    func.substr(LeasingData.modified_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(LeasingData.modified_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(LeasingData.modified_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
             # Handle DD/MM/YYYY format
             date_conditions.append(
                 and_(
-                    func.length(LeasingData.created_time) >= 10,
-                    func.substr(LeasingData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
-                    func.to_date(func.substr(LeasingData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(LeasingData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(LeasingData.modified_time) >= 10,
+                    func.substr(LeasingData.modified_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(LeasingData.modified_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(LeasingData.modified_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
@@ -735,7 +735,7 @@ class DashboardRepository:
             # Apply pagination and ordering
             offset = (page - 1) * per_page
             results = base_query.order_by(
-                LeasingData.created_time.desc(),
+                LeasingData.modified_time.desc(),
                 LeasingData.id_spk
             ).offset(offset).limit(per_page).all()
 
@@ -798,26 +798,26 @@ class DashboardRepository:
         try:
             logger.info(f"Getting document handling data history for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}, page={page}, per_page={per_page}")
 
-            # Build date filter conditions for created_time string field
+            # Build date filter conditions for modified_time string field
             date_conditions = []
 
             # Handle YYYY-MM-DD format
             date_conditions.append(
                 and_(
-                    func.length(DocumentHandlingData.created_time) >= 10,
-                    func.substr(DocumentHandlingData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
-                    func.to_date(func.substr(DocumentHandlingData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(DocumentHandlingData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(DocumentHandlingData.modified_time) >= 10,
+                    func.substr(DocumentHandlingData.modified_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(DocumentHandlingData.modified_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(DocumentHandlingData.modified_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
             # Handle DD/MM/YYYY format
             date_conditions.append(
                 and_(
-                    func.length(DocumentHandlingData.created_time) >= 10,
-                    func.substr(DocumentHandlingData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
-                    func.to_date(func.substr(DocumentHandlingData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(DocumentHandlingData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(DocumentHandlingData.modified_time) >= 10,
+                    func.substr(DocumentHandlingData.modified_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(DocumentHandlingData.modified_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(DocumentHandlingData.modified_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
@@ -841,7 +841,7 @@ class DashboardRepository:
             # Apply pagination and ordering
             offset = (page - 1) * per_page
             results = base_query.order_by(
-                DocumentHandlingData.created_time.desc(),
+                DocumentHandlingData.modified_time.desc(),
                 DocumentHandlingData.id_spk
             ).offset(offset).limit(per_page).all()
 
@@ -912,26 +912,26 @@ class DashboardRepository:
         try:
             logger.info(f"Getting unit inbound data history for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}, page={page}, per_page={per_page}")
 
-            # Build date filter conditions for created_time string field
+            # Build date filter conditions for modified_time string field
             date_conditions = []
 
             # Handle YYYY-MM-DD format
             date_conditions.append(
                 and_(
-                    func.length(UnitInboundData.created_time) >= 10,
-                    func.substr(UnitInboundData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
-                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(UnitInboundData.modified_time) >= 10,
+                    func.substr(UnitInboundData.modified_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(UnitInboundData.modified_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(UnitInboundData.modified_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
             # Handle DD/MM/YYYY format
             date_conditions.append(
                 and_(
-                    func.length(UnitInboundData.created_time) >= 10,
-                    func.substr(UnitInboundData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
-                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(UnitInboundData.modified_time) >= 10,
+                    func.substr(UnitInboundData.modified_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(UnitInboundData.modified_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(UnitInboundData.modified_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
@@ -955,7 +955,7 @@ class DashboardRepository:
             # Apply pagination and ordering
             offset = (page - 1) * per_page
             results = base_query.order_by(
-                UnitInboundData.created_time.desc(),
+                UnitInboundData.modified_time.desc(),
                 UnitInboundData.no_shipping_list
             ).offset(offset).limit(per_page).all()
 
@@ -1026,26 +1026,26 @@ class DashboardRepository:
         try:
             logger.info(f"Getting top penerimaan unit for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}")
 
-            # Build date filter conditions for created_time string field
+            # Build date filter conditions for modified_time string field
             date_conditions = []
 
             # Handle YYYY-MM-DD format
             date_conditions.append(
                 and_(
-                    func.length(UnitInboundData.created_time) >= 10,
-                    func.substr(UnitInboundData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
-                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(UnitInboundData.modified_time) >= 10,
+                    func.substr(UnitInboundData.modified_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.to_date(func.substr(UnitInboundData.modified_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(UnitInboundData.modified_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
             # Handle DD/MM/YYYY format
             date_conditions.append(
                 and_(
-                    func.length(UnitInboundData.created_time) >= 10,
-                    func.substr(UnitInboundData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
-                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
-                    func.to_date(func.substr(UnitInboundData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
+                    func.length(UnitInboundData.modified_time) >= 10,
+                    func.substr(UnitInboundData.modified_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.to_date(func.substr(UnitInboundData.modified_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
+                    func.to_date(func.substr(UnitInboundData.modified_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
             )
 
@@ -1249,35 +1249,35 @@ class DashboardRepository:
         try:
             logger.info(f"Getting revenue trend data for dealer_id={dealer_id}, year={current_year}")
 
-            # Build date filter conditions for current year (string type created_time)
+            # Build date filter conditions for current year (string type modified_time)
             date_conditions = []
 
             # YYYY-MM-DD format conditions for current year
             date_conditions.append(
                 and_(
-                    func.length(BillingProcessData.created_time) >= 10,
-                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
-                    func.substr(BillingProcessData.created_time, 1, 4) == current_year
+                    func.length(BillingProcessData.modified_time) >= 10,
+                    func.substr(BillingProcessData.modified_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                    func.substr(BillingProcessData.modified_time, 1, 4) == current_year
                 )
             )
 
             # DD/MM/YYYY format conditions for current year
             date_conditions.append(
                 and_(
-                    func.length(BillingProcessData.created_time) >= 10,
-                    func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
-                    func.substr(BillingProcessData.created_time, 7, 4) == current_year
+                    func.length(BillingProcessData.modified_time) >= 10,
+                    func.substr(BillingProcessData.modified_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                    func.substr(BillingProcessData.modified_time, 7, 4) == current_year
                 )
             )
 
-            # Extract month from created_time for both date formats
-            month_case_yyyy_mm_dd = func.substr(BillingProcessData.created_time, 6, 2)
-            month_case_dd_mm_yyyy = func.substr(BillingProcessData.created_time, 4, 2)
+            # Extract month from modified_time for both date formats
+            month_case_yyyy_mm_dd = func.substr(BillingProcessData.modified_time, 6, 2)
+            month_case_dd_mm_yyyy = func.substr(BillingProcessData.modified_time, 4, 2)
 
             # Determine which format to use based on the string pattern
             month_extract = case(
-                (func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'), month_case_yyyy_mm_dd),
-                (func.substr(BillingProcessData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'), month_case_dd_mm_yyyy),
+                (func.substr(BillingProcessData.modified_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'), month_case_yyyy_mm_dd),
+                (func.substr(BillingProcessData.modified_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'), month_case_dd_mm_yyyy),
                 else_='00'
             ).label('month_num')
 
@@ -1441,6 +1441,402 @@ class DashboardRepository:
             return {
                 'data': [{'month': month, 'count': 0} for month in empty_months],
                 'total_records': 0
+            }
+
+    def get_permohonan_faktur_count_with_trend(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> Dict[str, Any]:
+        """
+        Get Permohonan Faktur count with trend indicator from document_handling_data
+        joined with document_handling_units
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date for filtering (string format)
+            date_to: End date for filtering (string format)
+
+        Returns:
+            Dict containing current count, previous count, trend, and percentage
+        """
+        try:
+            logger.info(f"Getting Permohonan Faktur count with trend for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}")
+
+            # Helper function to build date filter conditions
+            def build_date_conditions(date_from_str: str, date_to_str: str):
+                return or_(
+                    # Handle YYYY-MM-DD format
+                    and_(
+                        func.length(DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro) >= 10,
+                        func.substr(DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from_str, 'YYYY-MM-DD'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to_str, 'YYYY-MM-DD')
+                    ),
+                    # Handle DD/MM/YYYY format
+                    and_(
+                        func.length(DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro) >= 10,
+                        func.substr(DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from_str, 'YYYY-MM-DD'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to_str, 'YYYY-MM-DD')
+                    )
+                )
+
+            # Get current period count
+            current_conditions = build_date_conditions(date_from, date_to)
+
+            current_query = self.db.query(
+                func.count(DocumentHandlingUnit.id).label('count')
+            ).join(
+                DocumentHandlingData, DocumentHandlingUnit.document_handling_data_id == DocumentHandlingData.id
+            ).filter(
+                and_(
+                    DocumentHandlingData.dealer_id == dealer_id,
+                    DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro.isnot(None),
+                    current_conditions
+                )
+            )
+
+            current_result = current_query.first()
+            current_count = int(current_result.count or 0) if current_result else 0
+
+            # Calculate previous period dates (minus 1 month)
+            try:
+                from datetime import datetime, timedelta
+                from dateutil.relativedelta import relativedelta
+
+                date_from_obj = datetime.strptime(date_from[:10], '%Y-%m-%d')
+                date_to_obj = datetime.strptime(date_to[:10], '%Y-%m-%d')
+
+                # Subtract 1 month from both dates
+                prev_date_from_obj = date_from_obj - relativedelta(months=1)
+                prev_date_to_obj = date_to_obj - relativedelta(months=1)
+
+                prev_date_from = prev_date_from_obj.strftime('%Y-%m-%d')
+                prev_date_to = prev_date_to_obj.strftime('%Y-%m-%d')
+
+                # Get previous period count
+                prev_conditions = build_date_conditions(prev_date_from, prev_date_to)
+
+                prev_query = self.db.query(
+                    func.count(DocumentHandlingUnit.id).label('count')
+                ).join(
+                    DocumentHandlingData, DocumentHandlingUnit.document_handling_data_id == DocumentHandlingData.id
+                ).filter(
+                    and_(
+                        DocumentHandlingData.dealer_id == dealer_id,
+                        DocumentHandlingUnit.tanggal_pengajuan_stnk_ke_biro.isnot(None),
+                        prev_conditions
+                    )
+                )
+
+                prev_result = prev_query.first()
+                prev_count = int(prev_result.count or 0) if prev_result else 0
+
+            except Exception as e:
+                logger.warning(f"Error calculating previous period: {e}")
+                prev_count = 0
+
+            # Calculate trend and percentage
+            if prev_count == 0:
+                if current_count > 0:
+                    trend = 'up'
+                    percentage = 100.0
+                else:
+                    trend = 'stable'
+                    percentage = 0.0
+            else:
+                percentage_change = ((current_count - prev_count) / prev_count) * 100
+                percentage = round(abs(percentage_change), 1)
+
+                if percentage_change > 0:
+                    trend = 'up'
+                elif percentage_change < 0:
+                    trend = 'down'
+                else:
+                    trend = 'stable'
+
+            logger.info(f"Permohonan Faktur count: current={current_count}, previous={prev_count}, trend={trend}, percentage={percentage}")
+
+            return {
+                'count': current_count,
+                'previous_count': prev_count,
+                'trend': trend,
+                'percentage': percentage
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting Permohonan Faktur count with trend: {e}")
+            return {
+                'count': 0,
+                'previous_count': 0,
+                'trend': 'stable',
+                'percentage': 0.0
+            }
+
+    def get_stnk_diterima_count_with_trend(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> Dict[str, Any]:
+        """
+        Get STNK Diterima Konsumen count with trend indicator from document_handling_data
+        joined with document_handling_units
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date for filtering (string format)
+            date_to: End date for filtering (string format)
+
+        Returns:
+            Dict containing current count, previous count, trend, and percentage
+        """
+        try:
+            logger.info(f"Getting STNK Diterima count with trend for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}")
+
+            # Helper function to build date filter conditions
+            def build_date_conditions(date_from_str: str, date_to_str: str):
+                return or_(
+                    # Handle YYYY-MM-DD format
+                    and_(
+                        func.length(DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro) >= 10,
+                        func.substr(DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from_str, 'YYYY-MM-DD'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to_str, 'YYYY-MM-DD')
+                    ),
+                    # Handle DD/MM/YYYY format
+                    and_(
+                        func.length(DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro) >= 10,
+                        func.substr(DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from_str, 'YYYY-MM-DD'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to_str, 'YYYY-MM-DD')
+                    )
+                )
+
+            # Get current period count
+            current_conditions = build_date_conditions(date_from, date_to)
+
+            current_query = self.db.query(
+                func.count(DocumentHandlingUnit.id).label('count')
+            ).join(
+                DocumentHandlingData, DocumentHandlingUnit.document_handling_data_id == DocumentHandlingData.id
+            ).filter(
+                and_(
+                    DocumentHandlingData.dealer_id == dealer_id,
+                    DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro.isnot(None),
+                    current_conditions
+                )
+            )
+
+            current_result = current_query.first()
+            current_count = int(current_result.count or 0) if current_result else 0
+
+            # Calculate previous period dates (minus 1 month)
+            try:
+                from datetime import datetime, timedelta
+                from dateutil.relativedelta import relativedelta
+
+                date_from_obj = datetime.strptime(date_from[:10], '%Y-%m-%d')
+                date_to_obj = datetime.strptime(date_to[:10], '%Y-%m-%d')
+
+                # Subtract 1 month from both dates
+                prev_date_from_obj = date_from_obj - relativedelta(months=1)
+                prev_date_to_obj = date_to_obj - relativedelta(months=1)
+
+                prev_date_from = prev_date_from_obj.strftime('%Y-%m-%d')
+                prev_date_to = prev_date_to_obj.strftime('%Y-%m-%d')
+
+                # Get previous period count
+                prev_conditions = build_date_conditions(prev_date_from, prev_date_to)
+
+                prev_query = self.db.query(
+                    func.count(DocumentHandlingUnit.id).label('count')
+                ).join(
+                    DocumentHandlingData, DocumentHandlingUnit.document_handling_data_id == DocumentHandlingData.id
+                ).filter(
+                    and_(
+                        DocumentHandlingData.dealer_id == dealer_id,
+                        DocumentHandlingUnit.tanggal_penerimaan_bpkb_dari_biro.isnot(None),
+                        prev_conditions
+                    )
+                )
+
+                prev_result = prev_query.first()
+                prev_count = int(prev_result.count or 0) if prev_result else 0
+
+            except Exception as e:
+                logger.warning(f"Error calculating previous period: {e}")
+                prev_count = 0
+
+            # Calculate trend and percentage
+            if prev_count == 0:
+                if current_count > 0:
+                    trend = 'up'
+                    percentage = 100.0
+                else:
+                    trend = 'stable'
+                    percentage = 0.0
+            else:
+                percentage_change = ((current_count - prev_count) / prev_count) * 100
+                percentage = round(abs(percentage_change), 1)
+
+                if percentage_change > 0:
+                    trend = 'up'
+                elif percentage_change < 0:
+                    trend = 'down'
+                else:
+                    trend = 'stable'
+
+            logger.info(f"STNK Diterima count: current={current_count}, previous={prev_count}, trend={trend}, percentage={percentage}")
+
+            return {
+                'count': current_count,
+                'previous_count': prev_count,
+                'trend': trend,
+                'percentage': percentage
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting STNK Diterima count with trend: {e}")
+            return {
+                'count': 0,
+                'previous_count': 0,
+                'trend': 'stable',
+                'percentage': 0.0
+            }
+
+    def get_bpkb_diterima_count_with_trend(
+        self,
+        dealer_id: str,
+        date_from: str,
+        date_to: str
+    ) -> Dict[str, Any]:
+        """
+        Get BPKB Diterima Konsumen count with trend indicator from document_handling_data
+        joined with document_handling_units
+
+        Args:
+            dealer_id: Dealer ID to filter by
+            date_from: Start date for filtering (string format)
+            date_to: End date for filtering (string format)
+
+        Returns:
+            Dict containing current count, previous count, trend, and percentage
+        """
+        try:
+            logger.info(f"Getting BPKB Diterima count with trend for dealer_id={dealer_id}, date_from={date_from}, date_to={date_to}")
+
+            # Helper function to build date filter conditions
+            def build_date_conditions(date_from_str: str, date_to_str: str):
+                return or_(
+                    # Handle YYYY-MM-DD format
+                    and_(
+                        func.length(DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen) >= 10,
+                        func.substr(DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from_str, 'YYYY-MM-DD'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to_str, 'YYYY-MM-DD')
+                    ),
+                    # Handle DD/MM/YYYY format
+                    and_(
+                        func.length(DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen) >= 10,
+                        func.substr(DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from_str, 'YYYY-MM-DD'),
+                        func.to_date(func.substr(DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to_str, 'YYYY-MM-DD')
+                    )
+                )
+
+            # Get current period count
+            current_conditions = build_date_conditions(date_from, date_to)
+
+            current_query = self.db.query(
+                func.count(DocumentHandlingUnit.id).label('count')
+            ).join(
+                DocumentHandlingData, DocumentHandlingUnit.document_handling_data_id == DocumentHandlingData.id
+            ).filter(
+                and_(
+                    DocumentHandlingData.dealer_id == dealer_id,
+                    DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen.isnot(None),
+                    current_conditions
+                )
+            )
+
+            current_result = current_query.first()
+            current_count = int(current_result.count or 0) if current_result else 0
+
+            # Calculate previous period dates (minus 1 month)
+            try:
+                from datetime import datetime, timedelta
+                from dateutil.relativedelta import relativedelta
+
+                date_from_obj = datetime.strptime(date_from[:10], '%Y-%m-%d')
+                date_to_obj = datetime.strptime(date_to[:10], '%Y-%m-%d')
+
+                # Subtract 1 month from both dates
+                prev_date_from_obj = date_from_obj - relativedelta(months=1)
+                prev_date_to_obj = date_to_obj - relativedelta(months=1)
+
+                prev_date_from = prev_date_from_obj.strftime('%Y-%m-%d')
+                prev_date_to = prev_date_to_obj.strftime('%Y-%m-%d')
+
+                # Get previous period count
+                prev_conditions = build_date_conditions(prev_date_from, prev_date_to)
+
+                prev_query = self.db.query(
+                    func.count(DocumentHandlingUnit.id).label('count')
+                ).join(
+                    DocumentHandlingData, DocumentHandlingUnit.document_handling_data_id == DocumentHandlingData.id
+                ).filter(
+                    and_(
+                        DocumentHandlingData.dealer_id == dealer_id,
+                        DocumentHandlingUnit.tanggal_terima_bpkb_oleh_konsumen.isnot(None),
+                        prev_conditions
+                    )
+                )
+
+                prev_result = prev_query.first()
+                prev_count = int(prev_result.count or 0) if prev_result else 0
+
+            except Exception as e:
+                logger.warning(f"Error calculating previous period: {e}")
+                prev_count = 0
+
+            # Calculate trend and percentage
+            if prev_count == 0:
+                if current_count > 0:
+                    trend = 'up'
+                    percentage = 100.0
+                else:
+                    trend = 'stable'
+                    percentage = 0.0
+            else:
+                percentage_change = ((current_count - prev_count) / prev_count) * 100
+                percentage = round(abs(percentage_change), 1)
+
+                if percentage_change > 0:
+                    trend = 'up'
+                elif percentage_change < 0:
+                    trend = 'down'
+                else:
+                    trend = 'stable'
+
+            logger.info(f"BPKB Diterima count: current={current_count}, previous={prev_count}, trend={trend}, percentage={percentage}")
+
+            return {
+                'count': current_count,
+                'previous_count': prev_count,
+                'trend': trend,
+                'percentage': percentage
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting BPKB Diterima count with trend: {e}")
+            return {
+                'count': 0,
+                'previous_count': 0,
+                'trend': 'stable',
+                'percentage': 0.0
             }
 
     def get_delivery_process_status_counts(
