@@ -82,7 +82,7 @@ const fetchPOCreationData = async () => {
 
     try {
         // Get current year from date props
-        const currentYear = new Date(props.dateFrom).getFullYear().toString();
+        const currentYear = new Date(props.dateTo).getFullYear().toString();
 
         // Call the PO creation monthly API
         const response = await axios.get('/api/v1/dashboard/leasing/po-creation-monthly', {

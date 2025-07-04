@@ -51,7 +51,7 @@ const fetchTrenRevenueData = async () => {
 
     try {
         // Get current year from date props
-        const currentYear = new Date(props.dateFrom).getFullYear().toString();
+        const currentYear = new Date(props.dateTo).getFullYear().toString();
 
         // Call the revenue trend API
         const response = await axios.get('/api/v1/dashboard/payment/revenue-trend', {
