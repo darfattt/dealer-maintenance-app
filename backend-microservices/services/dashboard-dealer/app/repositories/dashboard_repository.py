@@ -5,8 +5,17 @@ Repository for dashboard data operations
 import os
 import sys
 from typing import List, Dict, Any
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, text, case
+
+# Import dateutil for date calculations
+try:
+    from dateutil.relativedelta import relativedelta
+    DATEUTIL_AVAILABLE = True
+except ImportError:
+    DATEUTIL_AVAILABLE = False
+    relativedelta = None
 
 # Add parent directory to path for utils import
 parent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
@@ -850,20 +859,20 @@ class DashboardRepository:
             for i, doc_data in enumerate(results, start=offset + 1):
                 # Get the associated unit data (if any)
                 unit_data = None
-                if hasattr(doc_data, 'document_handling_units') and doc_data.document_handling_units:
-                    unit_data = doc_data.document_handling_units[0]  # Take first unit if multiple
+                if hasattr(doc_data, 'units') and doc_data.units:
+                    unit_data = doc_data.units[0]  # Take first unit if multiple
 
                 item = {
                     'no': i,
                     'id_spk': doc_data.id_spk,
                     'id_so': doc_data.id_so,
-                    'tgl_pengajuan_stnk': unit_data.tanggal_pengajuan_stnk if unit_data else None,
+                    'tgl_pengajuan_stnk': unit_data.tanggal_pengajuan_stnk_ke_biro if unit_data else None,
                     'status_faktur_stnk': unit_data.status_faktur_stnk if unit_data else None,
                     'nomor_stnk': unit_data.nomor_stnk if unit_data else None,
                     'plat_nomor': unit_data.plat_nomor if unit_data else None,
-                    'tgl_terima_stnk': unit_data.tanggal_terima_stnk if unit_data else None,
+                    'tgl_terima_stnk': unit_data.tanggal_terima_stnk_oleh_konsumen if unit_data else None,
                     'nama_penerima_stnk': unit_data.nama_penerima_stnk if unit_data else None,
-                    'tgl_terima_bpkb': unit_data.tanggal_terima_bpkb if unit_data else None,
+                    'tgl_terima_bpkb': unit_data.tanggal_terima_bpkb_oleh_konsumen if unit_data else None,
                     'nama_penerima_bpkb': unit_data.nama_penerima_bpkb if unit_data else None
                 }
                 data.append(item)
@@ -1503,8 +1512,8 @@ class DashboardRepository:
 
             # Calculate previous period dates (minus 1 month)
             try:
-                from datetime import datetime, timedelta
-                from dateutil.relativedelta import relativedelta
+                if not DATEUTIL_AVAILABLE:
+                    raise ImportError("python-dateutil not available")
 
                 date_from_obj = datetime.strptime(date_from[:10], '%Y-%m-%d')
                 date_to_obj = datetime.strptime(date_to[:10], '%Y-%m-%d')
@@ -1635,8 +1644,8 @@ class DashboardRepository:
 
             # Calculate previous period dates (minus 1 month)
             try:
-                from datetime import datetime, timedelta
-                from dateutil.relativedelta import relativedelta
+                if not DATEUTIL_AVAILABLE:
+                    raise ImportError("python-dateutil not available")
 
                 date_from_obj = datetime.strptime(date_from[:10], '%Y-%m-%d')
                 date_to_obj = datetime.strptime(date_to[:10], '%Y-%m-%d')
@@ -1767,8 +1776,8 @@ class DashboardRepository:
 
             # Calculate previous period dates (minus 1 month)
             try:
-                from datetime import datetime, timedelta
-                from dateutil.relativedelta import relativedelta
+                if not DATEUTIL_AVAILABLE:
+                    raise ImportError("python-dateutil not available")
 
                 date_from_obj = datetime.strptime(date_from[:10], '%Y-%m-%d')
                 date_to_obj = datetime.strptime(date_to[:10], '%Y-%m-%d')

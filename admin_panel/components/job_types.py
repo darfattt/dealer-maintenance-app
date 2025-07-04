@@ -19,7 +19,7 @@ JOB_TYPE_MAPPING = {
     "prsl_read": "Manage Parts Sales",
     "dphlo_read": "DP HLO",
     "inv2_read": "Nota Jasa Bengkel & Nota Suku Cadang",
-    "unpaidhlo_read": "Manage Document Handling",
+    "unpaidhlo_read": "Unpaid HLO",
     "mdinvh3_read": "Parts Invoice (MD to Dealer)",
     "spk_read": "Manage Dealing Process" #spk_dealing_process_data SPKDealingProcessData
 }
