@@ -6,7 +6,7 @@
 - **Code**: `spk_read`
 - **Label**: `Manage Dealing Process`
 - **Icon**: `📋`
-- **API Endpoint**: `https://example.com/dgi-api/v1.3/spk/read`
+- **API Endpoint**: `https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/spk/read`
 - **Purpose**: Fetch SPK (Surat Perintah Kerja) dealing process data from DGI API
 
 ### **✅ API Specification**
@@ -254,7 +254,7 @@ def initialize_default_api_configs():
     # ... existing configs
     APIConfiguration(
         config_name="dgi_spk_dealing_process_api",
-        base_url="https://example.com/dgi-api/v1.3",
+        base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
         description="DGI API for SPK Dealing Process Data",
         is_active=True,
         timeout_seconds=30,

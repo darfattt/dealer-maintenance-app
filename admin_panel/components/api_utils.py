@@ -8,7 +8,15 @@ import os
 from typing import Dict, List, Any, Optional
 
 # Configuration
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+# Force localhost when running outside Docker (detect by checking if we can resolve 'backend' hostname)
+import socket
+try:
+    socket.gethostbyname('backend')
+    # If we can resolve 'backend', we're likely in Docker
+    BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
+except socket.gaierror:
+    # If we can't resolve 'backend', we're running directly - use localhost
+    BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 def get_dealers() -> List[Dict[str, Any]]:
     """Fetch dealers from API"""
@@ -26,11 +34,11 @@ def get_dealers() -> List[Dict[str, Any]]:
 def get_fetch_logs(dealer_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """Fetch job logs from API"""
     try:
-        url = f"{BACKEND_URL}/fetch-logs/"
+        url = f"{BACKEND_URL}/logs/fetch-logs/"
         params = {}
         if dealer_id:
             params['dealer_id'] = dealer_id
-        
+
         response = requests.get(url, params=params)
         if response.status_code == 200:
             return response.json()

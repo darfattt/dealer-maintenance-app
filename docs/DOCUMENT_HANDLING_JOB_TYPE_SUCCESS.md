@@ -10,7 +10,7 @@ The new "Manage Document Handling" job type has been successfully implemented fo
 - **Code**: `doch_read`
 - **Label**: `Manage Document Handling`
 - **Icon**: `📄`
-- **API Endpoint**: `https://example.com/dgi-api/v1.3/doch/read`
+- **API Endpoint**: `https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/doch/read`
 - **Purpose**: Fetch document handling data (STNK/BPKB) from DGI API
 
 ### **✅ API Specification**

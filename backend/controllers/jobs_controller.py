@@ -10,6 +10,7 @@ from models.schemas import ManualFetchRequest, JobResponse, JobStatusResponse, F
 from .base_controller import BaseController
 from celery_app import celery_app
 from job_queue_manager import add_job_to_queue, get_job_status as get_queue_job_status, get_queue_status, cancel_job as cancel_queue_job, clear_completed_jobs
+from tasks.enhanced_task_runner import enhanced_task_runner
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -487,3 +488,113 @@ async def get_job_system_health():
             "total_active_jobs": 0,
             "total_reserved_jobs": 0
         }
+
+
+# ============================================================================
+# ENHANCED BATCH PROCESSING ENDPOINTS
+# ============================================================================
+
+@router.post("/enhanced/run", response_model=Dict[str, Any])
+async def run_enhanced_batch_job(request: ManualFetchRequest, db: Session = Depends(get_db)):
+    """Run a single batch processing job with enhanced performance optimizations"""
+    # Validate dealer exists
+    BaseController.validate_dealer_exists(db, request.dealer_id, Dealer)
+
+    try:
+        result = enhanced_task_runner.run_single_task(
+            processor_type=request.fetch_type,
+            dealer_id=request.dealer_id,
+            from_time=request.from_time,
+            to_time=request.to_time,
+            priority="normal",
+            no_po=request.no_po
+        )
+
+        BaseController.log_operation("RUN_ENHANCED_JOB",
+                                   f"Enhanced {request.fetch_type} job for dealer {request.dealer_id}: {result.get('job_id')}")
+
+        return result
+
+    except Exception as e:
+        BaseController.log_operation("RUN_ENHANCED_JOB_ERROR",
+                                   f"Enhanced job failed for dealer {request.dealer_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to run enhanced job: {str(e)}")
+
+
+@router.get("/enhanced/status/{job_id}")
+async def get_enhanced_job_status(job_id: str):
+    """Get detailed status of an enhanced batch job"""
+    try:
+        status = enhanced_task_runner.get_job_status(job_id)
+
+        if "error" in status:
+            raise HTTPException(status_code=404, detail=status["error"])
+
+        BaseController.log_operation("GET_ENHANCED_JOB_STATUS", f"Retrieved status for job {job_id}")
+        return status
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        BaseController.log_operation("GET_ENHANCED_JOB_STATUS_ERROR", f"Failed to get status for job {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get job status: {str(e)}")
+
+
+@router.get("/enhanced/system/status")
+async def get_enhanced_system_status():
+    """Get comprehensive system status for enhanced batch processing"""
+    try:
+        status = enhanced_task_runner.get_system_status()
+        BaseController.log_operation("GET_ENHANCED_SYSTEM_STATUS", "Retrieved enhanced system status")
+        return status
+
+    except Exception as e:
+        BaseController.log_operation("GET_ENHANCED_SYSTEM_STATUS_ERROR", f"Failed to get system status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get system status: {str(e)}")
+
+
+@router.post("/enhanced/cancel/{job_id}")
+async def cancel_enhanced_job(job_id: str):
+    """Cancel an enhanced batch job"""
+    try:
+        result = enhanced_task_runner.cancel_job(job_id)
+        BaseController.log_operation("CANCEL_ENHANCED_JOB", f"Cancel request for job {job_id}: {result['success']}")
+        return result
+
+    except Exception as e:
+        BaseController.log_operation("CANCEL_ENHANCED_JOB_ERROR", f"Failed to cancel job {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to cancel job: {str(e)}")
+
+
+@router.post("/enhanced/bulk", response_model=Dict[str, Any])
+async def run_enhanced_bulk_jobs(request: BulkJobRequest, db: Session = Depends(get_db)):
+    """Run multiple batch processing jobs with enhanced performance optimizations"""
+
+    # Validate all dealers exist
+    for job in request.jobs:
+        BaseController.validate_dealer_exists(db, job.dealer_id, Dealer)
+
+    try:
+        # Convert to task format
+        tasks = []
+        for job in request.jobs:
+            tasks.append({
+                'processor_type': job.fetch_type,
+                'dealer_id': job.dealer_id,
+                'from_time': job.from_time,
+                'to_time': job.to_time,
+                'priority': 'normal',
+                'kwargs': {'no_po': job.no_po} if hasattr(job, 'no_po') and job.no_po else {}
+            })
+
+        result = enhanced_task_runner.run_multiple_tasks(tasks)
+
+        BaseController.log_operation("RUN_ENHANCED_BULK_JOBS",
+                                   f"Enhanced bulk jobs: {result['total_submitted']} submitted, "
+                                   f"{result['total_failed_to_submit']} failed")
+
+        return result
+
+    except Exception as e:
+        BaseController.log_operation("RUN_ENHANCED_BULK_JOBS_ERROR", f"Enhanced bulk jobs failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to run enhanced bulk jobs: {str(e)}")

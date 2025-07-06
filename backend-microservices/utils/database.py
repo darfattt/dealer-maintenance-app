@@ -18,12 +18,22 @@ DATABASE_URL = os.getenv(
     "postgresql://dealer_user:dealer_pass@localhost:5432/dealer_dashboard"
 )
 
-# Create engine with connection pooling
+# Enhanced connection pooling for microservices
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=300,
-    echo=os.getenv("SQL_DEBUG", "false").lower() == "true"
+    # Optimized pool settings for microservices
+    pool_size=15,  # Base connections for microservice
+    max_overflow=30,  # Additional connections during load
+    pool_pre_ping=True,  # Validate connections
+    pool_recycle=1800,  # Recycle every 30 minutes
+    pool_timeout=20,  # Connection wait timeout
+    echo=os.getenv("SQL_DEBUG", "false").lower() == "true",
+    # Connection optimizations
+    connect_args={
+        "connect_timeout": 10,
+        "application_name": "dealer_microservice"
+    },
+    isolation_level="READ_COMMITTED"
 )
 
 # Session factory
