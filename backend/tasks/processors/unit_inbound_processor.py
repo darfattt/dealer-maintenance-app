@@ -4,7 +4,7 @@ Handles fetching, processing, and storing unit inbound data from purchase orders
 """
 
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -93,94 +93,111 @@ class UnitInboundDataProcessor(BaseDataProcessor):
             }
     
     def process_records(self, db: Session, dealer_id: str, api_data: Dict[str, Any]) -> int:
-        """
-        Process and store unit inbound records in database
-        
-        Args:
-            db: Database session
-            dealer_id: Dealer ID
-            api_data: API response data
-        
-        Returns:
-            Number of records processed
-        """
+        """Process and store unit inbound records using bulk operations"""
         try:
-            if api_data.get("status") != 1:
-                logger.warning(f"Skipping processing due to API error: {api_data.get('message')}")
+            data = api_data.get("data", [])
+            if not data:
+                logger.warning(f"No unit inbound data to process for dealer {dealer_id}")
                 return 0
-            
-            records = api_data.get("data", [])
-            if not records:
-                logger.info("No unit inbound records to process")
-                return 0
-            
-            processed_count = 0
-            
-            for record in records:
+
+            logger.info(f"Processing {len(data)} unit inbound records for dealer {dealer_id}")
+
+            # Prepare bulk data for main records
+            inbound_records = []
+            unit_records = []
+
+            for record in data:
                 try:
-                    # Check for duplicate by shipping list number
-                    no_shipping_list = record.get("noShippingList", "")
-                    if no_shipping_list:
-                        existing = db.query(UnitInboundData).filter(
-                            UnitInboundData.dealer_id == dealer_id,
-                            UnitInboundData.no_shipping_list == no_shipping_list
-                        ).first()
-                        
-                        if existing:
-                            logger.debug(f"Skipping duplicate shipping list: {no_shipping_list}")
-                            continue
-                    
-                    # Create main unit inbound record
-                    unit_inbound_data = UnitInboundData(
-                        dealer_id=dealer_id,
-                        no_shipping_list=record.get("noShippingList"),
-                        tanggal_terima=record.get("tanggalTerima"),
-                        main_dealer_id=record.get("mainDealerId"),
-                        no_invoice=record.get("noInvoice"),
-                        status_shipping_list=record.get("statusShippingList"),
-                        created_time=record.get("createdTime"),
-                        modified_time=record.get("modifiedTime"),
-                        fetched_at=datetime.utcnow()
-                    )
-                    
-                    db.add(unit_inbound_data)
-                    db.flush()  # Get the ID for relationships
-                    
-                    # Process unit details
+                    # Prepare main unit inbound record
+                    inbound_data = {
+                        'dealer_id': dealer_id,
+                        'no_shipping_list': record.get("noShippingList"),
+                        'tanggal_terima': record.get("tanggalTerima"),
+                        'main_dealer_id': record.get("mainDealerId"),
+                        'no_invoice': record.get("noInvoice"),
+                        'status_shipping_list': record.get("statusShippingList"),
+                        'created_time': record.get("createdTime"),
+                        'modified_time': record.get("modifiedTime"),
+                        'fetched_at': datetime.utcnow()
+                    }
+                    inbound_records.append(inbound_data)
+
+                    # Prepare unit records (will be processed after main records)
                     units = record.get("unit", [])
                     for unit_data in units:
-                        unit = UnitInboundUnit(
-                            unit_inbound_data_id=unit_inbound_data.id,
-                            kode_tipe_unit=unit_data.get("kodeTipeUnit"),
-                            kode_warna=unit_data.get("kodeWarna"),
-                            kuantitas_terkirim=unit_data.get("kuantitasTerkirim"),
-                            kuantitas_diterima=unit_data.get("kuantitasDiterima"),
-                            no_mesin=unit_data.get("noMesin"),
-                            no_rangka=unit_data.get("noRangka"),
-                            status_rfs=unit_data.get("statusRFS"),
-                            po_id=unit_data.get("poId"),
-                            kelengkapan_unit=unit_data.get("kelengkapanUnit"),
-                            no_goods_receipt=unit_data.get("noGoodsReceipt"),
-                            doc_nrfs_id=unit_data.get("docNRFSId"),
-                            created_time=unit_data.get("createdTime"),
-                            modified_time=unit_data.get("modifiedTime")
-                        )
-                        db.add(unit)
-                    
-                    processed_count += 1
-                    logger.debug(f"Processed unit inbound record: {no_shipping_list} with {len(units)} units")
-                    
+                        unit_record = {
+                            'kode_tipe_unit': unit_data.get("kodeTipeUnit"),
+                            'kode_warna': unit_data.get("kodeWarna"),
+                            'kuantitas_terkirim': unit_data.get("kuantitasTerkirim"),
+                            'kuantitas_diterima': unit_data.get("kuantitasDiterima"),
+                            'no_mesin': unit_data.get("noMesin"),
+                            'no_rangka': unit_data.get("noRangka"),
+                            'status_rfs': unit_data.get("statusRFS"),
+                            'po_id': unit_data.get("poId"),
+                            'kelengkapan_unit': unit_data.get("kelengkapanUnit"),
+                            'no_goods_receipt': unit_data.get("noGoodsReceipt"),
+                            'doc_nrfs_id': unit_data.get("docNRFSId"),
+                            'created_time': unit_data.get("createdTime"),
+                            'modified_time': unit_data.get("modifiedTime"),
+                            # Will need to link to parent after bulk insert
+                            'shipping_list': record.get("noShippingList")  # Temporary field for linking
+                        }
+                        unit_records.append(unit_record)
+
                 except Exception as e:
-                    logger.error(f"Error processing individual unit inbound record: {e}")
+                    logger.error(f"Error preparing unit inbound record: {e}")
                     continue
-            
+
+            if not inbound_records:
+                logger.warning(f"No valid unit inbound records to process for dealer {dealer_id}")
+                return 0
+
+            # Bulk upsert main inbound records
+            main_processed = self.bulk_upsert(
+                db,
+                UnitInboundData,
+                inbound_records,
+                conflict_columns=['dealer_id', 'no_shipping_list'],
+                batch_size=500
+            )
+
+            # Process unit records if any
+            if unit_records:
+                # First, get the mapping of shipping list numbers to database IDs
+                shipping_lists = [record['no_shipping_list'] for record in inbound_records if record['no_shipping_list']]
+                if shipping_lists:
+                    inbound_mapping = {}
+                    inbound_query = db.query(UnitInboundData.id, UnitInboundData.no_shipping_list).filter(
+                        UnitInboundData.dealer_id == dealer_id,
+                        UnitInboundData.no_shipping_list.in_(shipping_lists)
+                    ).all()
+
+                    for inbound_id, shipping_list in inbound_query:
+                        inbound_mapping[shipping_list] = inbound_id
+
+                    # Update unit records with correct foreign keys
+                    valid_units = []
+                    for unit in unit_records:
+                        shipping_list = unit.pop('shipping_list', None)
+                        if shipping_list and shipping_list in inbound_mapping:
+                            unit['unit_inbound_data_id'] = inbound_mapping[shipping_list]
+                            valid_units.append(unit)
+
+                    if valid_units:
+                        # Bulk insert units (no conflict resolution needed as they're child records)
+                        for chunk in self.process_in_chunks(valid_units, chunk_size=1000):
+                            db.bulk_insert_mappings(UnitInboundUnit, chunk)
+
+                        logger.info(f"Processed {len(valid_units)} unit inbound units for dealer {dealer_id}")
+
             db.commit()
-            logger.info(f"Successfully processed {processed_count} unit inbound records for dealer {dealer_id}")
-            return processed_count
-            
+            logger.info(f"Successfully processed {main_processed} unit inbound records for dealer {dealer_id}")
+
+            return main_processed
+
         except Exception as e:
-            logger.error(f"Error processing unit inbound records for dealer {dealer_id}: {e}")
             db.rollback()
+            logger.error(f"Error processing unit inbound records for dealer {dealer_id}: {e}")
             raise
     
     def get_summary_stats(self, db: Session, dealer_id: str = None) -> Dict[str, Any]:
