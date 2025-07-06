@@ -96,14 +96,14 @@ class PartsSalesDataProcessor(BaseDataProcessor):
                     # Prepare sales record
                     sales_data = {
                         'dealer_id': dealer_id,
-                        'no_so': sales_record.get("noSO"),
-                        'tgl_so': sales_record.get("tglSO"),
-                        'id_customer': sales_record.get("idCustomer"),
-                        'nama_customer': sales_record.get("namaCustomer"),
-                        'disc_so': sales_record.get("discSO"),
-                        'total_harga_so': sales_record.get("totalHargaSO"),
-                        'created_time': sales_record.get("createdTime"),
-                        'modified_time': sales_record.get("modifiedTime"),
+                        'no_so': self.safe_string(sales_record.get("noSO")),
+                        'tgl_so': self.safe_string(sales_record.get("tglSO")),
+                        'id_customer': self.safe_string(sales_record.get("idCustomer")),
+                        'nama_customer': self.safe_string(sales_record.get("namaCustomer")),
+                        'disc_so': self.safe_numeric(sales_record.get("discSO")),
+                        'total_harga_so': self.safe_numeric(sales_record.get("totalHargaSO")),
+                        'created_time': self.safe_string(sales_record.get("createdTime")),
+                        'modified_time': self.safe_string(sales_record.get("modifiedTime")),
                         'fetched_at': datetime.utcnow()
                     }
                     sales_records.append(sales_data)
@@ -113,18 +113,18 @@ class PartsSalesDataProcessor(BaseDataProcessor):
                     for part_record in parts:
                         part_data = {
                             'sales_no_so': sales_record.get("noSO"),  # Use for mapping
-                            'parts_number': part_record.get("partsNumber"),
-                            'kuantitas': part_record.get("kuantitas"),
-                            'harga_parts': part_record.get("hargaParts"),
-                            'promo_id_parts': part_record.get("promoIdParts"),
-                            'disc_amount': part_record.get("discAmount"),
-                            'disc_percentage': part_record.get("discPercentage"),
-                            'ppn': part_record.get("ppn"),
-                            'total_harga_parts': part_record.get("totalHargaParts"),
-                            'uang_muka': part_record.get("uangMuka"),
-                            'booking_id_reference': part_record.get("bookingIdReference"),
-                            'created_time': part_record.get("createdTime"),
-                            'modified_time': part_record.get("modifiedTime"),
+                            'parts_number': self.safe_string(part_record.get("partsNumber")),
+                            'kuantitas': self.safe_int(part_record.get("kuantitas")),
+                            'harga_parts': self.safe_numeric(part_record.get("hargaParts")),
+                            'promo_id_parts': self.safe_string(part_record.get("promoIdParts")),
+                            'disc_amount': self.safe_numeric(part_record.get("discAmount")),
+                            'disc_percentage': self.safe_string(part_record.get("discPercentage")),
+                            'ppn': self.safe_numeric(part_record.get("ppn")),
+                            'total_harga_parts': self.safe_numeric(part_record.get("totalHargaParts")),
+                            'uang_muka': self.safe_numeric(part_record.get("uangMuka")),
+                            'booking_id_reference': self.safe_string(part_record.get("bookingIdReference")),
+                            'created_time': self.safe_string(part_record.get("createdTime")),
+                            'modified_time': self.safe_string(part_record.get("modifiedTime")),
                             'fetched_at': datetime.utcnow()
                         }
                         part_records.append(part_data)

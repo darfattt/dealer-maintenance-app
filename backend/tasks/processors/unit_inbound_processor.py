@@ -128,8 +128,8 @@ class UnitInboundDataProcessor(BaseDataProcessor):
                         unit_record = {
                             'kode_tipe_unit': unit_data.get("kodeTipeUnit"),
                             'kode_warna': unit_data.get("kodeWarna"),
-                            'kuantitas_terkirim': unit_data.get("kuantitasTerkirim"),
-                            'kuantitas_diterima': unit_data.get("kuantitasDiterima"),
+                            'kuantitas_terkirim': self.safe_int(unit_data.get("kuantitasTerkirim")),
+                            'kuantitas_diterima': self.safe_int(unit_data.get("kuantitasDiterima")),
                             'no_mesin': unit_data.get("noMesin"),
                             'no_rangka': unit_data.get("noRangka"),
                             'status_rfs': unit_data.get("statusRFS"),

@@ -145,6 +145,30 @@ class BaseDataProcessor(ABC):
         """Generator to process data in chunks for memory efficiency"""
         for i in range(0, len(data), chunk_size):
             yield data[i:i + chunk_size]
+
+    def safe_numeric(self, value, default=None):
+        """Convert value to numeric, return None for empty strings or invalid values"""
+        if value is None or value == '' or value == 'null':
+            return default
+        try:
+            return float(value) if '.' in str(value) else int(value)
+        except (ValueError, TypeError):
+            return default
+
+    def safe_int(self, value, default=None):
+        """Convert value to integer, return None for empty strings or invalid values"""
+        if value is None or value == '' or value == 'null':
+            return default
+        try:
+            return int(float(value))  # Handle string floats like "1.0"
+        except (ValueError, TypeError):
+            return default
+
+    def safe_string(self, value, default=None):
+        """Convert value to string, return None for empty strings"""
+        if value is None or value == '' or value == 'null':
+            return default
+        return str(value)
     
     @abstractmethod
     def fetch_api_data(self, dealer: Dealer, from_time: str, to_time: str, **kwargs) -> Dict[str, Any]:

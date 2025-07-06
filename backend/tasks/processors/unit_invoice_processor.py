@@ -100,17 +100,17 @@ class UnitInvoiceDataProcessor(BaseDataProcessor):
                     # Prepare invoice record
                     invoice_data = {
                         'dealer_id': dealer_id,
-                        'no_invoice': invoice_record.get("noInvoice"),
-                        'tanggal_invoice': invoice_record.get("tanggalInvoice"),
-                        'tanggal_jatuh_tempo': invoice_record.get("tanggalJatuhTempo"),
-                        'main_dealer_id': invoice_record.get("mainDealerId"),
-                        'total_harga_sebelum_diskon': invoice_record.get("totalHargaSebelumDiskon"),
-                        'total_diskon_per_unit': invoice_record.get("totalDiskonPerUnit"),
-                        'potongan_per_invoice': invoice_record.get("potonganPerInvoice"),
-                        'total_ppn': invoice_record.get("totalPPN"),
-                        'total_harga': invoice_record.get("totalHarga"),
-                        'created_time': invoice_record.get("createdTime"),
-                        'modified_time': invoice_record.get("modifiedTime"),
+                        'no_invoice': self.safe_string(invoice_record.get("noInvoice")),
+                        'tanggal_invoice': self.safe_string(invoice_record.get("tanggalInvoice")),
+                        'tanggal_jatuh_tempo': self.safe_string(invoice_record.get("tanggalJatuhTempo")),
+                        'main_dealer_id': self.safe_string(invoice_record.get("mainDealerId")),
+                        'total_harga_sebelum_diskon': self.safe_numeric(invoice_record.get("totalHargaSebelumDiskon")),
+                        'total_diskon_per_unit': self.safe_numeric(invoice_record.get("totalDiskonPerUnit")),
+                        'potongan_per_invoice': self.safe_numeric(invoice_record.get("potonganPerInvoice")),
+                        'total_ppn': self.safe_numeric(invoice_record.get("totalPPN")),
+                        'total_harga': self.safe_numeric(invoice_record.get("totalHarga")),
+                        'created_time': self.safe_string(invoice_record.get("createdTime")),
+                        'modified_time': self.safe_string(invoice_record.get("modifiedTime")),
                         'fetched_at': datetime.utcnow()
                     }
                     invoice_records.append(invoice_data)
@@ -120,16 +120,16 @@ class UnitInvoiceDataProcessor(BaseDataProcessor):
                     for unit_record in units:
                         unit_data = {
                             'invoice_no_invoice': invoice_record.get("noInvoice"),  # Use for mapping
-                            'kode_tipe_unit': unit_record.get("kodeTipeUnit"),
-                            'kode_warna': unit_record.get("kodeWarna"),
-                            'kuantitas': unit_record.get("kuantitas"),
-                            'no_mesin': unit_record.get("noMesin"),
-                            'no_rangka': unit_record.get("noRangka"),
-                            'harga_satuan_sebelum_diskon': unit_record.get("hargaSatuanSebelumDiskon"),
-                            'diskon_per_unit': unit_record.get("diskonPerUnit"),
-                            'po_id': unit_record.get("poId"),
-                            'created_time': unit_record.get("createdTime"),
-                            'modified_time': unit_record.get("modifiedTime"),
+                            'kode_tipe_unit': self.safe_string(unit_record.get("kodeTipeUnit")),
+                            'kode_warna': self.safe_string(unit_record.get("kodeWarna")),
+                            'kuantitas': self.safe_int(unit_record.get("kuantitas")),
+                            'no_mesin': self.safe_string(unit_record.get("noMesin")),
+                            'no_rangka': self.safe_string(unit_record.get("noRangka")),
+                            'harga_satuan_sebelum_diskon': self.safe_numeric(unit_record.get("hargaSatuanSebelumDiskon")),
+                            'diskon_per_unit': self.safe_numeric(unit_record.get("diskonPerUnit")),
+                            'po_id': self.safe_string(unit_record.get("poId")),
+                            'created_time': self.safe_string(unit_record.get("createdTime")),
+                            'modified_time': self.safe_string(unit_record.get("modifiedTime")),
                             'fetched_at': datetime.utcnow()
                         }
                         unit_records.append(unit_data)

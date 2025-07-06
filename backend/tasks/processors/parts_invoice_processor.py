@@ -96,17 +96,17 @@ class PartsInvoiceDataProcessor(BaseDataProcessor):
                     # Prepare invoice record
                     invoice_data = {
                         'dealer_id': dealer_id,
-                        'no_invoice': invoice_record.get("noInvoice"),
-                        'tgl_invoice': invoice_record.get("tglInvoice"),
-                        'tgl_jatuh_tempo': invoice_record.get("tglJatuhTempo"),
-                        'main_dealer_id': invoice_record.get("mainDealerId"),
-                        'total_harga_sebelum_diskon': invoice_record.get("totalHargaSebelumDiskon"),
-                        'total_diskon_per_parts_number': invoice_record.get("totalDiskonPerPartsNumber"),
-                        'potongan_per_invoice': invoice_record.get("potonganPerInvoice"),
-                        'total_ppn': invoice_record.get("totalPPN"),
-                        'total_harga': invoice_record.get("totalHarga"),
-                        'created_time': invoice_record.get("createdTime"),
-                        'modified_time': invoice_record.get("modifiedTime"),
+                        'no_invoice': self.safe_string(invoice_record.get("noInvoice")),
+                        'tgl_invoice': self.safe_string(invoice_record.get("tglInvoice")),
+                        'tgl_jatuh_tempo': self.safe_string(invoice_record.get("tglJatuhTempo")),
+                        'main_dealer_id': self.safe_string(invoice_record.get("mainDealerId")),
+                        'total_harga_sebelum_diskon': self.safe_numeric(invoice_record.get("totalHargaSebelumDiskon")),
+                        'total_diskon_per_parts_number': self.safe_numeric(invoice_record.get("totalDiskonPerPartsNumber")),
+                        'potongan_per_invoice': self.safe_numeric(invoice_record.get("potonganPerInvoice")),
+                        'total_ppn': self.safe_numeric(invoice_record.get("totalPPN")),
+                        'total_harga': self.safe_numeric(invoice_record.get("totalHarga")),
+                        'created_time': self.safe_string(invoice_record.get("createdTime")),
+                        'modified_time': self.safe_string(invoice_record.get("modifiedTime")),
                         'fetched_at': datetime.utcnow()
                     }
                     invoice_records.append(invoice_data)
@@ -116,15 +116,15 @@ class PartsInvoiceDataProcessor(BaseDataProcessor):
                     for part_record in parts:
                         part_data = {
                             'invoice_no_invoice': invoice_record.get("noInvoice"),  # Use for mapping
-                            'no_po': part_record.get("noPO"),
-                            'jenis_order': part_record.get("jenisOrder"),
-                            'parts_number': part_record.get("partsNumber"),
-                            'kuantitas': part_record.get("kuantitas"),
-                            'uom': part_record.get("uom"),
-                            'harga_satuan_sebelum_diskon': part_record.get("hargaSatuanSebelumDiskon"),
-                            'diskon_per_parts_number': part_record.get("diskonPerPartsNumber"),
-                            'created_time': part_record.get("createdTime"),
-                            'modified_time': part_record.get("modifiedTime"),
+                            'no_po': self.safe_string(part_record.get("noPO")),
+                            'jenis_order': self.safe_string(part_record.get("jenisOrder")),
+                            'parts_number': self.safe_string(part_record.get("partsNumber")),
+                            'kuantitas': self.safe_int(part_record.get("kuantitas")),
+                            'uom': self.safe_string(part_record.get("uom")),
+                            'harga_satuan_sebelum_diskon': self.safe_numeric(part_record.get("hargaSatuanSebelumDiskon")),
+                            'diskon_per_parts_number': self.safe_numeric(part_record.get("diskonPerPartsNumber")),
+                            'created_time': self.safe_string(part_record.get("createdTime")),
+                            'modified_time': self.safe_string(part_record.get("modifiedTime")),
                             'fetched_at': datetime.utcnow()
                         }
                         part_records.append(part_data)

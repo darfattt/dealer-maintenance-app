@@ -101,9 +101,9 @@ class LeasingDataProcessor(BaseDataProcessor):
                         'dealer_id': dealer_id,
                         'id_dokumen_pengajuan': record.get('idDokumenPengajuan'),
                         'id_spk': record.get('idSPK'),
-                        'jumlah_dp': self._safe_decimal(record.get('jumlahDP')),
-                        'tenor': self._safe_int(record.get('tenor')),
-                        'jumlah_cicilan': self._safe_decimal(record.get('jumlahCicilan')),
+                        'jumlah_dp': self.safe_numeric(record.get('jumlahDP')),
+                        'tenor': self.safe_int(record.get('tenor')),
+                        'jumlah_cicilan': self.safe_numeric(record.get('jumlahCicilan')),
                         'tanggal_pengajuan': record.get('tanggalPengajuan'),
                         'id_finance_company': record.get('idFinanceCompany'),
                         'nama_finance_company': record.get('namaFinanceCompany'),
@@ -144,23 +144,7 @@ class LeasingDataProcessor(BaseDataProcessor):
             raise
     
 
-    def _safe_decimal(self, value) -> Optional[float]:
-        """Safely convert value to decimal/float"""
-        if value is None:
-            return None
-        try:
-            return float(value)
-        except (ValueError, TypeError):
-            return None
-    
-    def _safe_int(self, value) -> Optional[int]:
-        """Safely convert value to integer"""
-        if value is None:
-            return None
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            return None
+
     
     def get_summary_stats(self, db: Session, dealer_id: str = None) -> Dict[str, Any]:
         """Get summary statistics for leasing data"""

@@ -97,17 +97,17 @@ class WorkshopInvoiceDataProcessor(BaseDataProcessor):
                     # Prepare invoice record
                     invoice_data = {
                         'dealer_id': dealer_id,
-                        'no_work_order': invoice_record.get("noWorkOrder"),
-                        'no_njb': invoice_record.get("noNJB"),
-                        'tanggal_njb': invoice_record.get("tanggalNJB"),
-                        'total_harga_njb': invoice_record.get("totalHargaNJB"),
-                        'no_nsc': invoice_record.get("noNSC"),
-                        'tanggal_nsc': invoice_record.get("tanggalNSC"),
-                        'total_harga_nsc': invoice_record.get("totalHargaNSC"),
-                        'honda_id_sa': invoice_record.get("hondaIdSA"),
-                        'honda_id_mekanik': invoice_record.get("hondaIdMekanik"),
-                        'created_time': invoice_record.get("createdTime"),
-                        'modified_time': invoice_record.get("modifiedTime"),
+                        'no_work_order': self.safe_string(invoice_record.get("noWorkOrder")),
+                        'no_njb': self.safe_string(invoice_record.get("noNJB")),
+                        'tanggal_njb': self.safe_string(invoice_record.get("tanggalNJB")),
+                        'total_harga_njb': self.safe_numeric(invoice_record.get("totalHargaNJB")),
+                        'no_nsc': self.safe_string(invoice_record.get("noNSC")),
+                        'tanggal_nsc': self.safe_string(invoice_record.get("tanggalNSC")),
+                        'total_harga_nsc': self.safe_numeric(invoice_record.get("totalHargaNSC")),
+                        'honda_id_sa': self.safe_string(invoice_record.get("hondaIdSA")),
+                        'honda_id_mekanik': self.safe_string(invoice_record.get("hondaIdMekanik")),
+                        'created_time': self.safe_string(invoice_record.get("createdTime")),
+                        'modified_time': self.safe_string(invoice_record.get("modifiedTime")),
                         'fetched_at': datetime.utcnow()
                     }
                     invoice_records.append(invoice_data)
@@ -117,14 +117,14 @@ class WorkshopInvoiceDataProcessor(BaseDataProcessor):
                     for service_record in njb_services:
                         service_data = {
                             'invoice_no_work_order': invoice_record.get("noWorkOrder"),  # Use for mapping
-                            'id_job': service_record.get("idJob"),
-                            'harga_servis': service_record.get("hargaServis"),
-                            'promo_id_jasa': service_record.get("promoIdJasa"),
-                            'disc_service_amount': service_record.get("discServiceAmount"),
-                            'disc_service_percentage': service_record.get("discServicePercentage"),
-                            'total_harga_servis': service_record.get("totalHargaServis"),
-                            'created_time': service_record.get("createdTime"),
-                            'modified_time': service_record.get("modifiedTime"),
+                            'id_job': self.safe_string(service_record.get("idJob")),
+                            'harga_servis': self.safe_numeric(service_record.get("hargaServis")),
+                            'promo_id_jasa': self.safe_string(service_record.get("promoIdJasa")),
+                            'disc_service_amount': self.safe_numeric(service_record.get("discServiceAmount")),
+                            'disc_service_percentage': self.safe_string(service_record.get("discServicePercentage")),
+                            'total_harga_servis': self.safe_numeric(service_record.get("totalHargaServis")),
+                            'created_time': self.safe_string(service_record.get("createdTime")),
+                            'modified_time': self.safe_string(service_record.get("modifiedTime")),
                             'fetched_at': datetime.utcnow()
                         }
                         njb_records.append(service_data)
@@ -134,18 +134,18 @@ class WorkshopInvoiceDataProcessor(BaseDataProcessor):
                     for part_record in nsc_parts:
                         part_data = {
                             'invoice_no_work_order': invoice_record.get("noWorkOrder"),  # Use for mapping
-                            'id_job': part_record.get("idJob"),
-                            'parts_number': part_record.get("partsNumber"),
-                            'kuantitas': part_record.get("kuantitas"),
-                            'harga_parts': part_record.get("hargaParts"),
-                            'promo_id_parts': part_record.get("promoIdParts"),
-                            'disc_parts_amount': part_record.get("discPartsAmount"),
-                            'disc_parts_percentage': part_record.get("discPartsPercentage"),
-                            'ppn': part_record.get("ppn"),
-                            'total_harga_parts': part_record.get("totalHargaParts"),
-                            'uang_muka': part_record.get("uangMuka"),
-                            'created_time': part_record.get("createdTime"),
-                            'modified_time': part_record.get("modifiedTime"),
+                            'id_job': self.safe_string(part_record.get("idJob")),
+                            'parts_number': self.safe_string(part_record.get("partsNumber")),
+                            'kuantitas': self.safe_int(part_record.get("kuantitas")),
+                            'harga_parts': self.safe_numeric(part_record.get("hargaParts")),
+                            'promo_id_parts': self.safe_string(part_record.get("promoIdParts")),
+                            'disc_parts_amount': self.safe_numeric(part_record.get("discPartsAmount")),
+                            'disc_parts_percentage': self.safe_string(part_record.get("discPartsPercentage")),
+                            'ppn': self.safe_numeric(part_record.get("ppn")),
+                            'total_harga_parts': self.safe_numeric(part_record.get("totalHargaParts")),
+                            'uang_muka': self.safe_numeric(part_record.get("uangMuka")),
+                            'created_time': self.safe_string(part_record.get("createdTime")),
+                            'modified_time': self.safe_string(part_record.get("modifiedTime")),
                             'fetched_at': datetime.utcnow()
                         }
                         nsc_records.append(part_data)

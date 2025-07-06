@@ -147,20 +147,20 @@ class SPKDealingProcessDataProcessor(BaseDataProcessor):
                     for unit_record in units:
                         unit_data = {
                             'spk_id_spk': spk_record.get("idSpk"),  # Use for mapping
-                            'kode_tipe_unit': unit_record.get("kodeTipeUnit"),
-                            'kode_warna': unit_record.get("kodeWarna"),
-                            'quantity': unit_record.get("quantity"),
-                            'harga_jual': unit_record.get("hargaJual"),
-                            'diskon': unit_record.get("diskon"),
-                            'amount_ppn': unit_record.get("amountPPN"),
-                            'faktur_pajak': unit_record.get("fakturPajak"),
-                            'tipe_pembayaran': unit_record.get("tipePembayaran"),
-                            'jumlah_tanda_jadi': unit_record.get("jumlahTandaJadi"),
-                            'tanggal_pengiriman': unit_record.get("tanggalPengiriman"),
-                            'id_sales_program': unit_record.get("idSalesProgram"),
-                            'id_apparel': unit_record.get("idApparel"),
-                            'created_time': unit_record.get("createdTime"),
-                            'modified_time': unit_record.get("modifiedTime"),
+                            'kode_tipe_unit': self.safe_string(unit_record.get("kodeTipeUnit")),
+                            'kode_warna': self.safe_string(unit_record.get("kodeWarna")),
+                            'quantity': self.safe_int(unit_record.get("quantity")),
+                            'harga_jual': self.safe_numeric(unit_record.get("hargaJual")),
+                            'diskon': self.safe_numeric(unit_record.get("diskon")),
+                            'amount_ppn': self.safe_numeric(unit_record.get("amountPPN")),
+                            'faktur_pajak': self.safe_string(unit_record.get("fakturPajak")),
+                            'tipe_pembayaran': self.safe_string(unit_record.get("tipePembayaran")),
+                            'jumlah_tanda_jadi': self.safe_numeric(unit_record.get("jumlahTandaJadi")),
+                            'tanggal_pengiriman': self.safe_string(unit_record.get("tanggalPengiriman")),
+                            'id_sales_program': self.safe_string(unit_record.get("idSalesProgram")),
+                            'id_apparel': self.safe_string(unit_record.get("idApparel")),
+                            'created_time': self.safe_string(unit_record.get("createdTime")),
+                            'modified_time': self.safe_string(unit_record.get("modifiedTime")),
                             'fetched_at': datetime.utcnow()
                         }
                         unit_records.append(unit_data)

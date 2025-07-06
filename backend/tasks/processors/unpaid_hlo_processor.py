@@ -130,14 +130,14 @@ class UnpaidHLODataProcessor(BaseDataProcessor):
                     for part_record in parts:
                         part_data = {
                             'hlo_id_hlo_document': hlo_record.get("idHLODocument"),  # Use for mapping
-                            'parts_number': part_record.get("partsNumber"),
-                            'kuantitas': part_record.get("kuantitas"),
-                            'harga_parts': part_record.get("hargaParts"),
-                            'total_harga_parts': part_record.get("totalHargaParts"),
-                            'uang_muka': part_record.get("uangMuka"),
-                            'sisa_bayar': part_record.get("sisaBayar"),
-                            'created_time': part_record.get("createdTime"),
-                            'modified_time': part_record.get("modifiedTime"),
+                            'parts_number': self.safe_string(part_record.get("partsNumber")),
+                            'kuantitas': self.safe_int(part_record.get("kuantitas")),
+                            'harga_parts': self.safe_numeric(part_record.get("hargaParts")),
+                            'total_harga_parts': self.safe_numeric(part_record.get("totalHargaParts")),
+                            'uang_muka': self.safe_numeric(part_record.get("uangMuka")),
+                            'sisa_bayar': self.safe_numeric(part_record.get("sisaBayar")),
+                            'created_time': self.safe_string(part_record.get("createdTime")),
+                            'modified_time': self.safe_string(part_record.get("modifiedTime")),
                             'fetched_at': datetime.utcnow()
                         }
                         part_records.append(part_data)

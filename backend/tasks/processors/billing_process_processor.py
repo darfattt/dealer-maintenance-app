@@ -98,16 +98,16 @@ class BillingProcessDataProcessor(BaseDataProcessor):
                     # Prepare billing record
                     billing_data = {
                         'dealer_id': dealer_id,
-                        'id_invoice': invoice_record.get("idInvoice"),
-                        'id_spk': invoice_record.get("idSPK"),
-                        'id_customer': invoice_record.get("idCustomer"),
-                        'amount': invoice_record.get("amount"),
-                        'tipe_pembayaran': invoice_record.get("tipePembayaran"),
-                        'cara_bayar': invoice_record.get("caraBayar"),
-                        'status': invoice_record.get("status"),
-                        'note': invoice_record.get("note"),
-                        'created_time': invoice_record.get("createdTime"),
-                        'modified_time': invoice_record.get("modifiedTime"),
+                        'id_invoice': self.safe_string(invoice_record.get("idInvoice")),
+                        'id_spk': self.safe_string(invoice_record.get("idSPK")),
+                        'id_customer': self.safe_string(invoice_record.get("idCustomer")),
+                        'amount': self.safe_numeric(invoice_record.get("amount")),
+                        'tipe_pembayaran': self.safe_string(invoice_record.get("tipePembayaran")),
+                        'cara_bayar': self.safe_string(invoice_record.get("caraBayar")),
+                        'status': self.safe_string(invoice_record.get("status")),
+                        'note': self.safe_string(invoice_record.get("note")),
+                        'created_time': self.safe_string(invoice_record.get("createdTime")),
+                        'modified_time': self.safe_string(invoice_record.get("modifiedTime")),
                         'fetched_at': datetime.utcnow()
                     }
                     billing_records.append(billing_data)

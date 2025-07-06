@@ -103,7 +103,7 @@ class PartsInboundDataProcessor(BaseDataProcessor):
                             'jenis_order': po_item.get("jenisOrder"),
                             'id_warehouse': po_item.get("idWarehouse"),
                             'parts_number': po_item.get("partsNumber"),
-                            'kuantitas': po_item.get("kuantitas"),
+                            'kuantitas': self.safe_int(po_item.get("kuantitas")),
                             'uom': po_item.get("uom"),
                             'created_time': po_item.get("createdTime"),
                             'modified_time': po_item.get("modifiedTime"),
