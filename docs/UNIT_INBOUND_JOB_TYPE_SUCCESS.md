@@ -10,7 +10,7 @@ The new "Unit Inbound from Purchase Order" job type has been successfully implem
 - **Code**: `uinb_read`
 - **Label**: `Unit Inbound from Purchase Order`
 - **Icon**: `🚚`
-- **API Endpoint**: `https://example.com/dgi-api/v1.3/uinb/read`
+- **API Endpoint**: `https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/uinb/read`
 - **Purpose**: Fetch unit inbound data from purchase orders from DGI API
 
 ### **✅ API Specification**

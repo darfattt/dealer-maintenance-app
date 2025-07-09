@@ -4,10 +4,9 @@ Handles fetching and processing of document handling data from DGI API
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 
 from .base_processor import BaseDataProcessor
 from database import DocumentHandlingData, DocumentHandlingUnit
@@ -25,148 +24,176 @@ class DocumentHandlingDataProcessor(BaseDataProcessor):
         self.api_client = DocumentHandlingAPIClient()
     
     def fetch_api_data(self, dealer, from_time: str, to_time: str, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch document handling data from API or dummy source
-        
-        Args:
-            dealer: Dealer object with credentials
-            from_time: Start time for data fetch
-            to_time: End time for data fetch
-            **kwargs: Additional parameters (id_spk, id_customer)
-        
-        Returns:
-            API response data
-        """
+        """Fetch document handling data from API with enhanced validation"""
         try:
             # Extract additional parameters
             id_spk = kwargs.get('id_spk', kwargs.get('no_po', ''))  # Use no_po field for idSPK
             id_customer = kwargs.get('id_customer', '')
-            
+
+            self.logger.info(f"Fetching document handling data for dealer {dealer.dealer_id}")
+            self.logger.debug(f"Parameters: from_time={from_time}, to_time={to_time}, idSPK={id_spk}, idCustomer={id_customer}")
+
+            # Check if dealer has API credentials
+            if not dealer.api_key or not dealer.secret_key:
+                self.logger.warning(f"Dealer {dealer.dealer_id} missing API credentials, using dummy data")
+                return get_dummy_document_handling_data(dealer.dealer_id, from_time, to_time, id_spk, id_customer)
+
             # Check if dealer should use dummy data
             if should_use_dummy_data(dealer.dealer_id):
-                self.logger.info(f"Using dummy data for dealer {dealer.dealer_id}")
+                self.logger.info(f"Using dummy document handling data for dealer {dealer.dealer_id}")
                 return get_dummy_document_handling_data(dealer.dealer_id, from_time, to_time, id_spk, id_customer)
-            else:
-                # Use real API client
-                self.logger.info(f"Fetching document handling data for dealer {dealer.dealer_id}")
-                self.logger.info(f"Parameters: from_time={from_time}, to_time={to_time}, idSPK={id_spk}, idCustomer={id_customer}")
-                
-                response = self.api_client.fetch_data(
-                    dealer_id=dealer.dealer_id,
-                    from_time=from_time,
-                    to_time=to_time,
-                    api_key=dealer.api_key,
-                    secret_key=dealer.secret_key,
-                    id_spk=id_spk,
-                    id_customer=id_customer
-                )
-                
-                self.logger.info(f"Document Handling API call successful for dealer {dealer.dealer_id}")
-                return response
-                
-        except Exception as api_error:
-            self.logger.error(f"Document Handling API call failed for dealer {dealer.dealer_id}: {api_error}")
-            # Return error response instead of dummy data
+
+            # Make API call
+            api_response = self.api_client.fetch_data(
+                dealer_id=dealer.dealer_id,
+                from_time=from_time,
+                to_time=to_time,
+                api_key=dealer.api_key,
+                secret_key=dealer.secret_key,
+                id_spk=id_spk,
+                id_customer=id_customer
+            )
+
+            # Validate API response
+            if not api_response or not isinstance(api_response, dict):
+                raise ValueError("Invalid API response format - response is None or not a dictionary")
+
+            if api_response.get("status") != 1:
+                error_message = api_response.get("message", "Unknown API error")
+                self.logger.error(f"API returned error status: {error_message}")
+                return {
+                    "status": 0,
+                    "message": f"API Error: {error_message}",
+                    "data": []
+                }
+
+            # Safely get data with proper validation
+            data = api_response.get('data', [])
+            if data is None:
+                data = []
+
+            self.logger.info(f"Successfully fetched document handling data: {len(data)} records")
+            return api_response
+
+        except Exception as e:
+            self.logger.error(f"Error fetching document handling data for dealer {dealer.dealer_id}: {e}")
             return {
                 "status": 0,
-                "message": f"API call failed: {str(api_error)}",
-                "data": [],
-                "error_type": "api_error",
-                "dealer_id": dealer.dealer_id
+                "message": f"Fetch Error: {str(e)}",
+                "data": []
             }
     
     def process_records(self, db: Session, dealer_id: str, api_data: Dict[str, Any]) -> int:
-        """
-        Process and store document handling records in database
-        
-        Args:
-            db: Database session
-            dealer_id: Dealer ID
-            api_data: API response data
-            
-        Returns:
-            Number of records processed
-        """
-        records_processed = 0
-        document_records = self.ensure_list_data(api_data.get("data"))
-
-        # Ensure database session is in good state
+        """Process and store document handling records using bulk operations"""
         try:
-            db.execute(text("SELECT 1"))
-        except Exception as session_error:
-            self.logger.warning(f"Database session issue, attempting to recover: {session_error}")
-            try:
-                db.rollback()
-            except Exception:
-                pass
-        
-        for document in document_records:
-            try:
-                # Check if document already exists
-                existing_document = None
-                try:
-                    existing_document = db.query(DocumentHandlingData).filter(
-                        DocumentHandlingData.dealer_id == dealer_id,
-                        DocumentHandlingData.id_so == document.get("idSO")
-                    ).first()
-                except Exception as query_error:
-                    self.logger.warning(f"Error querying existing document: {query_error}")
-                    existing_document = None
-                
-                if existing_document:
-                    # Update existing record
-                    document_record = existing_document
-                    document_record.modified_time = document.get("modifiedTime")
-                    document_record.fetched_at = datetime.utcnow()
-                else:
-                    # Create new record
-                    document_record = DocumentHandlingData(
-                        dealer_id=dealer_id,
-                        id_so=document.get("idSO"),
-                        id_spk=document.get("idSPK"),
-                        created_time=document.get("createdTime"),
-                        modified_time=document.get("modifiedTime")
-                    )
-                    db.add(document_record)
-                    # Flush to get the ID for relationships
-                    db.flush()
+            data = api_data.get("data", [])
+            if not data:
+                self.logger.warning(f"No document handling data to process for dealer {dealer_id}")
+                return 0
 
-                # Handle units (only for new records to avoid duplicates)
-                if not existing_document:
+            self.logger.info(f"Processing {len(data)} document handling records for dealer {dealer_id}")
+
+            # Prepare bulk data for main records
+            document_records = []
+            unit_records = []
+
+            for document in data:
+                try:
+                    # Prepare document record
+                    document_data = {
+                        'dealer_id': dealer_id,
+                        'id_so': document.get('idSO'),
+                        'id_spk': document.get('idSPK'),
+                        'created_time': document.get('createdTime'),
+                        'modified_time': document.get('modifiedTime'),
+                        'fetched_at': datetime.utcnow()
+                    }
+                    document_records.append(document_data)
+
+                    # Prepare unit records for this document
                     units = self.ensure_list_data(document.get("unit"))
                     for unit in units:
-                        document_unit = DocumentHandlingUnit(
-                            document_handling_data_id=document_record.id,
-                            nomor_rangka=unit.get("nomorRangka"),
-                            nomor_faktur_stnk=unit.get("nomorFakturSTNK"),
-                            tanggal_pengajuan_stnk_ke_biro=unit.get("tanggalPengajuanSTNKKeBiro"),
-                            status_faktur_stnk=unit.get("statusFakturSTNK"),
-                            nomor_stnk=unit.get("nomorSTNK"),
-                            tanggal_penerimaan_stnk_dari_biro=unit.get("tanggalPenerimaanSTNKDariBiro"),
-                            plat_nomor=unit.get("platNomor"),
-                            nomor_bpkb=unit.get("nomorBPKB"),
-                            tanggal_penerimaan_bpkb_dari_biro=unit.get("tanggalPenerimaanBPKBDariBiro"),
-                            tanggal_terima_stnk_oleh_konsumen=unit.get("tanggalTerimaSTNKOlehKonsumen"),
-                            tanggal_terima_bpkb_oleh_konsumen=unit.get("tanggalTerimaBPKBOlehKonsumen"),
-                            nama_penerima_bpkb=unit.get("namaPenerimaBPKB"),
-                            nama_penerima_stnk=unit.get("namaPenerimaSTNK"),
-                            jenis_id_penerima_bpkb=unit.get("jenisIdPenerimaBPKB"),
-                            jenis_id_penerima_stnk=unit.get("jenisIdPenerimaSTNK"),
-                            no_id_penerima_bpkb=unit.get("noIdPenerimaBPKB"),
-                            no_id_penerima_stnk=unit.get("noIdPenerimaSTNK"),
-                            created_time=unit.get("createdTime"),
-                            modified_time=unit.get("modifiedTime")
-                        )
-                        db.add(document_unit)
-                
-                records_processed += 1
-                
-            except Exception as record_error:
-                self.logger.error(f"Error processing document record: {record_error}")
-                # Continue with next record
-                continue
-        
-        return records_processed
+                        unit_data = {
+                            'document_id_so': document.get('idSO'),  # Use for mapping
+                            'nomor_rangka': unit.get("nomorRangka"),
+                            'nomor_faktur_stnk': unit.get("nomorFakturSTNK"),
+                            'tanggal_pengajuan_stnk_ke_biro': unit.get("tanggalPengajuanSTNKKeBiro"),
+                            'status_faktur_stnk': unit.get("statusFakturSTNK"),
+                            'nomor_stnk': unit.get("nomorSTNK"),
+                            'tanggal_penerimaan_stnk_dari_biro': unit.get("tanggalPenerimaanSTNKDariBiro"),
+                            'plat_nomor': unit.get("platNomor"),
+                            'nomor_bpkb': unit.get("nomorBPKB"),
+                            'tanggal_penerimaan_bpkb_dari_biro': unit.get("tanggalPenerimaanBPKBDariBiro"),
+                            'tanggal_terima_stnk_oleh_konsumen': unit.get("tanggalTerimaSTNKOlehKonsumen"),
+                            'tanggal_terima_bpkb_oleh_konsumen': unit.get("tanggalTerimaBPKBOlehKonsumen"),
+                            'nama_penerima_bpkb': unit.get("namaPenerimaBPKB"),
+                            'nama_penerima_stnk': unit.get("namaPenerimaSTNK"),
+                            'jenis_id_penerima_bpkb': unit.get("jenisIdPenerimaBPKB"),
+                            'jenis_id_penerima_stnk': unit.get("jenisIdPenerimaSTNK"),
+                            'no_id_penerima_bpkb': unit.get("noIdPenerimaBPKB"),
+                            'no_id_penerima_stnk': unit.get("noIdPenerimaSTNK"),
+                            'created_time': unit.get("createdTime"),
+                            'modified_time': unit.get("modifiedTime"),
+                            'fetched_at': datetime.utcnow()
+                        }
+                        unit_records.append(unit_data)
+
+                except Exception as e:
+                    self.logger.error(f"Error preparing document handling record: {e}")
+                    continue
+
+            if not document_records:
+                self.logger.warning(f"No valid document handling records to process for dealer {dealer_id}")
+                return 0
+
+            # Bulk upsert document records
+            main_processed = self.bulk_upsert(
+                db,
+                DocumentHandlingData,
+                document_records,
+                conflict_columns=['dealer_id', 'id_so'],
+                batch_size=500
+            )
+
+            # Process unit records if any
+            unit_processed = 0
+            if unit_records:
+                # Get document ID mapping for foreign keys
+                document_query = db.query(
+                    DocumentHandlingData.id,
+                    DocumentHandlingData.id_so
+                ).filter(DocumentHandlingData.dealer_id == dealer_id)
+
+                document_mapping = {}
+                for doc_id, id_so in document_query:
+                    document_mapping[id_so] = doc_id
+
+                # Update unit records with proper foreign keys
+                for unit_record in unit_records:
+                    id_so = unit_record.pop('document_id_so')
+                    if id_so in document_mapping:
+                        unit_record['document_handling_data_id'] = document_mapping[id_so]
+                    else:
+                        continue  # Skip if parent not found
+
+                # Bulk upsert unit records
+                unit_processed = self.bulk_upsert(
+                    db,
+                    DocumentHandlingUnit,
+                    unit_records,
+                    conflict_columns=['document_handling_data_id', 'nomor_rangka'],
+                    batch_size=500
+                )
+
+            db.commit()
+            self.logger.info(f"Successfully processed {main_processed} document handling records and {unit_processed} units for dealer {dealer_id}")
+
+            return main_processed
+
+        except Exception as e:
+            db.rollback()
+            self.logger.error(f"Error processing document handling records for dealer {dealer_id}: {e}")
+            raise
     
     def get_summary_stats(self, db: Session, dealer_id: str = None) -> Dict[str, Any]:
         """Get summary statistics for document handling data"""

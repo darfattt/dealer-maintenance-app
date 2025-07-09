@@ -37,55 +37,99 @@ def render_job_history():
 
 def display_job_metrics(logs: List[Dict[str, Any]], status_filter: str):
     """Display job execution metrics"""
-    # Convert to DataFrame for easier filtering
-    df = pd.DataFrame(logs)
-    df['completed_at'] = pd.to_datetime(df['completed_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-    
-    # Filter by status if needed
-    if status_filter != "All Status":
-        df = df[df['status'] == status_filter]
-    
-    # Display metrics
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Total Jobs", len(df))
-    
-    with col2:
-        success_count = len(df[df['status'] == 'success'])
-        st.metric("Successful", success_count)
-    
-    with col3:
-        failed_count = len(df[df['status'] == 'failed'])
-        st.metric("Failed", failed_count)
-    
-    with col4:
-        if len(df) > 0:
-            avg_duration = df['fetch_duration_seconds'].mean()
-            st.metric("Avg Duration", f"{avg_duration:.1f}s")
-        else:
-            st.metric("Avg Duration", "N/A")
-    
-    st.markdown("---")
+    if not logs:
+        st.info("No job data available for metrics.")
+        return
+
+    try:
+        # Convert to DataFrame for easier filtering
+        df = pd.DataFrame(logs)
+
+        # Handle completed_at column safely
+        if 'completed_at' in df.columns:
+            try:
+                df['completed_at'] = pd.to_datetime(df['completed_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            except Exception:
+                pass  # Keep original format if conversion fails
+
+        # Filter by status if needed
+        if status_filter != "All Status" and 'status' in df.columns:
+            df = df[df['status'] == status_filter]
+
+        # Display metrics
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Total Jobs", len(df))
+
+        with col2:
+            if 'status' in df.columns:
+                success_count = len(df[df['status'] == 'success'])
+                st.metric("Successful", success_count)
+            else:
+                st.metric("Successful", "N/A")
+
+        with col3:
+            if 'status' in df.columns:
+                failed_count = len(df[df['status'] == 'failed'])
+                st.metric("Failed", failed_count)
+            else:
+                st.metric("Failed", "N/A")
+
+        with col4:
+            if len(df) > 0 and 'fetch_duration_seconds' in df.columns:
+                try:
+                    avg_duration = df['fetch_duration_seconds'].mean()
+                    st.metric("Avg Duration", f"{avg_duration:.1f}s")
+                except Exception:
+                    st.metric("Avg Duration", "N/A")
+            else:
+                st.metric("Avg Duration", "N/A")
+
+        st.markdown("---")
+
+    except Exception as e:
+        st.error(f"Error displaying job metrics: {e}")
+        st.write("Available data:", list(logs[0].keys()) if logs else "No data")
 
 def display_job_logs_table(logs: List[Dict[str, Any]], status_filter: str):
     """Display job logs in a table format"""
-    # Convert to DataFrame
-    df = pd.DataFrame(logs)
-    df['completed_at'] = pd.to_datetime(df['completed_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-    
-    # Filter by status if needed
-    if status_filter != "All Status":
-        df = df[df['status'] == status_filter]
-    
-    if len(df) == 0:
-        st.info(f"No jobs found with status: {status_filter}")
+    if not logs:
+        st.info("No job logs available.")
         return
-    
-    # Prepare display columns
-    display_columns = ['dealer_id', 'status', 'records_fetched', 'fetch_duration_seconds', 'completed_at']
-    if 'error_message' in df.columns:
-        display_columns.append('error_message')
+
+    try:
+        # Convert to DataFrame
+        df = pd.DataFrame(logs)
+
+        # Handle completed_at column safely
+        if 'completed_at' in df.columns:
+            try:
+                df['completed_at'] = pd.to_datetime(df['completed_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            except Exception as e:
+                st.warning(f"Could not format completed_at column: {e}")
+
+        # Filter by status if needed
+        if status_filter != "All Status" and 'status' in df.columns:
+            df = df[df['status'] == status_filter]
+
+        if len(df) == 0:
+            st.info(f"No jobs found with status: {status_filter}")
+            return
+
+        # Prepare display columns based on what's actually available
+        available_columns = df.columns.tolist()
+        preferred_columns = ['dealer_id', 'status', 'records_fetched', 'fetch_duration_seconds', 'completed_at', 'error_message']
+        display_columns = [col for col in preferred_columns if col in available_columns]
+
+        # If no preferred columns found, use first 5 available columns
+        if not display_columns:
+            display_columns = available_columns[:5]
+
+    except Exception as e:
+        st.error(f"Error processing job logs data: {e}")
+        st.write("Raw data:", logs[:3])  # Show first 3 records for debugging
+        return
     
     # Create a more interactive display
     st.subheader("📊 Job Execution Logs")
@@ -100,19 +144,29 @@ def display_job_logs_table(logs: List[Dict[str, Any]], status_filter: str):
     
     # Display the filtered dataframe
     if len(df) > 0:
-        # Style the dataframe based on status
-        def style_status(val):
-            if val == 'success':
-                return 'background-color: #d4edda; color: #155724'
-            elif val == 'failed':
-                return 'background-color: #f8d7da; color: #721c24'
-            elif val == 'running':
-                return 'background-color: #d1ecf1; color: #0c5460'
-            return ''
-        
-        # Apply styling and display
-        styled_df = df[display_columns].style.map(style_status, subset=['status'])
-        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        # Check if status column exists and has data
+        if 'status' in df.columns and 'status' in display_columns:
+            # Style the dataframe based on status
+            def style_status(val):
+                if val == 'success':
+                    return 'background-color: #d4edda; color: #155724'
+                elif val == 'failed':
+                    return 'background-color: #f8d7da; color: #721c24'
+                elif val == 'running':
+                    return 'background-color: #d1ecf1; color: #0c5460'
+                return ''
+
+            try:
+                # Apply styling and display
+                styled_df = df[display_columns].style.map(style_status, subset=['status'])
+                st.dataframe(styled_df, use_container_width=True, hide_index=True)
+            except Exception as e:
+                # Fallback to unstyled dataframe if styling fails
+                st.warning(f"Styling failed, showing unstyled data: {e}")
+                st.dataframe(df[display_columns], use_container_width=True, hide_index=True)
+        else:
+            # Display without styling if status column is missing
+            st.dataframe(df[display_columns], use_container_width=True, hide_index=True)
         
         # Add pagination for large datasets
         if len(df) > 50:

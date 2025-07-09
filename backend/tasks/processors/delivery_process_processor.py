@@ -6,7 +6,7 @@ It fetches data from the DGI API, processes it, and stores it in the database.
 """
 
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -82,76 +82,108 @@ class DeliveryProcessDataProcessor(BaseDataProcessor):
             }
     
     def process_records(self, db: Session, dealer_id: str, api_data: Dict[str, Any]):
-        """Process and store delivery process records"""
+        """Process and store delivery process records using bulk operations"""
         try:
             data = api_data.get("data", [])
             if not data:
                 logger.warning(f"No delivery process data to process for dealer {dealer_id}")
                 return 0
-            
-            processed_count = 0
+
+            logger.info(f"Processing {len(data)} delivery process records for dealer {dealer_id}")
+
+            # Prepare bulk data for main records
+            delivery_records = []
+            detail_records = []
 
             for delivery_record in data:
                 try:
-                    # Check if delivery document already exists
-                    delivery_doc_id = delivery_record.get("deliveryDocumentId")
-                    if delivery_doc_id:
-                        existing = db.query(DeliveryProcessData).filter(
-                            DeliveryProcessData.dealer_id == dealer_id,
-                            DeliveryProcessData.delivery_document_id == delivery_doc_id
-                        ).first()
-                        
-                        if existing:
-                            logger.debug(f"Delivery document {delivery_doc_id} already exists, skipping")
-                            continue
-                    
-                    # Create delivery process data record
-                    delivery_data = DeliveryProcessData(
-                        dealer_id=dealer_id,
-                        delivery_document_id=delivery_record.get("deliveryDocumentId"),
-                        tanggal_pengiriman=delivery_record.get("tanggalPengiriman"),
-                        id_driver=delivery_record.get("idDriver"),
-                        status_delivery_document=delivery_record.get("statusDeliveryDocument"),
-                        created_time=delivery_record.get("createdTime"),
-                        modified_time=delivery_record.get("modifiedTime")
-                    )
-                    
-                    db.add(delivery_data)
-                    db.flush()  # Get the ID
-                    
-                    # Process delivery details
+                    # Prepare main delivery record
+                    delivery_data = {
+                        'dealer_id': dealer_id,
+                        'delivery_document_id': delivery_record.get("deliveryDocumentId"),
+                        'tanggal_pengiriman': delivery_record.get("tanggalPengiriman"),
+                        'id_driver': delivery_record.get("idDriver"),
+                        'status_delivery_document': delivery_record.get("statusDeliveryDocument"),
+                        'created_time': delivery_record.get("createdTime"),
+                        'modified_time': delivery_record.get("modifiedTime"),
+                        'fetched_at': datetime.utcnow()
+                    }
+                    delivery_records.append(delivery_data)
+
+                    # Prepare detail records (will be processed after main records)
                     details = delivery_record.get("detail", [])
                     for detail_record in details:
-                        detail_data = DeliveryProcessDetail(
-                            delivery_process_data_id=delivery_data.id,
-                            no_so=detail_record.get("noSO"),
-                            id_spk=detail_record.get("idSPK"),
-                            no_mesin=detail_record.get("noMesin"),
-                            no_rangka=detail_record.get("noRangka"),
-                            id_customer=detail_record.get("idCustomer"),
-                            waktu_pengiriman=detail_record.get("waktuPengiriman"),
-                            checklist_kelengkapan=detail_record.get("checklistKelengkapan"),
-                            lokasi_pengiriman=detail_record.get("lokasiPengiriman"),
-                            latitude=detail_record.get("latitude"),
-                            longitude=detail_record.get("longitude"),
-                            nama_penerima=detail_record.get("namaPenerima"),
-                            no_kontak_penerima=detail_record.get("noKontakPenerima"),
-                            created_time=detail_record.get("createdTime"),
-                            modified_time=detail_record.get("modifiedTime")
-                        )
-                        db.add(detail_data)
-                    
-                    processed_count += 1
-                    
-                except Exception as e:
-                    logger.error(f"Error processing delivery record: {e}")
-                    continue
-            
-            db.commit()
-            logger.info(f"Processed {processed_count} delivery process records for dealer {dealer_id}")
+                        detail_data = {
+                            'no_so': detail_record.get("noSO"),
+                            'id_spk': detail_record.get("idSPK"),
+                            'no_mesin': detail_record.get("noMesin"),
+                            'no_rangka': detail_record.get("noRangka"),
+                            'id_customer': detail_record.get("idCustomer"),
+                            'waktu_pengiriman': detail_record.get("waktuPengiriman"),
+                            'checklist_kelengkapan': detail_record.get("checklistKelengkapan"),
+                            'lokasi_pengiriman': detail_record.get("lokasiPengiriman"),
+                            'latitude': detail_record.get("latitude"),
+                            'longitude': detail_record.get("longitude"),
+                            'nama_penerima': detail_record.get("namaPenerima"),
+                            'no_kontak_penerima': detail_record.get("noKontakPenerima"),
+                            'created_time': detail_record.get("createdTime"),
+                            'modified_time': detail_record.get("modifiedTime"),
+                            # Will need to link to parent after bulk insert
+                            'delivery_doc_id': delivery_record.get("deliveryDocumentId")  # Temporary field for linking
+                        }
+                        detail_records.append(detail_data)
 
-            return processed_count
-            
+                except Exception as e:
+                    logger.error(f"Error preparing delivery record: {e}")
+                    continue
+
+            if not delivery_records:
+                logger.warning(f"No valid delivery records to process for dealer {dealer_id}")
+                return 0
+
+            # Bulk upsert main delivery records
+            main_processed = self.bulk_upsert(
+                db,
+                DeliveryProcessData,
+                delivery_records,
+                conflict_columns=['dealer_id', 'delivery_document_id'],
+                batch_size=500
+            )
+
+            # Process detail records if any
+            if detail_records:
+                # First, get the mapping of delivery document IDs to database IDs
+                delivery_doc_ids = [record['delivery_document_id'] for record in delivery_records if record['delivery_document_id']]
+                if delivery_doc_ids:
+                    delivery_mapping = {}
+                    delivery_query = db.query(DeliveryProcessData.id, DeliveryProcessData.delivery_document_id).filter(
+                        DeliveryProcessData.dealer_id == dealer_id,
+                        DeliveryProcessData.delivery_document_id.in_(delivery_doc_ids)
+                    ).all()
+
+                    for delivery_id, doc_id in delivery_query:
+                        delivery_mapping[doc_id] = delivery_id
+
+                    # Update detail records with correct foreign keys
+                    valid_details = []
+                    for detail in detail_records:
+                        doc_id = detail.pop('delivery_doc_id', None)
+                        if doc_id and doc_id in delivery_mapping:
+                            detail['delivery_process_data_id'] = delivery_mapping[doc_id]
+                            valid_details.append(detail)
+
+                    if valid_details:
+                        # Bulk insert details (no conflict resolution needed as they're child records)
+                        for chunk in self.process_in_chunks(valid_details, chunk_size=1000):
+                            db.bulk_insert_mappings(DeliveryProcessDetail, chunk)
+
+                        logger.info(f"Processed {len(valid_details)} delivery process details for dealer {dealer_id}")
+
+            db.commit()
+            logger.info(f"Successfully processed {main_processed} delivery process records for dealer {dealer_id}")
+
+            return main_processed
+
         except Exception as e:
             db.rollback()
             logger.error(f"Error processing delivery process records for dealer {dealer_id}: {e}")

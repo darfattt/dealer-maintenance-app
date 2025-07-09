@@ -50,7 +50,7 @@ JOB_TYPE_MAPPING = {
 # Files: backend/tasks/api_clients.py + backend/controllers/configuration_controller.py
 APIConfiguration(
     config_name="dgi_new_job_api",
-    base_url="https://example.com/dgi-api/v1.3",
+    base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
     description="DGI API for New Job Data",
     is_active=True,
     timeout_seconds=30,

@@ -11,17 +11,25 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://dealer_user:dealer_pass@localhost:5432/dealer_dashboard")
 
-# Create engine with connection pooling and better error handling
+# Enhanced connection pooling configuration for batch processing
 engine = create_engine(
     DATABASE_URL,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-    pool_recycle=3600,
+    # Increased pool size for concurrent batch jobs
+    pool_size=20,  # Base connections always available
+    max_overflow=50,  # Additional connections during peak load
+    pool_pre_ping=True,  # Validate connections before use
+    pool_recycle=1800,  # Recycle connections every 30 minutes (reduced from 1 hour)
+    pool_timeout=30,  # Wait up to 30 seconds for connection
     echo=False,
+    # Connection-level optimizations
     connect_args={
-        "options": "-csearch_path=dealer_integration,public"
-    }
+        "options": "-csearch_path=dealer_integration,public",
+        "connect_timeout": 10,  # Connection timeout
+        "application_name": "dealer_batch_processor"  # For monitoring
+    },
+    # Additional performance settings
+    isolation_level="READ_COMMITTED",  # Better concurrency
+    pool_reset_on_return="commit"  # Clean state for reused connections
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

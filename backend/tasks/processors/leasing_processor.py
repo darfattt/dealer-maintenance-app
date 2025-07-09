@@ -4,10 +4,9 @@ Handles fetching and processing of leasing requirement data from DGI API
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 
 from .base_processor import BaseDataProcessor
 from database import LeasingData
@@ -25,206 +24,182 @@ class LeasingDataProcessor(BaseDataProcessor):
         self.api_client = LeasingAPIClient()
 
     def fetch_api_data(self, dealer, from_time: str, to_time: str, **kwargs) -> Dict[str, Any]:
-        """
-        Fetch leasing data from API or dummy source
-
-        Args:
-            dealer: Dealer object with credentials
-            from_time: Start time for data fetch
-            to_time: End time for data fetch
-            **kwargs: Additional parameters (id_spk)
-
-        Returns:
-            API response data
-        """
+        """Fetch leasing data from API with enhanced validation"""
         try:
             # Extract additional parameters
             id_spk = kwargs.get('id_spk', kwargs.get('no_po', ''))  # Use no_po field for idSPK
 
+            self.logger.info(f"Fetching leasing data for dealer {dealer.dealer_id}")
+            self.logger.debug(f"Parameters: from_time={from_time}, to_time={to_time}, idSPK={id_spk}")
+
+            # Check if dealer has API credentials
+            if not dealer.api_key or not dealer.secret_key:
+                self.logger.warning(f"Dealer {dealer.dealer_id} missing API credentials, using dummy data")
+                return get_dummy_leasing_data(dealer.dealer_id, from_time, to_time, id_spk)
+
             # Check if dealer should use dummy data
             if should_use_dummy_data(dealer.dealer_id):
-                self.logger.info(f"Using dummy data for dealer {dealer.dealer_id}")
+                self.logger.info(f"Using dummy leasing data for dealer {dealer.dealer_id}")
                 return get_dummy_leasing_data(dealer.dealer_id, from_time, to_time, id_spk)
-            else:
-                # Use real API client
-                self.logger.info(f"Fetching leasing data for dealer {dealer.dealer_id}")
-                self.logger.info(f"Parameters: from_time={from_time}, to_time={to_time}, idSPK={id_spk}")
 
-                response = self.api_client.fetch_data(
-                    dealer_id=dealer.dealer_id,
-                    from_time=from_time,
-                    to_time=to_time,
-                    api_key=dealer.api_key,
-                    secret_key=dealer.secret_key,
-                    id_spk=id_spk
-                )
+            # Make API call
+            api_response = self.api_client.fetch_data(
+                dealer_id=dealer.dealer_id,
+                from_time=from_time,
+                to_time=to_time,
+                api_key=dealer.api_key,
+                secret_key=dealer.secret_key,
+                id_spk=id_spk
+            )
 
-                self.logger.info(f"Leasing API call successful for dealer {dealer.dealer_id}")
-                return response
+            # Validate API response
+            if not api_response or not isinstance(api_response, dict):
+                raise ValueError("Invalid API response format - response is None or not a dictionary")
 
-        except Exception as api_error:
-            self.logger.error(f"Leasing API call failed for dealer {dealer.dealer_id}: {api_error}")
-            # Return error response instead of dummy data
+            if api_response.get("status") != 1:
+                error_message = api_response.get("message", "Unknown API error")
+                self.logger.error(f"API returned error status: {error_message}")
+                return {
+                    "status": 0,
+                    "message": f"API Error: {error_message}",
+                    "data": []
+                }
+
+            # Safely get data with proper validation
+            data = api_response.get('data', [])
+            if data is None:
+                data = []
+
+            self.logger.info(f"Successfully fetched leasing data: {len(data)} records")
+            return api_response
+
+        except Exception as e:
+            self.logger.error(f"Error fetching leasing data for dealer {dealer.dealer_id}: {e}")
             return {
                 "status": 0,
-                "message": f"API call failed: {str(api_error)}",
-                "data": [],
-                "error_type": "api_error",
-                "dealer_id": dealer.dealer_id
+                "message": f"Fetch Error: {str(e)}",
+                "data": []
             }
     
     def process_records(self, db: Session, dealer_id: str, api_data: Dict[str, Any]) -> int:
-        """
-        Process and store leasing records in database
-        
-        Args:
-            db: Database session
-            dealer_id: Dealer ID
-            api_data: API response data
-        
-        Returns:
-            Number of records processed
-        """
+        """Process and store leasing records using bulk operations"""
         try:
-            if not api_data or api_data.get('status') != 1:
-                self.logger.warning("No valid data to process")
+            data = api_data.get("data", [])
+            if not data:
+                self.logger.warning(f"No leasing data to process for dealer {dealer_id}")
                 return 0
-            
-            records = api_data.get('data', [])
-            if not records:
-                self.logger.info("No leasing records found")
-                return 0
-            
-            processed_count = 0
-            
-            for record in records:
+
+            self.logger.info(f"Processing {len(data)} leasing records for dealer {dealer_id}")
+
+            # Prepare bulk data for main records
+            leasing_records = []
+
+            for record in data:
                 try:
-                    # Check if record already exists
-                    existing_record = db.query(LeasingData).filter(
-                        LeasingData.dealer_id == dealer_id,
-                        LeasingData.id_dokumen_pengajuan == record.get('idDokumenPengajuan')
-                    ).first()
-                    
-                    if existing_record:
-                        # Update existing record
-                        self._update_leasing_record(existing_record, record)
-                        self.logger.debug(f"Updated existing leasing record: {record.get('idDokumenPengajuan')}")
-                    else:
-                        # Create new record
-                        leasing_record = self._create_leasing_record(dealer_id, record)
-                        db.add(leasing_record)
-                        self.logger.debug(f"Created new leasing record: {record.get('idDokumenPengajuan')}")
-                    
-                    processed_count += 1
-                    
-                except Exception as record_error:
-                    self.logger.error(f"Error processing leasing record {record.get('idDokumenPengajuan', 'unknown')}: {record_error}")
+                    # Prepare leasing record
+                    leasing_data = {
+                        'dealer_id': dealer_id,
+                        'id_dokumen_pengajuan': record.get('idDokumenPengajuan'),
+                        'id_spk': record.get('idSPK'),
+                        'jumlah_dp': self.safe_numeric(record.get('jumlahDP')),
+                        'tenor': self.safe_int(record.get('tenor')),
+                        'jumlah_cicilan': self.safe_numeric(record.get('jumlahCicilan')),
+                        'tanggal_pengajuan': record.get('tanggalPengajuan'),
+                        'id_finance_company': record.get('idFinanceCompany'),
+                        'nama_finance_company': record.get('namaFinanceCompany'),
+                        'id_po_finance_company': record.get('idPOFinanceCompany'),
+                        'tanggal_pembuatan_po': record.get('tanggalPembuatanPO'),
+                        'tanggal_pengiriman_po_finance_company': record.get('tanggalPengirimanPOFinanceCompany'),
+                        'created_time': record.get('createdTime'),
+                        'modified_time': record.get('modifiedTime'),
+                        'fetched_at': datetime.utcnow()
+                    }
+                    leasing_records.append(leasing_data)
+
+                except Exception as e:
+                    self.logger.error(f"Error preparing leasing record: {e}")
                     continue
-            
-            # Commit all changes
-            db.flush()
-            self.logger.info(f"Successfully processed {processed_count} leasing records")
-            return processed_count
-            
+
+            if not leasing_records:
+                self.logger.warning(f"No valid leasing records to process for dealer {dealer_id}")
+                return 0
+
+            # Bulk upsert leasing records
+            main_processed = self.bulk_upsert(
+                db,
+                LeasingData,
+                leasing_records,
+                conflict_columns=['dealer_id', 'id_dokumen_pengajuan'],
+                batch_size=500
+            )
+
+            db.commit()
+            self.logger.info(f"Successfully processed {main_processed} leasing records for dealer {dealer_id}")
+
+            return main_processed
+
         except Exception as e:
-            self.logger.error(f"Error processing leasing records: {e}")
+            db.rollback()
+            self.logger.error(f"Error processing leasing records for dealer {dealer_id}: {e}")
             raise
     
-    def _create_leasing_record(self, dealer_id: str, record: Dict[str, Any]) -> LeasingData:
-        """Create a new LeasingData record from API data"""
-        return LeasingData(
-            dealer_id=dealer_id,
-            id_dokumen_pengajuan=record.get('idDokumenPengajuan'),
-            id_spk=record.get('idSPK'),
-            jumlah_dp=self._safe_decimal(record.get('jumlahDP')),
-            tenor=self._safe_int(record.get('tenor')),
-            jumlah_cicilan=self._safe_decimal(record.get('jumlahCicilan')),
-            tanggal_pengajuan=record.get('tanggalPengajuan'),
-            id_finance_company=record.get('idFinanceCompany'),
-            nama_finance_company=record.get('namaFinanceCompany'),
-            id_po_finance_company=record.get('idPOFinanceCompany'),
-            tanggal_pembuatan_po=record.get('tanggalPembuatanPO'),
-            tanggal_pengiriman_po_finance_company=record.get('tanggalPengirimanPOFinanceCompany'),
-            created_time=record.get('createdTime'),
-            modified_time=record.get('modifiedTime')
-        )
+
+
     
-    def _update_leasing_record(self, existing_record: LeasingData, new_data: Dict[str, Any]):
-        """Update existing LeasingData record with new data"""
-        existing_record.id_spk = new_data.get('idSPK')
-        existing_record.jumlah_dp = self._safe_decimal(new_data.get('jumlahDP'))
-        existing_record.tenor = self._safe_int(new_data.get('tenor'))
-        existing_record.jumlah_cicilan = self._safe_decimal(new_data.get('jumlahCicilan'))
-        existing_record.tanggal_pengajuan = new_data.get('tanggalPengajuan')
-        existing_record.id_finance_company = new_data.get('idFinanceCompany')
-        existing_record.nama_finance_company = new_data.get('namaFinanceCompany')
-        existing_record.id_po_finance_company = new_data.get('idPOFinanceCompany')
-        existing_record.tanggal_pembuatan_po = new_data.get('tanggalPembuatanPO')
-        existing_record.tanggal_pengiriman_po_finance_company = new_data.get('tanggalPengirimanPOFinanceCompany')
-        existing_record.created_time = new_data.get('createdTime')
-        existing_record.modified_time = new_data.get('modifiedTime')
-        existing_record.fetched_at = datetime.utcnow()
-    
-    def _safe_decimal(self, value) -> Optional[float]:
-        """Safely convert value to decimal/float"""
-        if value is None:
-            return None
-        try:
-            return float(value)
-        except (ValueError, TypeError):
-            return None
-    
-    def _safe_int(self, value) -> Optional[int]:
-        """Safely convert value to integer"""
-        if value is None:
-            return None
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            return None
-    
-    def get_summary_stats(self, db: Session, dealer_id: str) -> Dict[str, Any]:
+    def get_summary_stats(self, db: Session, dealer_id: str = None) -> Dict[str, Any]:
         """Get summary statistics for leasing data"""
         try:
-            # Total records
-            total_records = db.query(LeasingData).filter(
-                LeasingData.dealer_id == dealer_id
-            ).count()
-            
+            from sqlalchemy import func
+
+            # Base query
+            query = db.query(LeasingData)
+            if dealer_id:
+                query = query.filter(LeasingData.dealer_id == dealer_id)
+
+            total_records = query.count()
+
             # Records by finance company
-            finance_companies = db.execute(text("""
-                SELECT nama_finance_company, COUNT(*) as count
-                FROM leasing_data 
-                WHERE dealer_id = :dealer_id 
-                AND nama_finance_company IS NOT NULL
-                GROUP BY nama_finance_company
-                ORDER BY count DESC
-                LIMIT 10
-            """), {"dealer_id": dealer_id}).fetchall()
-            
-            # Average DP and installment
-            avg_stats = db.execute(text("""
-                SELECT 
-                    AVG(jumlah_dp) as avg_dp,
-                    AVG(jumlah_cicilan) as avg_cicilan,
-                    AVG(tenor) as avg_tenor
-                FROM leasing_data 
-                WHERE dealer_id = :dealer_id
-                AND jumlah_dp IS NOT NULL
-                AND jumlah_cicilan IS NOT NULL
-                AND tenor IS NOT NULL
-            """), {"dealer_id": dealer_id}).fetchone()
-            
+            finance_query = db.query(
+                LeasingData.nama_finance_company,
+                func.count(LeasingData.id).label('count')
+            )
+            if dealer_id:
+                finance_query = finance_query.filter(LeasingData.dealer_id == dealer_id)
+
+            finance_companies = [
+                {"name": row.nama_finance_company or "Unknown", "count": row.count}
+                for row in finance_query.filter(
+                    LeasingData.nama_finance_company.isnot(None)
+                ).group_by(LeasingData.nama_finance_company).order_by(
+                    func.count(LeasingData.id).desc()
+                ).limit(10).all()
+            ]
+
+            # Average DP, installment, and tenor
+            avg_query = db.query(
+                func.avg(LeasingData.jumlah_dp).label('avg_dp'),
+                func.avg(LeasingData.jumlah_cicilan).label('avg_cicilan'),
+                func.avg(LeasingData.tenor).label('avg_tenor')
+            )
+            if dealer_id:
+                avg_query = avg_query.filter(LeasingData.dealer_id == dealer_id)
+
+            avg_stats = avg_query.filter(
+                LeasingData.jumlah_dp.isnot(None),
+                LeasingData.jumlah_cicilan.isnot(None),
+                LeasingData.tenor.isnot(None)
+            ).first()
+
             return {
                 "total_records": total_records,
-                "finance_companies": [{"name": row[0], "count": row[1]} for row in finance_companies],
+                "finance_companies": finance_companies,
                 "averages": {
-                    "dp": float(avg_stats[0]) if avg_stats and avg_stats[0] else 0,
-                    "cicilan": float(avg_stats[1]) if avg_stats and avg_stats[1] else 0,
-                    "tenor": float(avg_stats[2]) if avg_stats and avg_stats[2] else 0
+                    "dp": float(avg_stats.avg_dp or 0),
+                    "cicilan": float(avg_stats.avg_cicilan or 0),
+                    "tenor": float(avg_stats.avg_tenor or 0)
                 }
             }
-            
+
         except Exception as e:
             self.logger.error(f"Error getting leasing summary stats: {e}")
             return {

@@ -138,7 +138,7 @@ def initialize_default_api_configs():
     # ... existing configs
     APIConfiguration(
         config_name="dgi_leasing_api",
-        base_url="https://example.com/dgi-api/v1.3",
+        base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
         description="DGI API for Leasing Requirement Data",
         is_active=True,
         timeout_seconds=30,
@@ -659,7 +659,7 @@ return processed_count
 - **Code**: `leasing`
 - **Label**: `Handle Leasing Requirement`
 - **Icon**: `💰`
-- **Endpoint**: `https://example.com/dgi-api/v1.3/lsng/read`
+- **Endpoint**: `https://dev-gvt-gateway.eksad.com/dgi-api/v1.3/lsng/read`
 - **Parameters**: dealerId, fromTime, toTime, idSPK
 - **Database**: `leasing_data` table with financial fields
 - **UI**: Admin panel job queue + dashboard analytics table

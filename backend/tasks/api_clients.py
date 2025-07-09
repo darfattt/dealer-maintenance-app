@@ -5,12 +5,88 @@ Provides centralized API configuration and client management
 
 import httpx
 import logging
+import time
+import asyncio
 from typing import Dict, List, Any, Optional
 from database import SessionLocal, APIConfiguration
 from utils.dgi_token_generator import DGITokenManager
 
 # Setup logging
 logger = logging.getLogger(__name__)
+
+class APIRetryConfig:
+    """Configuration for API retry logic"""
+    def __init__(self, max_retries: int = 3, base_delay: float = 1.0, max_delay: float = 60.0, backoff_factor: float = 2.0):
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        self.max_delay = max_delay
+        self.backoff_factor = backoff_factor
+
+class CircuitBreaker:
+    """Simple circuit breaker for API calls"""
+    def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 60):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
+
+    def can_execute(self) -> bool:
+        """Check if API call can be executed"""
+        if self.state == "CLOSED":
+            return True
+        elif self.state == "OPEN":
+            if time.time() - self.last_failure_time > self.recovery_timeout:
+                self.state = "HALF_OPEN"
+                return True
+            return False
+        else:  # HALF_OPEN
+            return True
+
+    def record_success(self):
+        """Record successful API call"""
+        self.failure_count = 0
+        self.state = "CLOSED"
+
+    def record_failure(self):
+        """Record failed API call"""
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        if self.failure_count >= self.failure_threshold:
+            self.state = "OPEN"
+
+def retry_with_backoff(retry_config: APIRetryConfig = None):
+    """Decorator for API calls with exponential backoff retry"""
+    if retry_config is None:
+        retry_config = APIRetryConfig()
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            last_exception = None
+
+            for attempt in range(retry_config.max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadTimeout) as e:
+                    last_exception = e
+                    if attempt < retry_config.max_retries:
+                        delay = min(
+                            retry_config.base_delay * (retry_config.backoff_factor ** attempt),
+                            retry_config.max_delay
+                        )
+                        logger.warning(f"API call failed (attempt {attempt + 1}/{retry_config.max_retries + 1}), retrying in {delay:.2f}s: {e}")
+                        time.sleep(delay)
+                    else:
+                        logger.error(f"API call failed after {retry_config.max_retries + 1} attempts: {e}")
+                        raise
+                except Exception as e:
+                    # Don't retry on non-network errors
+                    logger.error(f"API call failed with non-retryable error: {e}")
+                    raise
+
+            raise last_exception
+        return wrapper
+    return decorator
 
 class APIConfigManager:
     """Manages API configurations from database"""
@@ -38,12 +114,37 @@ class APIConfigManager:
     
     @staticmethod
     def get_default_config() -> Dict[str, Any]:
-        """Get default API configuration"""
+        """Get enhanced default API configuration"""
         return {
             "base_url": "https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
-            "timeout_seconds": 30,
+            "timeout_seconds": 45,  # Increased from 30s
+            "connect_timeout": 10,  # Connection timeout
+            "read_timeout": 35,     # Read timeout
             "retry_attempts": 3,
-            "description": "Default DGI API Configuration"
+            "retry_delay": 1.0,     # Base retry delay
+            "max_retry_delay": 30.0, # Max retry delay
+            "circuit_breaker_threshold": 5,  # Circuit breaker failure threshold
+            "circuit_breaker_timeout": 300,  # Circuit breaker recovery timeout (5 min)
+            "description": "Enhanced DGI API Configuration with Retry Logic"
+        }
+
+    @staticmethod
+    def create_enhanced_client_config(config: Dict[str, Any]) -> Dict[str, Any]:
+        """Create enhanced HTTP client configuration"""
+        return {
+            "timeout": httpx.Timeout(
+                connect=config.get("connect_timeout", 10),
+                read=config.get("read_timeout", 35),
+                write=config.get("write_timeout", 10),
+                pool=config.get("pool_timeout", 5)
+            ),
+            "limits": httpx.Limits(
+                max_keepalive_connections=20,
+                max_connections=100,
+                keepalive_expiry=30
+            ),
+            "follow_redirects": True,
+            "verify": True
         }
 
 class ProspectAPIClient:
@@ -605,15 +706,29 @@ class PartsSalesAPIClient:
 
 
 class DPHLOAPIClient:
-    """Client for DP HLO (DPHLO) API calls"""
+    """Enhanced Client for DP HLO (DPHLO) API calls with retry logic and circuit breaker"""
 
     def __init__(self):
         self.config = APIConfigManager.get_api_config("dgi_dp_hlo_api") or APIConfigManager.get_default_config()
         self.endpoint = "/dphlo/read"
+        self.retry_config = APIRetryConfig(
+            max_retries=self.config.get("retry_attempts", 3),
+            base_delay=self.config.get("retry_delay", 1.0),
+            max_delay=self.config.get("max_retry_delay", 30.0)
+        )
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=self.config.get("circuit_breaker_threshold", 5),
+            recovery_timeout=self.config.get("circuit_breaker_timeout", 300)
+        )
 
+    @retry_with_backoff()
     def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str,
                    no_work_order: str = "", id_hlo_document: str = "") -> Dict[str, Any]:
-        """Fetch DP HLO data from DGI API"""
+        """Fetch DP HLO data from DGI API with enhanced error handling"""
+        # Check circuit breaker
+        if not self.circuit_breaker.can_execute():
+            raise ValueError(f"Circuit breaker is OPEN for DP HLO API. Service temporarily unavailable.")
+
         try:
             # Check if config is valid
             if not self.config:
@@ -639,7 +754,10 @@ class DPHLOAPIClient:
 
             logger.info(f"Calling DP HLO API for dealer {dealer_id} at {url}")
 
-            with httpx.Client(timeout=self.config.get('timeout_seconds', 30)) as client:
+            # Enhanced client configuration
+            client_config = APIConfigManager.create_enhanced_client_config(self.config)
+
+            with httpx.Client(**client_config) as client:
                 logger.debug(f"Making POST request to {url}")
                 logger.debug(f"Headers: {headers}")
                 logger.debug(f"Payload: {payload}")
@@ -667,16 +785,23 @@ class DPHLOAPIClient:
                     raise ValueError("API returned None JSON response")
 
                 logger.debug(f"API response type: {type(json_response)}")
+
+                # Record success for circuit breaker
+                self.circuit_breaker.record_success()
                 return json_response
 
-        except httpx.ConnectError as e:
-            logger.error(f"DP HLO API connection failed: {e}")
-            raise ValueError(f"Connection failed to {url}: {e}")
-        except httpx.TimeoutException as e:
-            logger.error(f"DP HLO API timeout: {e}")
-            raise ValueError(f"Request timeout to {url}: {e}")
-        except httpx.HTTPStatusError as e:
-            logger.error(f"DP HLO API HTTP error: {e}")
+        except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError) as e:
+            # Record failure for circuit breaker
+            self.circuit_breaker.record_failure()
+
+            if isinstance(e, httpx.ConnectError):
+                logger.error(f"DP HLO API connection failed: {e}")
+                raise ValueError(f"Connection failed to {url}: {e}")
+            elif isinstance(e, httpx.TimeoutException):
+                logger.error(f"DP HLO API timeout: {e}")
+                raise ValueError(f"Request timeout to {url}: {e}")
+            else:  # HTTPStatusError
+                logger.error(f"DP HLO API HTTP error: {e}")
             raise ValueError(f"HTTP error {e.response.status_code}: {e}")
         except Exception as e:
             logger.error(f"DP HLO API call failed: {e}")
@@ -1071,7 +1196,7 @@ def initialize_default_api_configs():
             ),
             APIConfiguration(
                 config_name="dgi_billing_process_api",
-                base_url="https://example.com/dgi-api/v1.3",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for Billing Process Data",
                 is_active=True,
                 timeout_seconds=30,
@@ -1079,7 +1204,7 @@ def initialize_default_api_configs():
             ),
             APIConfiguration(
                 config_name="dgi_unit_invoice_api",
-                base_url="https://example.com/dgi-api/v1.3",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for Unit Invoice (MD to Dealer) Data",
                 is_active=True,
                 timeout_seconds=30,
@@ -1087,7 +1212,7 @@ def initialize_default_api_configs():
             ),
             APIConfiguration(
                 config_name="dgi_parts_sales_api",
-                base_url="https://example.com/dgi-api/v1.3",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for Parts Sales Data",
                 is_active=True,
                 timeout_seconds=30,
@@ -1095,7 +1220,7 @@ def initialize_default_api_configs():
             ),
             APIConfiguration(
                 config_name="dgi_dp_hlo_api",
-                base_url="https://example.com/dgi-api/v1.3",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for DP HLO Data",
                 is_active=True,
                 timeout_seconds=30,
@@ -1103,7 +1228,7 @@ def initialize_default_api_configs():
             ),
             APIConfiguration(
                 config_name="dgi_workshop_invoice_api",
-                base_url="https://example.com/dgi-api/v1.3",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for Workshop Invoice (NJB & NSC) Data",
                 is_active=True,
                 timeout_seconds=30,
@@ -1111,7 +1236,7 @@ def initialize_default_api_configs():
             ),
             APIConfiguration(
                 config_name="dgi_unpaid_hlo_api",
-                base_url="https://example.com/dgi-api/v1.3",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for Unpaid HLO Data",
                 is_active=True,
                 timeout_seconds=30,
@@ -1119,7 +1244,7 @@ def initialize_default_api_configs():
             ),
             APIConfiguration(
                 config_name="dgi_parts_invoice_api",
-                base_url="https://example.com/dgi-api/v1.3",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for Parts Invoice (MD to Dealer) Data",
                 is_active=True,
                 timeout_seconds=30,
@@ -1127,7 +1252,7 @@ def initialize_default_api_configs():
             ),
             APIConfiguration(
                 config_name="dgi_spk_dealing_process_api",
-                base_url="https://example.com/dgi-api/v1.3",
+                base_url="https://dev-gvt-gateway.eksad.com/dgi-api/v1.3",
                 description="DGI API for SPK Dealing Process Data",
                 is_active=True,
                 timeout_seconds=30,

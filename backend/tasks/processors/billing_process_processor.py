@@ -6,7 +6,7 @@ It fetches data from the DGI API, processes it, and stores it in the database.
 """
 
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -81,56 +81,59 @@ class BillingProcessDataProcessor(BaseDataProcessor):
             }
     
     def process_records(self, db: Session, dealer_id: str, api_data: Dict[str, Any]) -> int:
-        """Process and store billing process records"""
+        """Process and store billing process records using bulk operations"""
         try:
             data = api_data.get("data", [])
             if not data:
                 logger.warning(f"No billing process data to process for dealer {dealer_id}")
                 return 0
-            
-            processed_count = 0
-            
+
+            logger.info(f"Processing {len(data)} billing process records for dealer {dealer_id}")
+
+            # Prepare bulk data for main records
+            billing_records = []
+
             for invoice_record in data:
                 try:
-                    # Check if invoice already exists
-                    id_invoice = invoice_record.get("idInvoice")
-                    if id_invoice:
-                        existing = db.query(BillingProcessData).filter(
-                            BillingProcessData.dealer_id == dealer_id,
-                            BillingProcessData.id_invoice == id_invoice
-                        ).first()
-                        
-                        if existing:
-                            logger.debug(f"Invoice {id_invoice} already exists, skipping")
-                            continue
-                    
-                    # Create billing process data record
-                    billing_data = BillingProcessData(
-                        dealer_id=dealer_id,
-                        id_invoice=invoice_record.get("idInvoice"),
-                        id_spk=invoice_record.get("idSPK"),
-                        id_customer=invoice_record.get("idCustomer"),
-                        amount=invoice_record.get("amount"),
-                        tipe_pembayaran=invoice_record.get("tipePembayaran"),
-                        cara_bayar=invoice_record.get("caraBayar"),
-                        status=invoice_record.get("status"),
-                        note=invoice_record.get("note"),
-                        created_time=invoice_record.get("createdTime"),
-                        modified_time=invoice_record.get("modifiedTime")
-                    )
-                    
-                    db.add(billing_data)
-                    processed_count += 1
-                    
+                    # Prepare billing record
+                    billing_data = {
+                        'dealer_id': dealer_id,
+                        'id_invoice': self.safe_string(invoice_record.get("idInvoice")),
+                        'id_spk': self.safe_string(invoice_record.get("idSPK")),
+                        'id_customer': self.safe_string(invoice_record.get("idCustomer")),
+                        'amount': self.safe_numeric(invoice_record.get("amount")),
+                        'tipe_pembayaran': self.safe_string(invoice_record.get("tipePembayaran")),
+                        'cara_bayar': self.safe_string(invoice_record.get("caraBayar")),
+                        'status': self.safe_string(invoice_record.get("status")),
+                        'note': self.safe_string(invoice_record.get("note")),
+                        'created_time': self.safe_string(invoice_record.get("createdTime")),
+                        'modified_time': self.safe_string(invoice_record.get("modifiedTime")),
+                        'fetched_at': datetime.utcnow()
+                    }
+                    billing_records.append(billing_data)
+
                 except Exception as e:
-                    logger.error(f"Error processing billing record: {e}")
+                    logger.error(f"Error preparing billing record: {e}")
                     continue
-            
+
+            if not billing_records:
+                logger.warning(f"No valid billing records to process for dealer {dealer_id}")
+                return 0
+
+            # Bulk upsert billing records
+            main_processed = self.bulk_upsert(
+                db,
+                BillingProcessData,
+                billing_records,
+                conflict_columns=['dealer_id', 'id_invoice'],
+                batch_size=500
+            )
+
             db.commit()
-            logger.info(f"Processed {processed_count} billing process records for dealer {dealer_id}")
-            
-            return processed_count
-            
+            logger.info(f"Successfully processed {main_processed} billing process records for dealer {dealer_id}")
+
+            return main_processed
+
         except Exception as e:
             db.rollback()
             logger.error(f"Error processing billing process records for dealer {dealer_id}: {e}")

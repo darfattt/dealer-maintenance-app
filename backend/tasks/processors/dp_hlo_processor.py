@@ -81,71 +81,103 @@ class DPHLODataProcessor(BaseDataProcessor):
             }
     
     def process_records(self, db: Session, dealer_id: str, api_data: Dict[str, Any]) -> int:
-        """Process and store DP HLO records"""
+        """Process and store DP HLO records using bulk operations"""
         try:
             data = api_data.get("data", [])
             if not data:
                 logger.warning(f"No DP HLO data to process for dealer {dealer_id}")
                 return 0
-            
-            processed_count = 0
-            
+
+            logger.info(f"Processing {len(data)} DP HLO records for dealer {dealer_id}")
+
+            # Prepare bulk data for main records
+            hlo_records = []
+            parts_records = []
+
             for hlo_record in data:
                 try:
-                    # Check if HLO document already exists
-                    id_hlo_document = hlo_record.get("idHLODocument")
-                    if id_hlo_document:
-                        existing = db.query(DPHLOData).filter(
-                            DPHLOData.dealer_id == dealer_id,
-                            DPHLOData.id_hlo_document == id_hlo_document
-                        ).first()
-                        
-                        if existing:
-                            logger.debug(f"HLO document {id_hlo_document} already exists, skipping")
-                            continue
-                    
-                    # Create DP HLO data record
-                    hlo_data = DPHLOData(
-                        dealer_id=dealer_id,
-                        no_invoice_uang_jaminan=hlo_record.get("noInvoiceUangJaminan"),
-                        id_hlo_document=hlo_record.get("idHLODocument"),
-                        tanggal_pemesanan_hlo=hlo_record.get("tanggalPemesananHLO"),
-                        no_work_order=hlo_record.get("noWorkOrder"),
-                        id_customer=hlo_record.get("idCustomer"),
-                        created_time=hlo_record.get("createdTime"),
-                        modified_time=hlo_record.get("modifiedTime")
-                    )
-                    
-                    db.add(hlo_data)
-                    db.flush()  # Get the ID
-                    
-                    # Process parts
+                    # Prepare main HLO record
+                    hlo_data = {
+                        'dealer_id': dealer_id,
+                        'no_invoice_uang_jaminan': hlo_record.get("noInvoiceUangJaminan"),
+                        'id_hlo_document': hlo_record.get("idHLODocument"),
+                        'tanggal_pemesanan_hlo': hlo_record.get("tanggalPemesananHLO"),
+                        'no_work_order': hlo_record.get("noWorkOrder"),
+                        'id_customer': hlo_record.get("idCustomer"),
+                        'created_time': hlo_record.get("createdTime"),
+                        'modified_time': hlo_record.get("modifiedTime"),
+                        'fetched_at': datetime.utcnow()
+                    }
+                    hlo_records.append(hlo_data)
+
+                    # Prepare parts records (will be processed after main records)
                     parts = hlo_record.get("parts", [])
                     for part_record in parts:
-                        part_data = DPHLOPart(
-                            dp_hlo_data_id=hlo_data.id,
-                            parts_number=part_record.get("partsNumber"),
-                            kuantitas=part_record.get("kuantitas"),
-                            harga_parts=part_record.get("hargaParts"),
-                            total_harga_parts=part_record.get("totalHargaParts"),
-                            uang_muka=part_record.get("uangMuka"),
-                            sisa_bayar=part_record.get("sisaBayar"),
-                            created_time=part_record.get("createdTime"),
-                            modified_time=part_record.get("modifiedTime")
-                        )
-                        db.add(part_data)
-                    
-                    processed_count += 1
-                    
+                        part_data = {
+                            'parts_number': part_record.get("partsNumber"),
+                            'kuantitas': part_record.get("kuantitas"),
+                            'harga_parts': part_record.get("hargaParts"),
+                            'total_harga_parts': part_record.get("totalHargaParts"),
+                            'uang_muka': part_record.get("uangMuka"),
+                            'sisa_bayar': part_record.get("sisaBayar"),
+                            'created_time': part_record.get("createdTime"),
+                            'modified_time': part_record.get("modifiedTime"),
+                            # Will need to link to parent after bulk insert
+                            'hlo_document_id': hlo_record.get("idHLODocument")  # Temporary field for linking
+                        }
+                        parts_records.append(part_data)
+
                 except Exception as e:
-                    logger.error(f"Error processing DP HLO record: {e}")
+                    logger.error(f"Error preparing DP HLO record: {e}")
                     continue
-            
+
+            if not hlo_records:
+                logger.warning(f"No valid DP HLO records to process for dealer {dealer_id}")
+                return 0
+
+            # Bulk upsert main HLO records
+            main_processed = self.bulk_upsert(
+                db,
+                DPHLOData,
+                hlo_records,
+                conflict_columns=['dealer_id', 'id_hlo_document'],
+                batch_size=500
+            )
+
+            # Process parts records if any
+            if parts_records:
+                # First, get the mapping of HLO document IDs to database IDs
+                hlo_doc_ids = [record['id_hlo_document'] for record in hlo_records if record['id_hlo_document']]
+                if hlo_doc_ids:
+                    hlo_mapping = {}
+                    hlo_query = db.query(DPHLOData.id, DPHLOData.id_hlo_document).filter(
+                        DPHLOData.dealer_id == dealer_id,
+                        DPHLOData.id_hlo_document.in_(hlo_doc_ids)
+                    ).all()
+
+                    for hlo_id, hlo_doc_id in hlo_query:
+                        hlo_mapping[hlo_doc_id] = hlo_id
+
+                    # Update parts records with correct foreign keys
+                    valid_parts = []
+                    for part in parts_records:
+                        hlo_doc_id = part.pop('hlo_document_id', None)
+                        if hlo_doc_id and hlo_doc_id in hlo_mapping:
+                            part['dp_hlo_data_id'] = hlo_mapping[hlo_doc_id]
+                            valid_parts.append(part)
+
+                    if valid_parts:
+                        # Bulk insert parts (no conflict resolution needed as they're child records)
+                        for chunk in self.process_in_chunks(valid_parts, chunk_size=1000):
+                            db.bulk_insert_mappings(DPHLOPart, chunk)
+
+                        logger.info(f"Processed {len(valid_parts)} DP HLO parts for dealer {dealer_id}")
+
             db.commit()
-            logger.info(f"Processed {processed_count} DP HLO records for dealer {dealer_id}")
-            
-            return processed_count
-            
+            logger.info(f"Successfully processed {main_processed} DP HLO records for dealer {dealer_id}")
+
+            return main_processed
+
         except Exception as e:
             db.rollback()
             logger.error(f"Error processing DP HLO records for dealer {dealer_id}: {e}")

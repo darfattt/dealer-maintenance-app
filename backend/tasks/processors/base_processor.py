@@ -6,6 +6,7 @@ from datetime import datetime, date
 from typing import Dict, Any, Optional
 import logging
 from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert
 
 from database import SessionLocal, Dealer, FetchLog
 
@@ -70,7 +71,7 @@ class BaseDataProcessor(ABC):
             return []
         return data
     
-    def log_fetch_result(self, db, dealer_id: str, status: str, records_processed: int, 
+    def log_fetch_result(self, db, dealer_id: str, status: str, records_processed: int,
                         duration: int, start_time: datetime, error_message: str = None) -> None:
         """Log fetch result to database"""
         fetch_log = FetchLog(
@@ -85,6 +86,89 @@ class BaseDataProcessor(ABC):
         )
         db.add(fetch_log)
         db.commit()
+
+    def bulk_upsert(self, db, model_class, records: list, conflict_columns: list, batch_size: int = 1000):
+        """Perform bulk upsert operation using PostgreSQL ON CONFLICT"""
+        if not records:
+            return 0
+
+        total_processed = 0
+
+        # Process records in batches to manage memory
+        for i in range(0, len(records), batch_size):
+            batch = records[i:i + batch_size]
+
+            try:
+                # Use PostgreSQL's INSERT ... ON CONFLICT ... DO UPDATE
+                stmt = insert(model_class).values(batch)
+
+                # Create update dict for all columns except conflict columns
+                update_dict = {
+                    col.name: stmt.excluded[col.name]
+                    for col in model_class.__table__.columns
+                    if col.name not in conflict_columns and col.name != 'id'
+                }
+
+                # Add fetched_at update
+                if hasattr(model_class, 'fetched_at'):
+                    update_dict['fetched_at'] = datetime.utcnow()
+
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=conflict_columns,
+                    set_=update_dict
+                )
+
+                result = db.execute(stmt)
+                total_processed += len(batch)
+
+                self.logger.debug(f"Processed batch of {len(batch)} records for {model_class.__name__}")
+
+            except Exception as e:
+                self.logger.error(f"Error in bulk upsert batch: {e}")
+                # Try individual inserts for this batch as fallback
+                for record in batch:
+                    try:
+                        stmt = insert(model_class).values(record)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=conflict_columns,
+                            set_=update_dict
+                        )
+                        db.execute(stmt)
+                        total_processed += 1
+                    except Exception as individual_error:
+                        self.logger.error(f"Failed to insert individual record: {individual_error}")
+                        continue
+
+        return total_processed
+
+    def process_in_chunks(self, data: list, chunk_size: int = 100):
+        """Generator to process data in chunks for memory efficiency"""
+        for i in range(0, len(data), chunk_size):
+            yield data[i:i + chunk_size]
+
+    def safe_numeric(self, value, default=None):
+        """Convert value to numeric, return None for empty strings or invalid values"""
+        if value is None or value == '' or value == 'null':
+            return default
+        try:
+            return float(value) if '.' in str(value) else int(value)
+        except (ValueError, TypeError):
+            return default
+
+    def safe_int(self, value, default=None):
+        """Convert value to integer, return None for empty strings or invalid values"""
+        if value is None or value == '' or value == 'null':
+            return default
+        try:
+            return int(float(value))  # Handle string floats like "1.0"
+        except (ValueError, TypeError):
+            return default
+
+    def safe_string(self, value, default=None):
+        """Convert value to string, return None for empty strings"""
+        if value is None or value == '' or value == 'null':
+            return default
+        return str(value)
     
     @abstractmethod
     def fetch_api_data(self, dealer: Dealer, from_time: str, to_time: str, **kwargs) -> Dict[str, Any]:

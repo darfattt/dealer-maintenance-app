@@ -788,3 +788,73 @@ CREATE INDEX IF NOT EXISTS idx_parts_invoice_data_dealer_id ON parts_invoice_dat
 -- API configurations indexes
 CREATE INDEX IF NOT EXISTS idx_api_configurations_config_name ON api_configurations(config_name);
 CREATE INDEX IF NOT EXISTS idx_api_configurations_is_active ON api_configurations(is_active);
+
+-- ============================================================================
+-- ENHANCED PERFORMANCE INDEXES FOR BATCH PROCESSING
+-- ============================================================================
+
+-- Composite indexes for dealer_id + time-based queries (most critical for batch processing)
+CREATE INDEX IF NOT EXISTS idx_prospect_data_dealer_modified ON prospect_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_prospect_data_dealer_created ON prospect_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_pkb_data_dealer_modified ON pkb_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_pkb_data_dealer_created ON pkb_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_parts_inbound_data_dealer_modified ON parts_inbound_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_parts_inbound_data_dealer_created ON parts_inbound_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_leasing_data_dealer_modified ON leasing_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_leasing_data_dealer_created ON leasing_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_document_handling_data_dealer_modified ON document_handling_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_document_handling_data_dealer_created ON document_handling_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_unit_inbound_data_dealer_modified ON unit_inbound_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_unit_inbound_data_dealer_created ON unit_inbound_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_delivery_process_data_dealer_modified ON delivery_process_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_delivery_process_data_dealer_created ON delivery_process_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_billing_process_data_dealer_modified ON billing_process_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_billing_process_data_dealer_created ON billing_process_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_unit_invoice_data_dealer_modified ON unit_invoice_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_unit_invoice_data_dealer_created ON unit_invoice_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_parts_sales_data_dealer_modified ON parts_sales_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_parts_sales_data_dealer_created ON parts_sales_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_dp_hlo_data_dealer_modified ON dp_hlo_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_dp_hlo_data_dealer_created ON dp_hlo_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_workshop_invoice_data_dealer_modified ON workshop_invoice_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_workshop_invoice_data_dealer_created ON workshop_invoice_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_unpaid_hlo_data_dealer_modified ON unpaid_hlo_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_unpaid_hlo_data_dealer_created ON unpaid_hlo_data(dealer_id, created_time);
+CREATE INDEX IF NOT EXISTS idx_parts_invoice_data_dealer_modified ON parts_invoice_data(dealer_id, modified_time);
+CREATE INDEX IF NOT EXISTS idx_parts_invoice_data_dealer_created ON parts_invoice_data(dealer_id, created_time);
+
+-- Indexes for duplicate detection (critical for upsert operations)
+CREATE INDEX IF NOT EXISTS idx_prospect_data_dealer_prospect ON prospect_data(dealer_id, id_prospect);
+CREATE INDEX IF NOT EXISTS idx_pkb_data_dealer_work_order ON pkb_data(dealer_id, no_work_order);
+CREATE INDEX IF NOT EXISTS idx_parts_inbound_data_dealer_penerimaan ON parts_inbound_data(dealer_id, no_penerimaan);
+CREATE INDEX IF NOT EXISTS idx_leasing_data_dealer_dokumen ON leasing_data(dealer_id, id_dokumen_pengajuan);
+CREATE INDEX IF NOT EXISTS idx_document_handling_data_dealer_spk ON document_handling_data(dealer_id, id_spk);
+CREATE INDEX IF NOT EXISTS idx_unit_inbound_data_dealer_shipping ON unit_inbound_data(dealer_id, no_shipping_list);
+CREATE INDEX IF NOT EXISTS idx_delivery_process_data_dealer_document ON delivery_process_data(dealer_id, delivery_document_id);
+CREATE INDEX IF NOT EXISTS idx_billing_process_data_dealer_invoice ON billing_process_data(dealer_id, id_invoice);
+CREATE INDEX IF NOT EXISTS idx_unit_invoice_data_dealer_invoice ON unit_invoice_data(dealer_id, no_invoice);
+CREATE INDEX IF NOT EXISTS idx_parts_sales_data_dealer_so ON parts_sales_data(dealer_id, no_so);
+CREATE INDEX IF NOT EXISTS idx_dp_hlo_data_dealer_hlo_doc ON dp_hlo_data(dealer_id, id_hlo_document);
+CREATE INDEX IF NOT EXISTS idx_workshop_invoice_data_dealer_work_order ON workshop_invoice_data(dealer_id, no_work_order);
+CREATE INDEX IF NOT EXISTS idx_unpaid_hlo_data_dealer_hlo_doc ON unpaid_hlo_data(dealer_id, id_hlo_document);
+CREATE INDEX IF NOT EXISTS idx_parts_invoice_data_dealer_invoice ON parts_invoice_data(dealer_id, no_invoice);
+
+-- Indexes for fetched_at field (for cleanup and monitoring)
+CREATE INDEX IF NOT EXISTS idx_prospect_data_fetched_at ON prospect_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_pkb_data_fetched_at ON pkb_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_parts_inbound_data_fetched_at ON parts_inbound_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_leasing_data_fetched_at ON leasing_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_document_handling_data_fetched_at ON document_handling_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_unit_inbound_data_fetched_at ON unit_inbound_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_delivery_process_data_fetched_at ON delivery_process_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_billing_process_data_fetched_at ON billing_process_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_unit_invoice_data_fetched_at ON unit_invoice_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_parts_sales_data_fetched_at ON parts_sales_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_dp_hlo_data_fetched_at ON dp_hlo_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_workshop_invoice_data_fetched_at ON workshop_invoice_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_unpaid_hlo_data_fetched_at ON unpaid_hlo_data(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_parts_invoice_data_fetched_at ON parts_invoice_data(fetched_at);
+
+-- Composite indexes for fetch logs (for monitoring and cleanup)
+CREATE INDEX IF NOT EXISTS idx_fetch_logs_dealer_type_completed ON fetch_logs(dealer_id, fetch_type, completed_at);
+CREATE INDEX IF NOT EXISTS idx_fetch_logs_status_completed ON fetch_logs(status, completed_at);
