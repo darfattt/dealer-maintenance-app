@@ -9,11 +9,11 @@ services:
       target: production
       args:
         NODE_ENV: production
-        VITE_API_BASE_URL: http://api_gateway:8080
+        VITE_API_BASE_URL: /api
     container_name: dealer_web_primevue_prod
     environment:
       - NODE_ENV=production
-      - VITE_API_BASE_URL: http://localhost:8080
+      - BACKEND_URL=http://api_gateway:8080
     ports:
       - "5000:80"
     depends_on:

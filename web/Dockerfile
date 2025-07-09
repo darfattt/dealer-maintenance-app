@@ -19,7 +19,7 @@ COPY . .
 
 # Build arguments for environment configuration
 ARG NODE_ENV=production
-ARG VITE_API_BASE_URL=http://localhost:8080
+ARG VITE_API_BASE_URL=/api
 
 ENV NODE_ENV=${NODE_ENV}
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
@@ -31,17 +31,30 @@ RUN npm run build
 FROM nginx:alpine AS production
 WORKDIR /app
 
+# Install netcat for health checks
+RUN apk add --no-cache netcat-openbsd gettext
+
 # Copy built application
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
+# Copy nginx configurations
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx.prod.conf /etc/nginx/nginx.conf.template
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+# Make entrypoint script executable
+RUN chmod +x /docker-entrypoint.sh
+
+# Environment variables for runtime configuration
+ENV BACKEND_HOST=api_gateway
+ENV BACKEND_PORT=8080
+ENV NODE_ENV=production
 
 # Expose port
 EXPOSE 80
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Use custom entrypoint
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Development stage
 FROM base AS development

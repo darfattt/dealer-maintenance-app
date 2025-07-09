@@ -1,10 +1,19 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
-// Create axios instance
+// Create axios instance with environment-aware base URL
+const getBaseURL = () => {
+  // In production, use relative URL that will be proxied by nginx
+  if (import.meta.env.PROD) {
+    return '/api'
+  }
+  // In development, use the environment variable or fallback
+  return import.meta.env.VITE_API_BASE_URL || '/api'
+}
+
 const api = axios.create({
-  baseURL: '/api',
-  timeout: 10000,
+  baseURL: getBaseURL(),
+  timeout: 30000, // Increased timeout for production
   headers: {
     'Content-Type': 'application/json'
   },
