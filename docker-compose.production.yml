@@ -1,4 +1,4 @@
-version: '3.8'
+#version: '3.8'
 
 services:
   # PostgreSQL Database
@@ -29,7 +29,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: dealer_redis_prod
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    command: redis-server --appendonly yes
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -37,7 +37,7 @@ services:
     networks:
       - dealer_network
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-redis_pass_prod}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -56,11 +56,14 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD:-dealer_pass}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_pass_prod}@redis:6379/0
       - SENTRY_DSN=${SENTRY_DSN}
       - ENVIRONMENT=production
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
+      - API_BASE_URL=https://${DOMAIN_NAME:-autology.id}:8000
+      - ALLOWED_HOSTS=${DOMAIN_NAME:-autology.id},localhost,127.0.0.1
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,11 +89,12 @@ services:
     volumes:
       - ./logs:/app/logs
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD:-dealer_pass}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_pass_prod}@redis:6379/0
       - SENTRY_DSN=${SENTRY_DSN}
       - ENVIRONMENT=production
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,11 +115,12 @@ services:
     volumes:
       - ./logs:/app/logs
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD:-dealer_pass}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_pass_prod}@redis:6379/0
       - SENTRY_DSN=${SENTRY_DSN}
       - ENVIRONMENT=production
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,15 +138,16 @@ services:
       target: production
     container_name: dealer_account_service_prod
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD:-dealer_pass}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-jwt-secret-autology-2024}
       - SERVICE_NAME=account-service
       - SERVICE_VERSION=1.0.0
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=production
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@dealer-dashboard.com}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - ADMIN_FULL_NAME=${ADMIN_FULL_NAME:-System Administrator}
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@autology.id}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-AdminPass2024}
+      - ADMIN_FULL_NAME=${ADMIN_FULL_NAME:-Autology System Administrator}
     ports:
       - "${ACCOUNT_SERVICE_PORT:-8100}:8100"
     depends_on:
@@ -168,11 +174,12 @@ services:
     environment:
       - ACCOUNT_SERVICE_URL=http://account_service:8100
       - DEALER_DASHBOARD_SERVICE_URL=http://backend:8000
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-jwt-secret-autology-2024}
       - JWT_ALGORITHM=HS256
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://yourdomain.com}
+      - ALLOWED_ORIGINS=https://autology.id,https://www.autology.id,https://autology.id:5000,https://autology.id:8000,https://autology.id:8080,http://localhost:5000,http://localhost:3000
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=production
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
       - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
     ports:
@@ -204,6 +211,9 @@ services:
     environment:
       - NODE_ENV=production
       - BACKEND_URL=http://api_gateway:8080
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
+      - API_BASE_URL=https://${DOMAIN_NAME:-autology.id}:8000
+      - VITE_API_BASE_URL=/api
     ports:
       - "${WEB_APP_PORT:-5000}:80"
     depends_on:
@@ -227,11 +237,12 @@ services:
       target: production
     container_name: dealer_dashboard_dealer_service_prod
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD:-dealer_pass}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
       - SERVICE_NAME=dashboard-dealer-service
       - SERVICE_VERSION=1.0.0
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=production
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
     ports:
       - "${DASHBOARD_SERVICE_PORT:-8200}:8200"
     depends_on:
@@ -259,8 +270,9 @@ services:
     ports:
       - "${ANALYTICS_PORT:-8501}:8501"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-dealer_user}:${POSTGRES_PASSWORD:-dealer_pass}@postgres:5432/${POSTGRES_DB:-dealer_dashboard}
       - ENVIRONMENT=production
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
     depends_on:
       postgres:
         condition: service_healthy
@@ -286,11 +298,12 @@ services:
     ports:
       - "${ADMIN_PANEL_PORT:-8502}:8502"
     environment:
-      - BACKEND_URL=http://backend:8000
+      - BACKEND_URL=https://autology.id:8000
       - ENVIRONMENT=production
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     networks:
       - dealer_network
     volumes:

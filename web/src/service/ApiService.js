@@ -3,10 +3,19 @@ import { useAuthStore } from '@/stores/auth'
 
 // Create axios instance with environment-aware base URL
 const getBaseURL = () => {
-  // In production, use relative URL that will be proxied by nginx
+  // Check if we're running on autology.id domain
+  const isAutologyDomain = window.location.hostname.includes('autology.id')
+
+  // In production on autology.id, use relative URL that will be proxied by nginx
+  if (import.meta.env.PROD && isAutologyDomain) {
+    return '/api'
+  }
+
+  // In production but not on autology.id (e.g., localhost), use relative URL
   if (import.meta.env.PROD) {
     return '/api'
   }
+
   // In development, use the environment variable or fallback
   return import.meta.env.VITE_API_BASE_URL || '/api'
 }

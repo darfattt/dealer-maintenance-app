@@ -223,17 +223,19 @@ services:
     build:
       context: ./backend-microservices
       dockerfile: ./docker/Dockerfile.gateway
+      target: production
     container_name: dealer_api_gateway
     environment:
       - ACCOUNT_SERVICE_URL=http://account_service:8100
       - DEALER_DASHBOARD_SERVICE_URL=http://backend:8000
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-super-secret-jwt-key-here-change-this-in-production}
       - JWT_ALGORITHM=HS256
-      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5000,http://localhost:5173,http://localhost:5174,http://localhost:8501,http://localhost:8502
-      - LOG_LEVEL=INFO
+      - ALLOWED_ORIGINS=https://autology.id,https://www.autology.id,https://autology.id:5000,https://autology.id:8000,https://autology.id:8080,https://autology.id:8501,https://autology.id:8502,http://localhost:3000,http://localhost:5000,http://localhost:5173
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=production
-      - RATE_LIMIT_REQUESTS=100
-      - RATE_LIMIT_WINDOW=60
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
     ports:
       - "8080:8080"
     depends_on:
@@ -242,8 +244,7 @@ services:
     networks:
       - dealer_network
     volumes:
-      - ./backend-microservices/api-gateway:/app
-      - ./backend-microservices/utils:/app/utils
+      - ./logs:/app/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -259,11 +260,13 @@ services:
       target: production
       args:
         NODE_ENV: production
-        VITE_API_BASE_URL: http://api_gateway:8080
+        VITE_API_BASE_URL: /api
     container_name: dealer_web_app
     environment:
       - NODE_ENV=production
-      - VITE_API_BASE_URL=http://localhost:8080
+      - BACKEND_URL=http://api_gateway:8080
+      - DOMAIN_NAME=${DOMAIN_NAME:-autology.id}
+      - API_BASE_URL=https://${DOMAIN_NAME:-autology.id}:8000
     ports:
       - "5000:80"
     depends_on:
@@ -310,7 +313,11 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
   grafana_data:
+    driver: local
 
 networks:
   dealer_network:
