@@ -233,6 +233,9 @@ class JobQueueManager:
             elif job.fetch_type == "mdinvh3_read":
                 task_name = "tasks.data_fetcher_router.fetch_parts_invoice_data"
                 task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or ""]
+            elif job.fetch_type == "spk_read":
+                task_name = "tasks.data_fetcher_router.fetch_spk_dealing_process_data"
+                task_args = [job.dealer_id, job.from_time, job.to_time, job.no_po or "", ""]
             else:  # prospect
                 task_name = "tasks.data_fetcher_router.fetch_prospect_data"
                 task_args = [job.dealer_id, job.from_time, job.to_time]

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Web Application - Development
+  web_app:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: development
+      args:
+        NODE_ENV: development
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: dealer_web_app_dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8080
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - dealer-network
+    depends_on:
+      - api_gateway
+    restart: unless-stopped
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+networks:
+  dealer-network:
+    external: true

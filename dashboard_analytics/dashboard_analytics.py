@@ -668,7 +668,8 @@ menu_options = {
     "🔧 DP HLO": "dphlo_read",
     "🔨 Workshop Invoice": "inv2_read",
     "📋 Unpaid HLO": "unpaidhlo_read",
-    "📄 Parts Invoice": "mdinvh3_read"
+    "📄 Parts Invoice": "mdinvh3_read",
+    "📋 SPK Dealing Process": "spk_read"
 }
 
 selected_menu = st.sidebar.selectbox(
@@ -2804,6 +2805,134 @@ def render_parts_invoice_data_page(dealer_id):
         session.close()
 
 
+def render_spk_dealing_process_data_page(dealer_id):
+    """Render SPK dealing process data table with search and pagination"""
+    st.subheader("📋 SPK Dealing Process Data")
+    st.markdown(f"**Dealer:** {dealer_id}")
+
+    # Search and pagination controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+
+    with col1:
+        search_term = st.text_input("🔍 Search", placeholder="Search by SPK ID, Prospect ID, Customer Name, or KTP...")
+
+    with col2:
+        page_size = st.selectbox("Records per page", [25, 50, 100], index=1)
+
+    with col3:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # Initialize page number in session state
+    if 'spk_dealing_process_page' not in st.session_state:
+        st.session_state.spk_dealing_process_page = 1
+
+    # Get data
+    data, total_count = get_spk_dealing_process_data_table(dealer_id, st.session_state.spk_dealing_process_page, page_size, search_term)
+
+    # Display summary
+    st.info(f"📊 Total records: {total_count} | Showing page {st.session_state.spk_dealing_process_page}")
+
+    if data:
+        # Display data table
+        df = pd.DataFrame(data)
+
+        # Configure columns for better display
+        column_config = {
+            "SPK ID": st.column_config.TextColumn("SPK ID", width="medium"),
+            "Prospect ID": st.column_config.TextColumn("Prospect ID", width="medium"),
+            "Customer Name": st.column_config.TextColumn("Customer Name", width="medium"),
+            "KTP Number": st.column_config.TextColumn("KTP Number", width="medium"),
+            "Contact": st.column_config.TextColumn("Contact", width="small"),
+            "Email": st.column_config.TextColumn("Email", width="medium"),
+            "Status": st.column_config.TextColumn("Status", width="small"),
+            "Order Date": st.column_config.TextColumn("Order Date", width="medium"),
+            "Created": st.column_config.TextColumn("Created", width="medium")
+        }
+
+        st.dataframe(
+            df,
+            column_config=column_config,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        # Arrow pagination controls
+        total_pages = (total_count + page_size - 1) // page_size
+
+        if total_pages > 1:
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+
+            with col1:
+                if st.button("⏮️ First", key="spk_dealing_process_first") and st.session_state.spk_dealing_process_page > 1:
+                    st.session_state.spk_dealing_process_page = 1
+                    st.rerun()
+
+            with col2:
+                if st.button("⏪ Previous", key="spk_dealing_process_prev") and st.session_state.spk_dealing_process_page > 1:
+                    st.session_state.spk_dealing_process_page -= 1
+                    st.rerun()
+
+            with col3:
+                st.markdown(f"<div style='text-align: center; padding: 0.5rem;'>Page {st.session_state.spk_dealing_process_page} of {total_pages}</div>", unsafe_allow_html=True)
+
+            with col4:
+                if st.button("Next ⏩", key="spk_dealing_process_next") and st.session_state.spk_dealing_process_page < total_pages:
+                    st.session_state.spk_dealing_process_page += 1
+                    st.rerun()
+
+            with col5:
+                if st.button("Last ⏭️", key="spk_dealing_process_last") and st.session_state.spk_dealing_process_page < total_pages:
+                    st.session_state.spk_dealing_process_page = total_pages
+                    st.rerun()
+    else:
+        st.warning("No SPK dealing process data found for the selected dealer.")
+
+
+@st.cache_data(ttl=60)
+def get_spk_dealing_process_data_table(dealer_id, page=1, page_size=50, search_term=""):
+    """Get SPK dealing process data for table display with pagination"""
+    try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        params = {
+            "dealer_id": dealer_id,
+            "page": page,
+            "limit": page_size
+        }
+
+        if search_term:
+            params["search"] = search_term
+
+        response = requests.get(f"{backend_url}/spk_dealing_process/", params=params)
+
+        if response.status_code == 200:
+            result = response.json()
+            if result["success"]:
+                # Format data for display
+                formatted_data = []
+                for item in result["data"]:
+                    formatted_data.append({
+                        "SPK ID": item.get("id_spk", "N/A"),
+                        "Prospect ID": item.get("id_prospect", "N/A"),
+                        "Customer Name": item.get("nama_customer", "N/A"),
+                        "KTP Number": item.get("no_ktp", "N/A"),
+                        "Contact": item.get("no_kontak", "N/A"),
+                        "Email": item.get("email", "N/A"),
+                        "Status": item.get("status_spk", "N/A"),
+                        "Order Date": item.get("tanggal_pesanan", "N/A"),
+                        "Created": item.get("created_time", "N/A")
+                    })
+
+                return formatted_data, result["pagination"]["total"]
+
+        return [], 0
+
+    except Exception as e:
+        st.error(f"Error fetching SPK dealing process data: {e}")
+        return [], 0
+
+
 # Main content routing
 if current_page == "home":
     # New home page with dashboard charts (no dealer filter dependency)
@@ -2864,6 +2993,10 @@ elif selected_dealer_id:
     elif current_page == "mdinvh3_read":
         # Parts invoice data page
         render_parts_invoice_data_page(selected_dealer_id)
+
+    elif current_page == "spk_read":
+        # SPK dealing process data page
+        render_spk_dealing_process_data_page(selected_dealer_id)
 else:
     if current_page != "home":
         st.warning("Please select a dealer from the sidebar to view data.")

@@ -1,0 +1,4622 @@
+"""
+Dashboard routes for analytics data
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import Optional
+from datetime import datetime, date
+
+from app.dependencies import get_db
+from app.controllers.dashboard_controller import DashboardController
+from app.schemas.dashboard import UnitInboundStatusResponse, PaymentTypeResponse, PaymentMethodResponse, PaymentStatusResponse, PaymentRevenueResponse, PaymentDataHistoryResponse, LeasingDataHistoryResponse, DocumentHandlingDataHistoryResponse, UnitInboundDataHistoryResponse, TopPenerimaanUnitResponse, PODocumentStatusResponse, TrenRevenueResponse, POCreationMonthlyResponse, PermohonanFakturResponse, STNKDiterimaResponse, BPKBDiterimaResponse, DeliveryProcessStatusResponse, ProspectFollowUpResponse, SPKStatusResponse, TopLeasingResponse, DocumentHandlingCountResponse, StatusProspectResponse, MetodeFollowUpResponse, SumberProspectResponse, SebaranProspectResponse, ProspectDataTableResponse, TopDealingUnitsResponse, RevenueResponse, TopDriverResponse, DeliveryLocationResponse, DeliveryDataHistoryResponse, SPKDealingProcessDataResponse
+
+router = APIRouter(tags=["dashboard"])
+
+
+@router.get("/dashboard/unit-inbound/status-counts", response_model=UnitInboundStatusResponse)
+async def get_unit_inbound_status_counts(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get unit inbound data count grouped by status_shipping_list for pie chart visualization
+    
+    This endpoint returns statistics about unit inbound data grouped by shipping list status
+    for a specific dealer within a date range. The data is suitable for pie chart visualization.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+        
+    Returns:
+        UnitInboundStatusResponse: Contains status counts and total records
+        
+    Example:
+        GET /api/v1/dashboard/unit-inbound/status-counts?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_unit_inbound_status_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+        
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-type/statistics", response_model=PaymentTypeResponse)
+async def get_payment_type_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get payment type statistics from billing process data for dashboard visualization
+
+    This endpoint returns count and sum of amounts grouped by tipe_pembayaran (payment type)
+    for a specific dealer within a date range. The data is suitable for payment type widgets.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PaymentTypeResponse: Contains payment type counts, amounts, and totals
+
+    Example:
+        GET /api/v1/dashboard/payment-type/statistics?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_type_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-method/statistics", response_model=PaymentMethodResponse)
+async def get_payment_method_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get payment method statistics from billing process data for dashboard visualization
+
+    This endpoint returns count grouped by cara_bayar (payment method) for a specific dealer
+    within a date range. The data is suitable for payment method widgets like pie charts.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PaymentMethodResponse: Contains payment method counts with mapped labels (1=Cash, 2=Transfer)
+
+    Example:
+        GET /api/v1/dashboard/payment-method/statistics?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_method_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-status/statistics", response_model=PaymentStatusResponse)
+async def get_payment_status_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get payment status statistics from billing process data for dashboard visualization
+
+    This endpoint returns count grouped by status (payment status) for a specific dealer
+    within a date range. The data is suitable for payment status widgets like horizontal bar charts.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PaymentStatusResponse: Contains payment status counts with mapped labels (1=New, 2=Process, 3=Accepted, 4=Close)
+
+    Example:
+        GET /api/v1/dashboard/payment-status/statistics?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_status_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-revenue/total", response_model=PaymentRevenueResponse)
+async def get_payment_revenue_total(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get total payment revenue from billing process data for dashboard visualization
+
+    This endpoint returns the sum of amount field from billing_process_data for a specific dealer
+    within a date range. The data is suitable for revenue widgets displaying total amounts.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PaymentRevenueResponse: Contains total revenue amount and record count
+
+    Example:
+        GET /api/v1/dashboard/payment-revenue/total?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_revenue_total(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment-data-history", response_model=PaymentDataHistoryResponse)
+async def get_payment_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Get payment data history with pagination from billing process data joined with delivery process details
+
+    This endpoint returns paginated payment data history by joining billing_process_data with
+    delivery_process_details on id_spk field. Returns fields: No, id_invoice, id_customer, amount,
+    tipe_pembayaran (mapped to labels), cara_bayar (mapped to labels), status (mapped to labels).
+
+    Data mappings:
+    - Cara Bayar: 1=Cash, 2=Transfer
+    - Status: 1=New, 2=Process, 3=Accepted, 4=Close
+    - Tipe Pembayaran: 1=Credit, 2=Cash
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
+        page: Page number for pagination (1-based)
+        per_page: Number of records per page (default 20, max 100)
+
+    Returns:
+        PaymentDataHistoryResponse: Contains paginated payment data with mapped labels
+
+    Example:
+        GET /api/v1/dashboard/payment-data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_payment_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/leasing-data-history", response_model=LeasingDataHistoryResponse)
+async def get_leasing_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Get leasing data history with pagination from leasing_data table
+
+    This endpoint returns paginated leasing data history from the leasing_data table.
+    Returns fields: No, id_spk, id_dokumen_pengajuan, tgl_pengajuan, jumlah_dp,
+    tenor, jumlah_cicilan, nama_finance_company.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
+        page: Page number for pagination (1-based)
+        per_page: Number of records per page (default 20, max 100)
+
+    Returns:
+        LeasingDataHistoryResponse: Contains paginated leasing data
+
+    Example:
+        GET /api/v1/dashboard/leasing-data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_leasing_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/document-handling-data-history", response_model=DocumentHandlingDataHistoryResponse)
+async def get_document_handling_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Get document handling data history with pagination from document_handling_data joined with document_handling_unit
+
+    This endpoint returns paginated document handling data history from the document_handling_data table
+    joined with document_handling_unit table. Returns fields: No, id_spk, id_so, tgl_pengajuan_stnk,
+    status_faktur_stnk, nomor_stnk, plat_nomor, tgl_terima_stnk, nama_penerima_stnk,
+    tgl_terima_bpkb, nama_penerima_bpkb.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
+        page: Page number for pagination (1-based)
+        per_page: Number of records per page (default 20, max 100)
+
+    Returns:
+        DocumentHandlingDataHistoryResponse: Contains paginated document handling data
+
+    Example:
+        GET /api/v1/dashboard/document-handling-data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_document_handling_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/unit-inbound-data-history", response_model=UnitInboundDataHistoryResponse)
+async def get_unit_inbound_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Get unit inbound data history with pagination from unit_inbound_data joined with unit_inbound_units
+
+    This endpoint returns paginated unit inbound data history from the unit_inbound_data table
+    joined with unit_inbound_units table. Returns fields: No, no_shipping_list, tgl_terima,
+    no_invoice, status_shipping_list, tipe_unit, kuantitas_unit_diterima.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
+        page: Page number for pagination (1-based)
+        per_page: Number of records per page (default 20, max 100)
+
+    Returns:
+        UnitInboundDataHistoryResponse: Contains paginated unit inbound data
+
+    Example:
+        GET /api/v1/dashboard/unit-inbound-data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_unit_inbound_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/top-penerimaan-unit", response_model=TopPenerimaanUnitResponse)
+async def get_top_penerimaan_unit(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top 5 penerimaan unit by total quantity received from unit_inbound_data joined with unit_inbound_units
+
+    This endpoint returns the top 5 units by total quantity received (sum of kuantitas_diterima),
+    grouped by kode_tipe_unit and kode_warna. The item description is created by concatenating
+    kode_tipe_unit and kode_warna.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by modified_time (YYYY-MM-DD format)
+        date_to: End date for filtering by modified_time (YYYY-MM-DD format)
+
+    Returns:
+        TopPenerimaanUnitResponse: Contains top 5 penerimaan unit data
+
+    Example:
+        GET /api/v1/dashboard/top-penerimaan-unit?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_penerimaan_unit(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/leasing/po-document-status", response_model=PODocumentStatusResponse)
+async def get_po_document_status(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get PO document status statistics from leasing_data with conditional logic
+
+    This endpoint returns PO document status counts based on conditional logic:
+    - If tanggal_pengiriman_po_finance_company is not null: Pengiriman PO (status 3)
+    - Else if tanggal_pembuatan_po is not null: Pembuatan PO (status 2)
+    - Else if tanggal_pengajuan is not null: Pengajuan PO (status 1)
+
+    The data is filtered by dealer_id and date range on any of the three date fields.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        PODocumentStatusResponse: Contains PO document status counts
+
+    Example:
+        GET /api/v1/dashboard/leasing/po-document-status?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_po_document_status_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/payment/revenue-trend", response_model=TrenRevenueResponse)
+async def get_revenue_trend(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    current_year: str = Query(..., description="Current year in YYYY format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue trend data from billing_process_data grouped by month for current year
+
+    This endpoint returns monthly revenue trend data by summing the amount field
+    from billing_process_data, grouped by month (MMM format) for the current year only.
+    The data is sorted from January to December.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        current_year: Current year for filtering by modified_time (YYYY format)
+
+    Returns:
+        TrenRevenueResponse: Contains monthly revenue trend data
+
+    Example:
+        GET /api/v1/dashboard/payment/revenue-trend?dealer_id=12284&current_year=2024
+    """
+    try:
+        # Validate year format
+        try:
+            year_int = int(current_year)
+            if year_int < 2000 or year_int > 2100:
+                raise ValueError("Year out of valid range")
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid year format. Use YYYY format (e.g., 2024)."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_trend_data(
+            dealer_id=dealer_id,
+            current_year=current_year
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/leasing/po-creation-monthly", response_model=POCreationMonthlyResponse)
+async def get_po_creation_monthly(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    current_year: str = Query(..., description="Current year in YYYY format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get PO creation monthly data from leasing_data grouped by month for current year
+
+    This endpoint returns monthly PO creation data by counting id_po_finance_company
+    from leasing_data, grouped by month (MMM format) extracted from tanggal_pembuatan_po
+    for the current year only. The data is sorted from January to December.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        current_year: Current year for filtering by tanggal_pembuatan_po (YYYY format)
+
+    Returns:
+        POCreationMonthlyResponse: Contains monthly PO creation counts
+
+    Example:
+        GET /api/v1/dashboard/leasing/po-creation-monthly?dealer_id=12284&current_year=2024
+    """
+    try:
+        # Validate year format
+        try:
+            year_int = int(current_year)
+            if year_int < 2000 or year_int > 2100:
+                raise ValueError("Year out of valid range")
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid year format. Use YYYY format (e.g., 2024)."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_po_creation_monthly_data(
+            dealer_id=dealer_id,
+            current_year=current_year
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/document-handling/permohonan-faktur", response_model=PermohonanFakturResponse)
+async def get_permohonan_faktur_data(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date for filtering (YYYY-MM-DD format)"),
+    date_to: str = Query(..., description="End date for filtering (YYYY-MM-DD format)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get Permohonan Faktur count with trend indicator from document_handling_data
+
+    This endpoint returns the count of document handling units with trend comparison
+    to the previous month period. It joins document_handling_data with document_handling_units
+    and filters by tanggal_pengajuan_stnk_ke_biro date field.
+
+    The trend indicator compares current period with previous month:
+    - If current period is 02/01/2024 to 01/02/2024
+    - Previous period will be 02/12/2023 to 01/01/2024
+    - Returns trend: 'up', 'down', or 'stable' with percentage change
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for current period filtering (YYYY-MM-DD format)
+        date_to: End date for current period filtering (YYYY-MM-DD format)
+
+    Returns:
+        PermohonanFakturResponse: Contains count, trend, and percentage
+
+    Example:
+        GET /api/v1/dashboard/document-handling/permohonan-faktur?dealer_id=12284&date_from=2024-01-02&date_to=2024-02-01
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_permohonan_faktur_data(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/document-handling/stnk-diterima", response_model=STNKDiterimaResponse)
+async def get_stnk_diterima_data(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date for filtering (YYYY-MM-DD format)"),
+    date_to: str = Query(..., description="End date for filtering (YYYY-MM-DD format)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get STNK Diterima Konsumen count with trend indicator from document_handling_data
+
+    This endpoint returns the count of document handling units where STNK was received
+    by consumers with trend comparison to the previous month period. It joins
+    document_handling_data with document_handling_units and filters by
+    tanggal_penerimaan_bpkb_dari_biro date field.
+
+    The trend indicator compares current period with previous month:
+    - If current period is 02/01/2024 to 01/02/2024
+    - Previous period will be 02/12/2023 to 01/01/2024
+    - Returns trend: 'up', 'down', or 'stable' with percentage change
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for current period filtering (YYYY-MM-DD format)
+        date_to: End date for current period filtering (YYYY-MM-DD format)
+
+    Returns:
+        STNKDiterimaResponse: Contains count, trend, and percentage
+
+    Example:
+        GET /api/v1/dashboard/document-handling/stnk-diterima?dealer_id=12284&date_from=2024-01-02&date_to=2024-02-01
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_stnk_diterima_data(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/document-handling/bpkb-diterima", response_model=BPKBDiterimaResponse)
+async def get_bpkb_diterima_data(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date for filtering (YYYY-MM-DD format)"),
+    date_to: str = Query(..., description="End date for filtering (YYYY-MM-DD format)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get BPKB Diterima Konsumen count with trend indicator from document_handling_data
+
+    This endpoint returns the count of document handling units where BPKB was received
+    by consumers with trend comparison to the previous month period. It joins
+    document_handling_data with document_handling_units and filters by
+    tanggal_terima_bpkb_oleh_konsumen date field.
+
+    The trend indicator compares current period with previous month:
+    - If current period is 02/01/2024 to 01/02/2024
+    - Previous period will be 02/12/2023 to 01/01/2024
+    - Returns trend: 'up', 'down', or 'stable' with percentage change
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for current period filtering (YYYY-MM-DD format)
+        date_to: End date for current period filtering (YYYY-MM-DD format)
+
+    Returns:
+        BPKBDiterimaResponse: Contains count, trend, and percentage
+
+    Example:
+        GET /api/v1/dashboard/document-handling/bpkb-diterima?dealer_id=12284&date_from=2024-01-02&date_to=2024-02-01
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_bpkb_diterima_data(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery-process/status-counts", response_model=DeliveryProcessStatusResponse)
+async def get_delivery_process_status_counts(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get delivery process data count grouped by status_delivery_document for dashboard visualization
+
+    This endpoint returns statistics about delivery process data grouped by delivery document status
+    for a specific dealer within a date range. The data is suitable for delivery process widgets.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering (YYYY-MM-DD format)
+        date_to: End date for filtering (YYYY-MM-DD format)
+
+    Returns:
+        DeliveryProcessStatusResponse: Contains delivery status counts and total records
+
+    Example:
+        GET /api/v1/dashboard/delivery-process/status-counts?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_delivery_process_status_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/prospect/followup-status-counts", response_model=ProspectFollowUpResponse)
+async def get_prospect_followup_status_counts(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get prospect data count grouped by status_follow_up_prospecting for dashboard visualization
+
+    This endpoint returns statistics about prospect data grouped by follow-up prospecting status
+    for a specific dealer within a date range filtered by tanggal_appointment. The data is suitable for prospect widgets.
+
+    Status mapping:
+    - 1 = Low
+    - 2 = Medium  
+    - 3 = Hot
+    - 4 = Deal
+    - 5 = Not Deal
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering tanggal_appointment (YYYY-MM-DD format)
+        date_to: End date for filtering tanggal_appointment (YYYY-MM-DD format)
+
+    Returns:
+        ProspectFollowUpResponse: Contains follow-up status counts and total records
+
+    Example:
+        GET /api/v1/dashboard/prospect/followup-status-counts?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_prospect_followup_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/spk/status-counts", response_model=SPKStatusResponse)
+async def get_spk_status_counts(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get SPK dealing process data count grouped by status_spk for dashboard visualization
+
+    This endpoint returns statistics about SPK dealing process data grouped by SPK status
+    for a specific dealer within a date range filtered by tanggal_pesanan. The data is suitable for SPK widgets.
+
+    Status mapping:
+    - 1 = Open
+    - 2 = Indent  
+    - 3 = Complete
+    - 4 = Cancelled
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering tanggal_pesanan (YYYY-MM-DD format)
+        date_to: End date for filtering tanggal_pesanan (YYYY-MM-DD format)
+
+    Returns:
+        SPKStatusResponse: Contains SPK status counts and total records
+
+    Example:
+        GET /api/v1/dashboard/spk/status-counts?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_spk_status_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/leasing/top-companies", response_model=TopLeasingResponse)
+async def get_top_leasing_companies(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top 5 leasing companies count grouped by nama_finance_company for dashboard visualization
+
+    This endpoint returns statistics about leasing data grouped by finance company name,
+    counting id_po_finance_company records for a specific dealer within a date range filtered by tanggal_pengajuan.
+    Returns top 5 companies ordered by count descending. The data is suitable for top leasing company widgets.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering tanggal_pengajuan (YYYY-MM-DD format)
+        date_to: End date for filtering tanggal_pengajuan (YYYY-MM-DD format)
+
+    Returns:
+        TopLeasingResponse: Contains top 5 leasing companies with counts and total records
+
+    Example:
+        GET /api/v1/dashboard/leasing/top-companies?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_leasing_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+@router.get("/dashboard/document-handling/count", response_model=DocumentHandlingCountResponse)
+async def get_document_handling_count(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get document handling count where status_faktur_stnk == 1 for dashboard visualization
+
+    This endpoint returns count of id_spk from document_handling_data joined with document_handling_units
+    where status_faktur_stnk equals 1, for a specific dealer within a date range filtered by tanggal_pengajuan_stnk_ke_biro.
+    The data is suitable for document handling widgets showing approved STNK applications.
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering tanggal_pengajuan_stnk_ke_biro (YYYY-MM-DD format)
+        date_to: End date for filtering tanggal_pengajuan_stnk_ke_biro (YYYY-MM-DD format)
+
+    Returns:
+        DocumentHandlingCountResponse: Contains count of approved STNK applications and total records
+
+    Example:
+        GET /api/v1/dashboard/document-handling/count?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_document_handling_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/prospect/status-counts", response_model=StatusProspectResponse)
+async def get_prospect_status_counts(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get prospect data count grouped by status_prospect for dashboard visualization
+
+    This endpoint returns statistics about prospect data grouped by status_prospect
+    for a specific dealer within a date range filtered by tanggal_appointment. The data is suitable for status prospect widgets.
+
+    Status mapping:
+    - 1 = Low
+    - 2 = Medium  
+    - 3 = Hot
+    - 4 = Deal
+    - 5 = Not Deal
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering tanggal_appointment (YYYY-MM-DD format)
+        date_to: End date for filtering tanggal_appointment (YYYY-MM-DD format)
+
+    Returns:
+        StatusProspectResponse: Contains status prospect counts and total records
+
+    Example:
+        GET /api/v1/dashboard/prospect/status-counts?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_status_prospect_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/prospect/metode-followup-counts", response_model=MetodeFollowUpResponse)
+async def get_prospect_metode_followup_counts(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get prospect data count grouped by metode_follow_up for dashboard visualization
+
+    This endpoint returns statistics about prospect data grouped by metode_follow_up
+    for a specific dealer within a date range filtered by tanggal_appointment. The data is suitable for metode follow up widgets.
+
+    Metode mapping:
+    - 1 = SMS (WA/Line)
+    - 2 = Call  
+    - 3 = Visit
+    - 4 = Direct Touch
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering tanggal_appointment (YYYY-MM-DD format)
+        date_to: End date for filtering tanggal_appointment (YYYY-MM-DD format)
+
+    Returns:
+        MetodeFollowUpResponse: Contains metode follow up counts and total records
+
+    Example:
+        GET /api/v1/dashboard/prospect/metode-followup-counts?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_metode_follow_up_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/prospect/sumber-top5", response_model=SumberProspectResponse)
+async def get_prospect_sumber_top5(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top 5 prospect data count grouped by sumber_prospect for dashboard visualization
+
+    This endpoint returns statistics about prospect data grouped by sumber_prospect
+    for a specific dealer within a date range filtered by tanggal_prospect. Returns top 5 sources ordered by count descending.
+
+    Sumber mapping:
+    - 0001 = Pameran (Joint Promo, Grebek Pasar, Alfamart, Indomart, Mall dll)
+    - 0002 = Showroom Event
+    - 0003 = Roadshow
+    - 0004 = Walk in
+    - 0005 = Customer RO H1
+    - 0006 = Customer RO H23
+    - 0007 = Website
+    - 0008 = Social media
+    - 0009 = External parties (leasing, insurance)
+    - 0010 = Mobile Apps MD/Dealer
+    - 0011 = Refferal
+    - 0012 = Contact Center
+    - 9999 = Others
+
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering tanggal_prospect (YYYY-MM-DD format)
+        date_to: End date for filtering tanggal_prospect (YYYY-MM-DD format)
+
+    Returns:
+        SumberProspectResponse: Contains top 5 sumber prospect counts and total records
+
+    Example:
+        GET /api/v1/dashboard/prospect/sumber-top5?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400,
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_sumber_prospect_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/prospect/sebaran-kecamatan", response_model=SebaranProspectResponse)
+async def get_sebaran_prospect_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get prospect data distribution by kecamatan for map visualization
+    
+    This endpoint returns statistics about prospect data grouped by kecamatan code
+    for a specific dealer within a date range. The data includes latitude/longitude
+    coordinates suitable for map visualization and shows the top 5 kecamatan areas.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_appointment (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_appointment (YYYY-MM-DD format)
+        
+    Returns:
+        SebaranProspectResponse: Contains kecamatan distribution counts and coordinates
+        
+    Example:
+        GET /api/v1/dashboard/prospect/sebaran-kecamatan?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_sebaran_prospect_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/prospect/data-table", response_model=ProspectDataTableResponse)
+async def get_prospect_data_table(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    id_prospect: Optional[str] = Query(None, description="Filter by prospect ID"),
+    nama_lengkap: Optional[str] = Query(None, description="Filter by name (partial match)"),
+    alamat: Optional[str] = Query(None, description="Filter by address (partial match)"),
+    no_kontak: Optional[str] = Query(None, description="Filter by contact number"),
+    tanggal_prospect: Optional[str] = Query(None, description="Filter by prospect date (YYYY-MM-DD)"),
+    status_prospect: Optional[str] = Query(None, description="Filter by prospect status"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get prospect data for table display with pagination and filters
+    
+    This endpoint returns paginated prospect data for tabular display with optional filters.
+    The data is filtered by dealer_id and tanggal_appointment date range, with additional
+    optional filters for prospect fields.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_appointment (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_appointment (YYYY-MM-DD format)
+        page: Page number (1-based, default 1)
+        per_page: Records per page (default 20, max 100)
+        id_prospect: Optional filter by prospect ID
+        nama_lengkap: Optional filter by name (partial match)
+        alamat: Optional filter by address (partial match)
+        no_kontak: Optional filter by contact number
+        tanggal_prospect: Optional filter by prospect date
+        status_prospect: Optional filter by prospect status
+        
+    Returns:
+        ProspectDataTableResponse: Contains paginated prospect data and metadata
+        
+    Example:
+        GET /api/v1/dashboard/prospect/data-table?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Validate tanggal_prospect if provided
+        if tanggal_prospect:
+            try:
+                datetime.strptime(tanggal_prospect, '%Y-%m-%d')
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Invalid tanggal_prospect format. Use YYYY-MM-DD format."
+                )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_prospect_data_table(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page,
+            id_prospect=id_prospect,
+            nama_lengkap=nama_lengkap,
+            alamat=alamat,
+            no_kontak=no_kontak,
+            tanggal_prospect=tanggal_prospect,
+            status_prospect=status_prospect
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/dealing/top-units", response_model=TopDealingUnitsResponse)
+async def get_top_dealing_units_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top dealing units statistics by quantity for dashboard visualization
+    
+    This endpoint returns the top 3 unit types by total quantity from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The quantity is summed
+    for each kode_tipe_unit to show the most popular units.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDealingUnitsResponse: Contains top 3 unit types by quantity and total records
+        
+    Example:
+        GET /api/v1/dashboard/dealing/top-units?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_dealing_units_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/revenue", response_model=RevenueResponse)
+async def get_revenue_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get revenue statistics by summing harga_jual from SPK dealing process units
+    
+    This endpoint returns total revenue by summing harga_jual from SPK dealing process
+    units, filtered by dealer_id and tanggal_pengiriman date range. The revenue calculation
+    excludes records where harga_jual is null or zero.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        RevenueResponse: Contains total revenue and record count
+        
+    Example:
+        GET /api/v1/dashboard/revenue?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_revenue_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/top-drivers", response_model=TopDriverResponse)
+async def get_top_driver_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get top driver statistics by delivery count from delivery process data
+    
+    This endpoint returns the top 5 drivers by delivery count, joining delivery_process_data
+    with delivery_process_details to count id_spk per driver. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes drivers with valid IDs and delivery records.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        TopDriverResponse: Contains top 5 drivers by delivery count and total records
+        
+    Example:
+        GET /api/v1/dashboard/delivery/top-drivers?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, '%Y-%m-%d')
+            datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_top_driver_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/locations", response_model=DeliveryLocationResponse)
+async def get_delivery_location_statistics(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get delivery location statistics by count from delivery process data
+    
+    This endpoint returns the top 5 delivery locations by count, joining delivery_process_data
+    with delivery_process_details to count lokasi_pengiriman per location. Filtered by dealer_id and 
+    tanggal_pengiriman date range. Only includes locations with valid data and calculates percentages.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        
+    Returns:
+        DeliveryLocationResponse: Contains top 5 delivery locations by count with percentages
+        
+    Example:
+        GET /api/v1/dashboard/delivery/locations?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, "%Y-%m-%d")
+            datetime.strptime(date_to, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_delivery_location_statistics(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/delivery/data-history", response_model=DeliveryDataHistoryResponse)
+async def get_delivery_data_history(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    date_from: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    date_to: str = Query(..., description="End date in YYYY-MM-DD format"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    delivery_document_id: Optional[str] = Query(None, description="Filter by delivery document ID"),
+    tanggal_pengiriman: Optional[str] = Query(None, description="Filter by delivery date"),
+    status_delivery_document: Optional[str] = Query(None, description="Filter by delivery status"),
+    id_driver: Optional[str] = Query(None, description="Filter by driver ID"),
+    id_spk: Optional[str] = Query(None, description="Filter by SPK ID"),
+    nama_penerima: Optional[str] = Query(None, description="Filter by recipient name"),
+    no_kontak_penerima: Optional[str] = Query(None, description="Filter by recipient contact"),
+    lokasi_pengiriman: Optional[str] = Query(None, description="Filter by delivery location"),
+    waktu_pengiriman: Optional[str] = Query(None, description="Filter by delivery time"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get delivery data history for table display with pagination and filters
+    
+    This endpoint returns paginated delivery data for tabular display with optional filters.
+    Joins delivery_process_data with delivery_process_details to get complete delivery information.
+    The data is filtered by dealer_id and tanggal_pengiriman date range, with additional
+    optional filters for all displayed fields.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        date_from: Start date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        date_to: End date for filtering by tanggal_pengiriman (YYYY-MM-DD format)
+        page: Page number (1-based, default 1)
+        per_page: Records per page (default 20, max 100)
+        delivery_document_id: Optional filter by delivery document ID
+        tanggal_pengiriman: Optional filter by delivery date
+        status_delivery_document: Optional filter by delivery status
+        id_driver: Optional filter by driver ID
+        id_spk: Optional filter by SPK ID
+        nama_penerima: Optional filter by recipient name (partial match)
+        no_kontak_penerima: Optional filter by recipient contact
+        lokasi_pengiriman: Optional filter by delivery location (partial match)
+        waktu_pengiriman: Optional filter by delivery time
+        
+    Returns:
+        DeliveryDataHistoryResponse: Contains paginated delivery data and metadata
+        
+    Example:
+        GET /api/v1/dashboard/delivery/data-history?dealer_id=12284&date_from=2024-01-01&date_to=2024-12-31&page=1&per_page=20
+    """
+    try:
+        # Validate date format
+        try:
+            datetime.strptime(date_from, "%Y-%m-%d")
+            datetime.strptime(date_to, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+        
+        # Validate date range
+        if date_from > date_to:
+            raise HTTPException(
+                status_code=400, 
+                detail="date_from must be less than or equal to date_to"
+            )
+
+        # Validate tanggal_pengiriman filter if provided
+        if tanggal_pengiriman:
+            try:
+                datetime.strptime(tanggal_pengiriman, "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Invalid tanggal_pengiriman format. Use YYYY-MM-DD format."
+                )
+        
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_delivery_data_history(
+            dealer_id=dealer_id,
+            date_from=date_from,
+            date_to=date_to,
+            page=page,
+            per_page=per_page,
+            delivery_document_id=delivery_document_id,
+            tanggal_pengiriman=tanggal_pengiriman,
+            status_delivery_document=status_delivery_document,
+            id_driver=id_driver,
+            id_spk=id_spk,
+            nama_penerima=nama_penerima,
+            no_kontak_penerima=no_kontak_penerima,
+            lokasi_pengiriman=lokasi_pengiriman,
+            waktu_pengiriman=waktu_pengiriman
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get("/dashboard/spk-dealing-process/data", response_model=SPKDealingProcessDataResponse)
+async def get_spk_dealing_process_data(
+    dealer_id: str = Query(..., description="Dealer ID to filter by"),
+    page: int = Query(1, description="Page number (1-based)", ge=1),
+    per_page: int = Query(20, description="Records per page", ge=1, le=100),
+    id_spk: Optional[str] = Query(None, description="Filter by SPK ID"),
+    nama_customer: Optional[str] = Query(None, description="Filter by customer name"),
+    alamat: Optional[str] = Query(None, description="Filter by address"),
+    no_kontak: Optional[str] = Query(None, description="Filter by contact number"),
+    email: Optional[str] = Query(None, description="Filter by email"),
+    status_spk: Optional[str] = Query(None, description="Filter by SPK status"),
+    nama_bpkb: Optional[str] = Query(None, description="Filter by BPKB name"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get SPK dealing process data for table display with pagination and filters
+    
+    This endpoint returns paginated SPK dealing process data for tabular display with optional filters.
+    Retrieves all fields from spk_dealing_process_data table filtered by dealer_id, with additional
+    optional filters for key fields like SPK ID, customer name, address, contact, email, status, and BPKB name.
+    
+    Args:
+        dealer_id: The dealer ID to filter records
+        page: Page number (1-based, default 1)
+        per_page: Records per page (default 20, max 100)
+        id_spk: Optional filter by SPK ID (partial match)
+        nama_customer: Optional filter by customer name (partial match)
+        alamat: Optional filter by address (partial match)
+        no_kontak: Optional filter by contact number (partial match)
+        email: Optional filter by email (partial match)
+        status_spk: Optional filter by SPK status (partial match)
+        nama_bpkb: Optional filter by BPKB name (partial match)
+        
+    Returns:
+        SPKDealingProcessDataResponse: Contains paginated SPK data and metadata
+        
+    Example:
+        GET /api/v1/dashboard/spk-dealing-process/data?dealer_id=12284&page=1&per_page=20
+        GET /api/v1/dashboard/spk-dealing-process/data?dealer_id=12284&page=1&per_page=20&nama_customer=John&status_spk=1
+    """
+    try:
+        # Create controller and get data
+        controller = DashboardController(db)
+        result = await controller.get_spk_dealing_process_data(
+            dealer_id=dealer_id,
+            page=page,
+            per_page=per_page,
+            id_spk=id_spk,
+            nama_customer=nama_customer,
+            alamat=alamat,
+            no_kontak=no_kontak,
+            email=email,
+            status_spk=status_spk,
+            nama_bpkb=nama_bpkb
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )

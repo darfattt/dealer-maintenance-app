@@ -134,25 +134,29 @@ async def process_request(request: Request, call_next):
                 }
             )
         
-        # Authentication (for non-public paths)
-        if not auth_middleware.is_public_path(request.url.path):
-            user = auth_middleware.extract_user_from_token(request)
-            if not user:
-                return JSONResponse(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    content={
-                        "error": {
-                            "code": 401,
-                            "message": "Authentication required",
-                            "type": "Unauthorized"
+        # Check if this is a gateway endpoint (handle directly)
+        if request.url.path in ["/", "/health", "/docs", "/redoc", "/openapi.json"]:
+            response = await call_next(request)
+        else:
+            # Authentication (for non-public paths)
+            if not auth_middleware.is_public_path(request.url.path):
+                user = auth_middleware.extract_user_from_token(request)
+                if not user:
+                    return JSONResponse(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        content={
+                            "error": {
+                                "code": 401,
+                                "message": "Authentication required",
+                                "type": "Unauthorized"
+                            }
                         }
-                    }
-                )
-            # Store user in request state
-            request.state.user = user
-        
-        # Proxy request to appropriate service
-        response = await proxy_middleware.proxy_request(request)
+                    )
+                # Store user in request state
+                request.state.user = user
+
+            # Proxy request to appropriate service
+            response = await proxy_middleware.proxy_request(request)
         
         # Log request
         process_time = time.time() - start_time

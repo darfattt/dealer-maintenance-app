@@ -35,6 +35,7 @@ from controllers.dp_hlo_controller import router as dp_hlo_router
 from controllers.workshop_invoice_controller import router as workshop_invoice_router
 from controllers.unpaid_hlo_controller import router as unpaid_hlo_router
 from controllers.parts_invoice_controller import router as parts_invoice_router
+from controllers.spk_dealing_process_controller import router as spk_dealing_process_router
 from controllers.token_controller import router as token_router
 from controllers.logs_controller import router as logs_router
 from controllers.jobs_controller import router as jobs_router
@@ -86,6 +87,7 @@ app.include_router(dp_hlo_router)                   # DP HLO data and analytics
 app.include_router(workshop_invoice_router)         # Workshop invoice data and analytics
 app.include_router(unpaid_hlo_router)               # Unpaid HLO data and analytics
 app.include_router(parts_invoice_router)            # Parts invoice data and analytics
+app.include_router(spk_dealing_process_router)      # SPK dealing process data and analytics
 app.include_router(token_router)                    # Token generation and management
 app.include_router(logs_router)                     # Logs and monitoring
 app.include_router(jobs_router)                     # Job execution and management
@@ -141,6 +143,7 @@ async def get_api_info():
         "workshop_invoice": "Workshop invoice (NJB & NSC) data and analytics",
         "unpaid_hlo": "Unpaid HLO data and analytics",
         "parts_invoice": "Parts invoice (MD to Dealer) data and analytics",
+        "spk_dealing_process": "SPK dealing process data and analytics",
             "token": "DGI API token generation and management",
             "logs": "Fetch logs and system monitoring",
             "jobs": "Manual job execution and status"
@@ -164,6 +167,7 @@ async def get_api_info():
         "workshop_invoice_data": "/workshop_invoice/",
         "unpaid_hlo_data": "/unpaid_hlo/",
         "parts_invoice_data": "/parts_invoice/",
+        "spk_dealing_process_data": "/spk_dealing_process/",
             "token_generation": "/token/generate",
             "job_execution": "/jobs/run",
             "logs": "/logs/fetch-logs/"

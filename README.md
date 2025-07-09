@@ -94,16 +94,27 @@ This project implements a **hybrid architecture** combining both monolithic and 
 
 ## 🚀 Quick Start - Complete System
 
-### Option 1: Unified Deployment (Recommended)
+### Option 1: One-Click Startup (Recommended)
 ```bash
-# Windows PowerShell
-.\scripts\start-all-services.ps1
+# Windows
+start.bat
 
-# Linux/Mac
-./scripts/start-all-services.sh
+# Linux/macOS
+chmod +x start.sh
+./start.sh
 
-# Or using Docker Compose directly
-docker-compose up -d
+# Check platform status
+status.bat    # Windows
+./status.sh   # Linux/macOS
+```
+
+### Option 2: Docker Compose Direct
+```bash
+# Start all services
+docker-compose up -d --build
+
+# Check service status
+docker-compose ps
 ```
 
 ### Option 2: Development Mode
@@ -121,7 +132,23 @@ curl http://localhost:8100/api/v1/health  # Account Service
 curl http://localhost:8000/health  # Backend API
 ```
 
-### Option 3: Individual Service Development
+### Option 3: Startup Scripts Features
+
+The provided startup scripts (`start.bat` / `start.sh`) include:
+
+- ✅ **Docker Health Check**: Verify Docker is running
+- ✅ **Service Building**: Build all containers with latest code
+- ✅ **Health Monitoring**: Check each service status
+- ✅ **Auto Browser**: Open applications in browser
+- ✅ **Colored Output**: Easy-to-read status messages
+- ✅ **Error Handling**: Clear error messages and troubleshooting
+
+**Status Scripts** (`status.bat` / `status.sh`):
+- 📊 **Service Status**: Check all running containers
+- 🌐 **Health Checks**: Test HTTP endpoints
+- 📋 **Quick Actions**: Common management commands
+
+### Option 4: Individual Service Development
 ```bash
 # Start only database services
 docker-compose up -d postgres redis
@@ -147,6 +174,7 @@ cd admin_panel && streamlit run admin_app.py --server.port 8502
 
 | Service | URL | Purpose | Type |
 |---------|-----|---------|------|
+| 🌐 **Web App** | http://localhost:3000 | Vue 3 modern web interface with authentication | NEW |
 | 🌐 **API Gateway** | http://localhost:8080 | Unified API entry point | NEW |
 | 📚 **Gateway Docs** | http://localhost:8080/docs | API Gateway documentation | NEW |
 | 👤 **Account Service** | http://localhost:8100 | User authentication & management | NEW |
@@ -156,10 +184,11 @@ cd admin_panel && streamlit run admin_app.py --server.port 8502
 | 🔧 **Backend API** | http://localhost:8000 | RESTful API endpoints | EXISTING |
 | 📚 **Backend Docs** | http://localhost:8000/docs | Backend API documentation | EXISTING |
 | 📊 **Prometheus** | http://localhost:9090 | Metrics collection | EXISTING |
-| 📊 **Grafana** | http://localhost:3000 | Monitoring dashboards | EXISTING |
+| 📊 **Grafana** | http://localhost:3001 | Monitoring dashboards | EXISTING |
 
 ### 🔐 Default Credentials
-- **Admin User**: admin@dealer-dashboard.com / admin123
+- **Web App**: admin@dealer-dashboard.com / Admin123!
+- **Admin User**: admin@dealer-dashboard.com / Admin123!
 - **Grafana**: admin / admin
 
 ## 📊 Analytics Dashboard Features
@@ -403,3 +432,46 @@ If migrating from the original single dashboard:
 ✅ **Reliability**: Service failures don't affect other services  
 
 This split architecture provides a robust, scalable foundation for the Dealer Dashboard system while maintaining the simplicity of the original design.
+
+## 🚀 Production Deployment
+
+### Quick Production Deployment
+```bash
+# 1. Build production images
+./build-production.sh v1.0.0        # Linux/macOS
+build-production.bat v1.0.0         # Windows
+
+# 2. Deploy to AWS
+./deploy-aws.sh ec2
+
+# 3. Access your application
+# URLs will be provided after deployment
+```
+
+### Manual Server Deployment
+```bash
+# 1. Copy files to server
+scp -r . user@your-server:/path/to/app
+
+# 2. Start production services
+./start-production.sh
+
+# 3. Configure domain and SSL
+# Update DNS and certificates
+```
+
+### Production Features
+- ✅ **Multi-stage Docker builds** for optimized images
+- ✅ **AWS automated deployment** with infrastructure setup
+- ✅ **Production environment** configuration
+- ✅ **Health checks** and monitoring
+- ✅ **SSL/TLS support** with Let's Encrypt
+- ✅ **Database backups** and log rotation
+- ✅ **Service management** scripts
+
+## 📚 Documentation
+
+- **[Production Deployment](README-DEPLOYMENT.md)** - Complete deployment guide
+- **[AWS Deployment](DEPLOYMENT-AWS.md)** - AWS-specific instructions
+- **[Startup Scripts](README-STARTUP.md)** - Development startup guide
+- **[Environment Configuration](.env.production)** - Production settings template

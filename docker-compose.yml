@@ -229,9 +229,9 @@ services:
       - DEALER_DASHBOARD_SERVICE_URL=http://backend:8000
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-super-secret-jwt-key-here-change-this-in-production}
       - JWT_ALGORITHM=HS256
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5000,http://localhost:5173,http://localhost:5174,http://localhost:8501,http://localhost:8502
       - LOG_LEVEL=INFO
       - ENVIRONMENT=production
-      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8501,http://localhost:8502
       - RATE_LIMIT_REQUESTS=100
       - RATE_LIMIT_WINDOW=60
     ports:
@@ -246,6 +246,63 @@ services:
       - ./backend-microservices/utils:/app/utils
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Vue 3 Web Application (Port 5000) - PrimeVue with Authentication
+  web_app:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: production
+      args:
+        NODE_ENV: production
+        VITE_API_BASE_URL: http://api_gateway:8080
+    container_name: dealer_web_app
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=http://localhost:8080
+    ports:
+      - "5000:80"
+    depends_on:
+      api_gateway:
+        condition: service_healthy
+    networks:
+      - dealer_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Dashboard Dealer Service (Port 8200) - Analytics Data Aggregation
+  dashboard_dealer_service:
+    build:
+      context: ./backend-microservices
+      dockerfile: ./docker/Dockerfile.dashboard-dealer
+    container_name: dealer_dashboard_dealer_service
+    environment:
+      - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
+      - SERVICE_NAME=dashboard-dealer-service
+      - SERVICE_VERSION=1.0.0
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+    ports:
+      - "8200:8200"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dealer_network
+    volumes:
+      - ./backend-microservices/services/dashboard-dealer:/app
+      - ./backend-microservices/utils:/app/utils
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
