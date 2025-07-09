@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 DOMAIN="autology.id"
-COMPOSE_FILE="docker-compose.yml"
+COMPOSE_FILE="docker-compose.production.yml"
 ENV_FILE=".env"
 
 # Functions
@@ -50,7 +50,7 @@ check_dependencies() {
         exit 1
     fi
     
-    if ! command -v docker-compose &> /dev/null; then
+    if ! command -v docker compose &> /dev/null; then
         log_error "Docker Compose is not installed"
         exit 1
     fi
@@ -136,19 +136,19 @@ deploy_services() {
     
     # Stop existing services
     log_info "Stopping existing services..."
-    docker-compose -f $COMPOSE_FILE down || true
+    docker compose -f $COMPOSE_FILE down || true
     
     # Pull latest images
     log_info "Pulling latest images..."
-    docker-compose -f $COMPOSE_FILE pull || true
+    docker compose -f $COMPOSE_FILE pull || true
     
     # Build services
     log_info "Building services..."
-    docker-compose -f $COMPOSE_FILE build
+    docker compose -f $COMPOSE_FILE build
     
     # Start database and redis first
     log_info "Starting database and redis..."
-    docker-compose -f $COMPOSE_FILE up -d postgres redis
+    docker compose -f $COMPOSE_FILE up -d postgres redis
     
     # Wait for database
     log_info "Waiting for database to be ready..."
@@ -156,7 +156,7 @@ deploy_services() {
     
     # Start backend services
     log_info "Starting backend services..."
-    docker-compose -f $COMPOSE_FILE up -d backend celery_worker celery_beat
+    docker compose -f $COMPOSE_FILE up -d backend celery_worker celery_beat
     
     # Wait for backend
     log_info "Waiting for backend to be ready..."
@@ -164,7 +164,7 @@ deploy_services() {
     
     # Start microservices
     log_info "Starting microservices..."
-    docker-compose -f $COMPOSE_FILE up -d account_service api_gateway dashboard_dealer_service
+    docker compose -f $COMPOSE_FILE up -d account_service api_gateway dashboard_dealer_service
     
     # Wait for API gateway
     log_info "Waiting for API gateway to be ready..."
@@ -172,11 +172,11 @@ deploy_services() {
     
     # Start web application
     log_info "Starting web application..."
-    docker-compose -f $COMPOSE_FILE up -d web_app
+    docker compose -f $COMPOSE_FILE up -d web_app
     
     # Start analytics and admin panels
     log_info "Starting analytics and admin panels..."
-    docker-compose -f $COMPOSE_FILE up -d analytics_dashboard admin_panel
+    docker compose -f $COMPOSE_FILE up -d analytics_dashboard admin_panel
     
     log_success "Services deployed successfully"
 }
@@ -227,7 +227,7 @@ setup_monitoring() {
     log_info "Setting up monitoring..."
     
     # Start monitoring services
-    docker-compose -f $COMPOSE_FILE up -d prometheus grafana
+    docker compose -f $COMPOSE_FILE up -d prometheus grafana
     
     log_success "Monitoring services started"
 }
@@ -252,10 +252,10 @@ show_deployment_info() {
     echo "🛠️  Admin Panel: http://localhost:8502"
     echo ""
     echo "Management Commands:"
-    echo "📋 View logs: docker-compose logs -f"
-    echo "🔄 Restart services: docker-compose restart"
-    echo "🛑 Stop services: docker-compose down"
-    echo "🗑️  Clean up: docker-compose down -v --remove-orphans"
+    echo "📋 View logs: docker compose logs -f"
+    echo "🔄 Restart services: docker compose restart"
+    echo "🛑 Stop services: docker compose down"
+    echo "🗑️  Clean up: docker compose down -v --remove-orphans"
     echo "=================================================="
 }
 
