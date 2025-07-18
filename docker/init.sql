@@ -1167,3 +1167,78 @@ BEGIN
     END IF;
 END
 $$;
+
+-- DP HLO Processor Constraints
+-- DP HLO Data: DP HLO records - Constraint: (dealer_id, id_hlo_document)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_dp_hlo_dealer_document'
+    ) THEN
+        ALTER TABLE dp_hlo_data 
+        ADD CONSTRAINT uq_dp_hlo_dealer_document 
+        UNIQUE (dealer_id, id_hlo_document);
+        
+        RAISE NOTICE 'Added constraint: uq_dp_hlo_dealer_document';
+    ELSE
+        RAISE NOTICE 'Constraint uq_dp_hlo_dealer_document already exists';
+    END IF;
+END
+$$;
+
+-- Unpaid HLO Processor Constraints
+-- Unpaid HLO Data: Unpaid HLO records - Constraint: (dealer_id, id_hlo_document)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_unpaid_hlo_dealer_document'
+    ) THEN
+        ALTER TABLE unpaid_hlo_data 
+        ADD CONSTRAINT uq_unpaid_hlo_dealer_document 
+        UNIQUE (dealer_id, id_hlo_document);
+        
+        RAISE NOTICE 'Added constraint: uq_unpaid_hlo_dealer_document';
+    ELSE
+        RAISE NOTICE 'Constraint uq_unpaid_hlo_dealer_document already exists';
+    END IF;
+END
+$$;
+
+-- Parts Invoice Processor Constraints
+-- Parts Invoice Data: Parts invoice records - Constraint: (dealer_id, no_invoice)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_parts_invoice_dealer_no_invoice'
+    ) THEN
+        ALTER TABLE parts_invoice_data 
+        ADD CONSTRAINT uq_parts_invoice_dealer_no_invoice 
+        UNIQUE (dealer_id, no_invoice);
+        
+        RAISE NOTICE 'Added constraint: uq_parts_invoice_dealer_no_invoice';
+    ELSE
+        RAISE NOTICE 'Constraint uq_parts_invoice_dealer_no_invoice already exists';
+    END IF;
+END
+$$;
+
+-- Parts Invoice Part: Individual parts for parts invoice - Constraint: (parts_invoice_data_id, parts_number, no_po)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_parts_invoice_part_data_id_parts_number_no_po'
+    ) THEN
+        ALTER TABLE parts_invoice_parts 
+        ADD CONSTRAINT uq_parts_invoice_part_data_id_parts_number_no_po 
+        UNIQUE (parts_invoice_data_id, parts_number, no_po);
+        
+        RAISE NOTICE 'Added constraint: uq_parts_invoice_part_data_id_parts_number_no_po';
+    ELSE
+        RAISE NOTICE 'Constraint uq_parts_invoice_part_data_id_parts_number_no_po already exists';
+    END IF;
+END
+$$;
