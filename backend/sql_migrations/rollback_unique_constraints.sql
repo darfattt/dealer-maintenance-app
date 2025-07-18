@@ -165,6 +165,38 @@ BEGIN
 END
 $$;
 
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_spk_dealing_unit_data_id_tipe_warna'
+    ) THEN
+        ALTER TABLE spk_dealing_process_units 
+        DROP CONSTRAINT uq_spk_dealing_unit_data_id_tipe_warna;
+        
+        RAISE NOTICE 'Removed constraint: uq_spk_dealing_unit_data_id_tipe_warna';
+    ELSE
+        RAISE NOTICE 'Constraint uq_spk_dealing_unit_data_id_tipe_warna does not exist';
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_spk_dealing_family_data_id_anggota_kk'
+    ) THEN
+        ALTER TABLE spk_dealing_process_family_members 
+        DROP CONSTRAINT uq_spk_dealing_family_data_id_anggota_kk;
+        
+        RAISE NOTICE 'Removed constraint: uq_spk_dealing_family_data_id_anggota_kk';
+    ELSE
+        RAISE NOTICE 'Constraint uq_spk_dealing_family_data_id_anggota_kk does not exist';
+    END IF;
+END
+$$;
+
 -- =====================================================================
 -- Remove Parts Inbound Processor Constraints
 -- =====================================================================

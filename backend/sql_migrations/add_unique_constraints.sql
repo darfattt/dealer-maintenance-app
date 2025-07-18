@@ -186,6 +186,44 @@ BEGIN
 END
 $$;
 
+-- SPK Dealing Process Unit: Unit details for SPK
+-- Constraint: (spk_dealing_process_data_id, kode_tipe_unit, kode_warna)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_spk_dealing_unit_data_id_tipe_warna'
+    ) THEN
+        ALTER TABLE spk_dealing_process_units 
+        ADD CONSTRAINT uq_spk_dealing_unit_data_id_tipe_warna 
+        UNIQUE (spk_dealing_process_data_id, kode_tipe_unit, kode_warna);
+        
+        RAISE NOTICE 'Added constraint: uq_spk_dealing_unit_data_id_tipe_warna';
+    ELSE
+        RAISE NOTICE 'Constraint uq_spk_dealing_unit_data_id_tipe_warna already exists';
+    END IF;
+END
+$$;
+
+-- SPK Dealing Process Family Member: Family member details for SPK
+-- Constraint: (spk_dealing_process_data_id, anggota_kk)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_spk_dealing_family_data_id_anggota_kk'
+    ) THEN
+        ALTER TABLE spk_dealing_process_family_members 
+        ADD CONSTRAINT uq_spk_dealing_family_data_id_anggota_kk 
+        UNIQUE (spk_dealing_process_data_id, anggota_kk);
+        
+        RAISE NOTICE 'Added constraint: uq_spk_dealing_family_data_id_anggota_kk';
+    ELSE
+        RAISE NOTICE 'Constraint uq_spk_dealing_family_data_id_anggota_kk already exists';
+    END IF;
+END
+$$;
+
 -- =====================================================================
 -- Parts Inbound Processor Constraints
 -- =====================================================================

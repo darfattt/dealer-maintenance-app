@@ -842,6 +842,11 @@ class SPKDealingProcessData(Base):
     modified_time = Column(String(50), nullable=True)
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
+    # Table constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('dealer_id', 'id_spk', name='uq_spk_dealing_dealer_id_spk'),
+    )
+
     # Relationships
     dealer = relationship("Dealer", back_populates="spk_dealing_process_data")
     units = relationship("SPKDealingProcessUnit", back_populates="spk_dealing_process_data", cascade="all, delete-orphan")
@@ -869,6 +874,11 @@ class SPKDealingProcessUnit(Base):
     created_time = Column(String(50), nullable=True)
     modified_time = Column(String(50), nullable=True)
 
+    # Table constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('spk_dealing_process_data_id', 'kode_tipe_unit', 'kode_warna', name='uq_spk_dealing_unit_data_id_tipe_warna'),
+    )
+
     # Relationships
     spk_dealing_process_data = relationship("SPKDealingProcessData", back_populates="units")
 
@@ -882,6 +892,11 @@ class SPKDealingProcessFamilyMember(Base):
     anggota_kk = Column(String(200), nullable=True)
     created_time = Column(String(50), nullable=True)
     modified_time = Column(String(50), nullable=True)
+
+    # Table constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('spk_dealing_process_data_id', 'anggota_kk', name='uq_spk_dealing_family_data_id_anggota_kk'),
+    )
 
     # Relationships
     spk_dealing_process_data = relationship("SPKDealingProcessData", back_populates="family_members")

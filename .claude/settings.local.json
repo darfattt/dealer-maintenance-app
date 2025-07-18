@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(grep:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(ls:*)",
+      "Bash(python3:*)",
+      "Bash(rm:*)",
+      "Bash(python test_pkb_processor_fixes.py)"
     ],
     "deny": []
   }
