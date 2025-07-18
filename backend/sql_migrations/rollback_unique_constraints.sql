@@ -354,6 +354,82 @@ END
 $$;
 
 -- =====================================================================
+-- Remove DP HLO Processor Constraints
+-- =====================================================================
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_dp_hlo_dealer_document'
+    ) THEN
+        ALTER TABLE dp_hlo_data 
+        DROP CONSTRAINT uq_dp_hlo_dealer_document;
+        
+        RAISE NOTICE 'Removed constraint: uq_dp_hlo_dealer_document';
+    ELSE
+        RAISE NOTICE 'Constraint uq_dp_hlo_dealer_document does not exist';
+    END IF;
+END
+$$;
+
+-- =====================================================================
+-- Remove Unpaid HLO Processor Constraints
+-- =====================================================================
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_unpaid_hlo_dealer_document'
+    ) THEN
+        ALTER TABLE unpaid_hlo_data 
+        DROP CONSTRAINT uq_unpaid_hlo_dealer_document;
+        
+        RAISE NOTICE 'Removed constraint: uq_unpaid_hlo_dealer_document';
+    ELSE
+        RAISE NOTICE 'Constraint uq_unpaid_hlo_dealer_document does not exist';
+    END IF;
+END
+$$;
+
+-- =====================================================================
+-- Remove Parts Invoice Processor Constraints
+-- =====================================================================
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_parts_invoice_dealer_no_invoice'
+    ) THEN
+        ALTER TABLE parts_invoice_data 
+        DROP CONSTRAINT uq_parts_invoice_dealer_no_invoice;
+        
+        RAISE NOTICE 'Removed constraint: uq_parts_invoice_dealer_no_invoice';
+    ELSE
+        RAISE NOTICE 'Constraint uq_parts_invoice_dealer_no_invoice does not exist';
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_parts_invoice_part_data_id_parts_number_no_po'
+    ) THEN
+        ALTER TABLE parts_invoice_parts 
+        DROP CONSTRAINT uq_parts_invoice_part_data_id_parts_number_no_po;
+        
+        RAISE NOTICE 'Removed constraint: uq_parts_invoice_part_data_id_parts_number_no_po';
+    ELSE
+        RAISE NOTICE 'Constraint uq_parts_invoice_part_data_id_parts_number_no_po does not exist';
+    END IF;
+END
+$$;
+
+-- =====================================================================
 -- Commit rollback transaction
 -- =====================================================================
 
