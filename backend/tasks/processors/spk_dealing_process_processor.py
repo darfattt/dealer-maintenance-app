@@ -244,13 +244,11 @@ class SPKDealingProcessDataProcessor(BaseDataProcessor):
                     batch_size=500
                 )
 
-            db.commit()
             self.logger.info(f"Successfully processed {main_processed} SPK records, {unit_processed} units, and {family_processed} family members for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             self.logger.error(f"Error processing SPK dealing process records for dealer {dealer_id}: {e}")
             raise
     

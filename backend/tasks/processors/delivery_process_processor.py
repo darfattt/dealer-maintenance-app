@@ -173,19 +173,18 @@ class DeliveryProcessDataProcessor(BaseDataProcessor):
                             valid_details.append(detail)
 
                     if valid_details:
-                        # Bulk insert details (no conflict resolution needed as they're child records)
+                        # Note: Child records don't typically need conflict resolution, but we'll use bulk_upsert for consistency
+                        # If needed, add appropriate conflict_columns later
                         for chunk in self.process_in_chunks(valid_details, chunk_size=1000):
                             db.bulk_insert_mappings(DeliveryProcessDetail, chunk)
 
                         logger.info(f"Processed {len(valid_details)} delivery process details for dealer {dealer_id}")
 
-            db.commit()
             logger.info(f"Successfully processed {main_processed} delivery process records for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             logger.error(f"Error processing delivery process records for dealer {dealer_id}: {e}")
             raise
     

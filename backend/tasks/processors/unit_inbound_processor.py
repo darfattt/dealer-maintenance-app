@@ -184,19 +184,22 @@ class UnitInboundDataProcessor(BaseDataProcessor):
                             valid_units.append(unit)
 
                     if valid_units:
-                        # Bulk insert units (no conflict resolution needed as they're child records)
-                        for chunk in self.process_in_chunks(valid_units, chunk_size=1000):
-                            db.bulk_insert_mappings(UnitInboundUnit, chunk)
+                        # Bulk upsert units with conflict resolution
+                        units_processed = self.bulk_upsert(
+                            db,
+                            UnitInboundUnit,
+                            valid_units,
+                            conflict_columns=['unit_inbound_data_id', 'no_rangka'],
+                            batch_size=500
+                        )
 
-                        logger.info(f"Processed {len(valid_units)} unit inbound units for dealer {dealer_id}")
+                        logger.info(f"Processed {units_processed} unit inbound units for dealer {dealer_id}")
 
-            db.commit()
             logger.info(f"Successfully processed {main_processed} unit inbound records for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             logger.error(f"Error processing unit inbound records for dealer {dealer_id}: {e}")
             raise
     

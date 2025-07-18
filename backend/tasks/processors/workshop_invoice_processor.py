@@ -220,13 +220,11 @@ class WorkshopInvoiceDataProcessor(BaseDataProcessor):
                         batch_size=500
                     )
 
-            db.commit()
             self.logger.info(f"Successfully processed {main_processed} workshop invoices, {njb_processed} NJB services, and {nsc_processed} NSC parts for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             self.logger.error(f"Error processing workshop invoice records for dealer {dealer_id}: {e}")
             raise
     

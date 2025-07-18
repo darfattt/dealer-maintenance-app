@@ -158,13 +158,11 @@ class PartsInboundDataProcessor(BaseDataProcessor):
 
                         self.logger.info(f"Processed {len(valid_pos)} parts inbound PO items for dealer {dealer_id}")
 
-            db.commit()
             self.logger.info(f"Successfully processed {main_processed} parts inbound records for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             self.logger.error(f"Error processing parts inbound records for dealer {dealer_id}: {e}")
             raise
 

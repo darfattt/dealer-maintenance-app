@@ -173,13 +173,11 @@ class DPHLODataProcessor(BaseDataProcessor):
 
                         logger.info(f"Processed {len(valid_parts)} DP HLO parts for dealer {dealer_id}")
 
-            db.commit()
             logger.info(f"Successfully processed {main_processed} DP HLO records for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             logger.error(f"Error processing DP HLO records for dealer {dealer_id}: {e}")
             raise
     

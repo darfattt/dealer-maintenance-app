@@ -176,13 +176,11 @@ class PartsSalesDataProcessor(BaseDataProcessor):
                     batch_size=500
                 )
 
-            db.commit()
             self.logger.info(f"Successfully processed {main_processed} parts sales records and {part_processed} parts for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             self.logger.error(f"Error processing parts sales records for dealer {dealer_id}: {e}")
             raise
     

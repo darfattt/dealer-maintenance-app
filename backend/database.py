@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Date, Time, Integer, Text, ForeignKey, Float, JSON, Numeric
+from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Date, Time, Integer, Text, ForeignKey, Float, JSON, Numeric,UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -212,6 +212,11 @@ class PKBData(Base):
     modified_time = Column(String(50))
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('dealer_id', 'no_work_order', name='uq_pkb_dealer_work_order'),
+    )
+
     # Relationships
     dealer = relationship("Dealer", back_populates="pkb_data")
     services = relationship("PKBService", back_populates="pkb_data", cascade="all, delete-orphan")
@@ -233,6 +238,11 @@ class PKBService(Base):
     created_time = Column(String(50))
     modified_time = Column(String(50))
 
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('pkb_data_id', 'id_job', name='uq_pkb_service_data_id_job'),
+    )
+
     # Relationships
     pkb_data = relationship("PKBData", back_populates="services")
 
@@ -253,6 +263,11 @@ class PKBPart(Base):
     kuantitas = Column(Integer)
     created_time = Column(String(50))
     modified_time = Column(String(50))
+
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('pkb_data_id', 'id_job', 'parts_number', name='uq_pkb_part_data_id_job_parts_number'),
+    )
 
     # Relationships
     pkb_data = relationship("PKBData", back_populates="parts")
