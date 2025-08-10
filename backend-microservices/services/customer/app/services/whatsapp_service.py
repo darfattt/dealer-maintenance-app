@@ -33,18 +33,20 @@ class WhatsAppService:
     
     def _create_message_template(self, customer_name: str, unit_type: str, license_plate: str, dealer_name: str) -> str:
         """Create WhatsApp message template"""
-        message = f"""Halo {customer_name},
+        message = f"""Salam Satu Hati🙏,
 
-Terima kasih telah melakukan validasi customer untuk unit {unit_type} dengan nomor polisi {license_plate}.
+Halo👋, Bpk/ Ibu {customer_name}, terima kasih ya sudah datang di AHASS kami yaitu AHASS {dealer_name}.
+Motor {unit_type} dengan nopol {license_plate} bentar lagi akan mendapat penanganan ya!
 
-Data Anda telah kami terima dan sedang dalam proses verifikasi oleh tim {dealer_name}.
+Oh iya sambil nunggu penanganan, di bengkel kami terdapat WIFI yang dapat digunakan oleh
+Bapak/ Ibu, untuk passwordnya bisa ditanyakan ke SA yang bertugas ya🥳
+Bpk/ Ibu juga bisa mencicipi kopi, teh dan snack gratis yang sudah disediakan☺️
 
-Kami akan menghubungi Anda kembali untuk proses selanjutnya.
+Jika Bpk/ Ibu {customer_name} membutuhkan bantuan, silahkan hubungi SA yang bertugas
+siap memberikan pertolongan☺️
 
-Terima kasih atas kepercayaan Anda.
-
-Best regards,
-{dealer_name}"""
+Terima kasih,
+Salam Satu Hati."""
         
         return message
     

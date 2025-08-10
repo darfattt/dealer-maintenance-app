@@ -13,7 +13,8 @@ from app.schemas.customer_validation_request import (
     CustomerValidationResponse,
     CustomerValidationRequestResponse
 )
-from app.dependencies import get_db
+from app.dependencies import get_db, get_dealer_from_access_key
+from app.models.dealer_access_key import DealerAccessKey
 
 logger = logging.getLogger(__name__)
 
@@ -24,26 +25,44 @@ router = APIRouter(prefix="/customer", tags=["Customer Validation"])
     "/validate-customer",
     response_model=CustomerValidationResponse,
     summary="Validate customer and send WhatsApp notification",
-    description="Process customer validation request, store in database, and send WhatsApp notification via Fonnte API"
+    description="Process customer validation request with access key authentication, store in database, and send WhatsApp notification via Fonnte API"
 )
 async def validate_customer(
     request: CustomerValidationRequestCreate,
+    access_key_record: DealerAccessKey = Depends(get_dealer_from_access_key),
     db: Session = Depends(get_db)
 ) -> CustomerValidationResponse:
     """
     Validate customer data and send WhatsApp notification
     
     This endpoint:
-    1. Validates the dealer exists and has Fonnte configuration
-    2. Stores the request in the database
-    3. Sends a WhatsApp message to the customer
-    4. Returns a success confirmation
+    1. Validates access key authentication (dealer identification)
+    2. Validates that dealerId in request matches access key dealer
+    3. Validates dealer exists and has Fonnte configuration
+    4. Stores the request in the database
+    5. Sends a WhatsApp message to the customer
+    6. Returns a success confirmation
+    
+    Authentication: Requires X-Access-Key header with valid access key
     """
     try:
+        # Validate that dealer ID in request matches the access key dealer
+        if request.dealerId != access_key_record.dealer_id:
+            logger.warning(f"Dealer ID mismatch: request={request.dealerId}, access_key={access_key_record.dealer_id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Dealer ID in request body ({request.dealerId}) does not match access key dealer ({access_key_record.dealer_id})"
+            )
+        
+        logger.info(f"Dealer ID validation passed: {request.dealerId}")
+        
+        # Dealer ID is already correct, no need to override
+        # request.dealerId = access_key_record.dealer_id
+        
         controller = CustomerController(db)
         result = await controller.validate_customer(request)
         
-        logger.info(f"Customer validation processed for dealer {request.dealerId}, customer {request.namaPembawa}")
+        logger.info(f"Customer validation processed for dealer {access_key_record.dealer_id}, customer {request.namaPembawa}")
         
         return result
         

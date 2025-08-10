@@ -13,6 +13,7 @@ from app.services.whatsapp_service import WhatsAppService
 from app.schemas.customer_validation_request import (
     CustomerValidationRequestCreate,
     CustomerValidationResponse,
+    CustomerValidationResponseData,
     WhatsAppMessageRequest
 )
 
@@ -27,6 +28,33 @@ class CustomerController:
         self.customer_repo = CustomerValidationRequestRepository(db)
         self.dealer_repo = DealerConfigRepository(db)
         self.whatsapp_service = WhatsAppService(self.dealer_repo)
+    
+    def _determine_whatsapp_status(self, whatsapp_response) -> str:
+        """
+        Determine WhatsApp status based on Fonnte API response
+        
+        Args:
+            whatsapp_response: WhatsAppMessageResponse object
+            
+        Returns:
+            str: WhatsApp status ('SENT', 'FAILED', 'ERROR')
+        """
+        if not whatsapp_response.success:
+            return 'ERROR'
+        
+        # Check Fonnte API response data
+        response_data = whatsapp_response.response_data or {}
+        
+        # If status is explicitly false, it's failed
+        if response_data.get('status') == False:
+            return 'FAILED'
+        
+        # If status is true, it's sent (or queued but we'll treat as sent)
+        if response_data.get('status') == True:
+            return 'SENT'
+        
+        # If no status field or unclear, default to ERROR
+        return 'ERROR'
     
     async def validate_customer(self, request_data: CustomerValidationRequestCreate) -> CustomerValidationResponse:
         """Handle customer validation request"""
@@ -74,25 +102,60 @@ class CustomerController:
             try:
                 whatsapp_response = await self.whatsapp_service.send_customer_validation_message(whatsapp_request)
                 
+                # Get the generated WhatsApp message from the service
+                whatsapp_message = self.whatsapp_service._create_message_template(
+                    customer_name=request_data.namaPembawa,
+                    unit_type=request_data.tipeUnit,
+                    license_plate=request_data.noPol,
+                    dealer_name=self.dealer_repo.get_dealer_name(request_data.dealerId) or "Dealer"
+                )
+                
+                # Determine WhatsApp status based on response
+                whatsapp_status = self._determine_whatsapp_status(whatsapp_response)
+                
                 # Update request status based on WhatsApp response
                 if whatsapp_response.success:
+                    request_status = 'PROCESSED'
                     self.customer_repo.update_status(
                         request_id=str(db_request.id),
-                        request_status='PROCESSED',
-                        whatsapp_status='SENT',
+                        request_status=request_status,
+                        whatsapp_status=whatsapp_status,
+                        whatsapp_message=whatsapp_message,
                         fonnte_response=whatsapp_response.response_data,
                         modified_by='system'
                     )
                     logger.info(f"WhatsApp message sent successfully for request {db_request.id}")
                 else:
+                    request_status = 'FAILED'
                     self.customer_repo.update_status(
                         request_id=str(db_request.id),
-                        request_status='FAILED',
-                        whatsapp_status='FAILED',
+                        request_status=request_status,
+                        whatsapp_status=whatsapp_status,
+                        whatsapp_message=whatsapp_message,
                         fonnte_response=whatsapp_response.response_data,
                         modified_by='system'
                     )
                     logger.error(f"WhatsApp message failed for request {db_request.id}: {whatsapp_response.message}")
+                
+                # Get updated request from database
+                updated_request = self.customer_repo.get_by_id(str(db_request.id))
+                
+                # Return detailed response with data
+                response_data = CustomerValidationResponseData(
+                    request_id=str(updated_request.id),
+                    dealer_id=updated_request.dealer_id,
+                    request_status=updated_request.request_status,
+                    whatsapp_status=updated_request.whatsapp_status,
+                    whatsapp_message=updated_request.whatsapp_message or "",
+                    created_at=updated_request.created_date.isoformat(),
+                    fonnte_response={"status": "success"}
+                )
+                
+                return CustomerValidationResponse(
+                    status=1,
+                    message={"confirmation": "Data berhasil disimpan"},
+                    data=response_data
+                )
                 
             except Exception as e:
                 logger.error(f"Error sending WhatsApp message for request {db_request.id}: {str(e)}")
@@ -103,13 +166,23 @@ class CustomerController:
                     fonnte_response={"error": str(e)},
                     modified_by='system'
                 )
-            
-            # Step 5: Return success response (regardless of WhatsApp status for now)
-            return CustomerValidationResponse(
-                status=1,
-                message={"confirmation": "Data berhasil disimpan"},
-                data=None
-            )
+                
+                # Return error response with basic data
+                response_data = CustomerValidationResponseData(
+                    request_id=str(db_request.id),
+                    dealer_id=db_request.dealer_id,
+                    request_status='FAILED',
+                    whatsapp_status='ERROR',
+                    whatsapp_message="",
+                    created_at=db_request.created_date.isoformat(),
+                    fonnte_response={"error": str(e)}
+                )
+                
+                return CustomerValidationResponse(
+                    status=1,
+                    message={"confirmation": "Data berhasil disimpan"},
+                    data=response_data
+                )
             
         except Exception as e:
             logger.error(f"Unexpected error in validate_customer: {str(e)}")
@@ -244,22 +317,19 @@ class CustomerController:
             )
             
             # Get general request counts
-            total_requests = self.customer_repo.count_requests_by_dealer(
-                dealer_id=dealer_id,
-                date_from=parsed_date_from,
-                date_to=parsed_date_to
-            )
-            pending_requests = len(self.customer_repo.get_requests_by_status('PENDING'))
-            processed_requests = len(self.customer_repo.get_requests_by_status('PROCESSED'))
-            failed_requests = len(self.customer_repo.get_requests_by_status('FAILED'))
+            # total_requests = self.customer_repo.count_requests_by_dealer(
+            #     dealer_id=dealer_id,
+            #     date_from=parsed_date_from,
+            #     date_to=parsed_date_to
+            # )
+            #pending_requests = len(self.customer_repo.get_requests_by_status('PENDING'))
+            #processed_requests = len(self.customer_repo.get_requests_by_status('PROCESSED'))
+            #failed_requests = len(self.customer_repo.get_requests_by_status('FAILED'))
             
             # Merge all stats
             combined_stats = {
                 **dealer_stats,
-                **whatsapp_stats,
-                "pending_requests": pending_requests,
-                "processed_requests": processed_requests,
-                "failed_requests": failed_requests
+                **whatsapp_stats
             }
             
             return {

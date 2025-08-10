@@ -14,8 +14,8 @@ class CustomerValidationRequestCreate(BaseModel):
     noTelp: str = Field(..., min_length=8, max_length=20, description="Phone number")
     tipeUnit: str = Field(..., min_length=1, max_length=100, description="Unit type")
     noPol: str = Field(..., min_length=1, max_length=20, description="License plate number")
-    createdTime: str = Field(..., description="Created time in format 'DD/MM/YYYY HH:mm:ss'")
-    modifiedTime: str = Field(..., description="Modified time in format 'DD/MM/YYYY HH:mm:ss'")
+    createdTime: Optional[str] = Field(None, description="Created time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
+    modifiedTime: Optional[str] = Field(None, description="Modified time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
     dealerId: str = Field(..., min_length=4, max_length=10, description="Dealer ID")
     
     @field_validator('noTelp')
@@ -36,7 +36,10 @@ class CustomerValidationRequestCreate(BaseModel):
     @field_validator('createdTime', 'modifiedTime')
     @classmethod
     def validate_datetime_format(cls, v):
-        """Validate datetime format DD/MM/YYYY HH:mm:ss"""
+        """Validate datetime format DD/MM/YYYY HH:mm:ss (optional fields)"""
+        if v is None:
+            return v
+        
         try:
             datetime.strptime(v, '%d/%m/%Y %H:%M:%S')
         except ValueError:
@@ -50,9 +53,39 @@ class CustomerValidationRequestCreate(BaseModel):
                 "noTelp": "082148523421",
                 "tipeUnit": "BeAT Street",
                 "noPol": "D 123 AD",
-                "createdTime": "31/12/2019 15:40:50",
-                "modifiedTime": "31/12/2019 15:40:50",
                 "dealerId": "0009999"
+            }
+        }
+
+
+class CustomerValidationResponseData(BaseModel):
+    """Schema for customer validation response data"""
+    
+    request_id: str = Field(..., description="Request UUID")
+    dealer_id: str = Field(..., description="Dealer ID")
+    request_status: str = Field(..., description="Request processing status")
+    whatsapp_status: str = Field(..., description="WhatsApp message status")
+    whatsapp_message: str = Field(..., description="WhatsApp message content")
+    created_at: str = Field(..., description="Request creation timestamp")
+    fonnte_response: Optional[Dict[str, Any]] = Field(None, description="Fonnte API response data")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                "dealer_id": "12284",
+                "request_status": "PROCESSED",
+                "whatsapp_status": "SENT",
+                "whatsapp_message": "Halo John,\n\nTerima kasih telah melakukan validasi customer untuk unit Motor dengan nomor polisi B1234ABC...",
+                "created_at": "2025-01-10T10:30:00.000Z",
+                "fonnte_response": {
+                    "detail": "success! message in queue",
+                    "id": ["80367170"],
+                    "process": "pending",
+                    "requestid": 2937124,
+                    "status": True,
+                    "target": ["6282227097005"]
+                }
             }
         }
 
@@ -62,7 +95,7 @@ class CustomerValidationResponse(BaseModel):
     
     status: int = Field(..., description="Status code (1 for success)")
     message: Dict[str, str] = Field(..., description="Response message")
-    data: Optional[Any] = Field(None, description="Response data")
+    data: Optional[CustomerValidationResponseData] = Field(None, description="Response data")
     
     class Config:
         json_schema_extra = {
@@ -71,7 +104,19 @@ class CustomerValidationResponse(BaseModel):
                 "message": {
                     "confirmation": "Data berhasil disimpan"
                 },
-                "data": None
+                "data": {
+                    "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "dealer_id": "12284",
+                    "request_status": "PROCESSED",
+                    "whatsapp_status": "SENT",
+                    "whatsapp_message": "Halo John,\n\nTerima kasih telah melakukan validasi customer...",
+                    "created_at": "2025-01-10T10:30:00.000Z",
+                    "fonnte_response": {
+                        "status": True,
+                        "id": ["80367170"],
+                        "requestid": 2937124
+                    }
+                }
             }
         }
 

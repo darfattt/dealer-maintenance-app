@@ -81,6 +81,11 @@ class DealerConfigRepository:
         dealer = self.get_by_dealer_id(dealer_id)
         return dealer is not None
     
+    def get_dealer_name(self, dealer_id: str) -> Optional[str]:
+        """Get dealer name by dealer ID"""
+        dealer = self.get_by_dealer_id(dealer_id)
+        return dealer.dealer_name if dealer else None
+    
     def validate_dealer_fonnte_config(self, dealer_id: str) -> tuple[bool, Optional[str]]:
         """Validate if dealer has Fonnte configuration"""
         dealer = self.get_by_dealer_id(dealer_id)

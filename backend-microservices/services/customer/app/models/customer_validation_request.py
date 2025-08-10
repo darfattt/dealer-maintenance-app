@@ -4,7 +4,7 @@ Customer validation request model for customer service
 
 import uuid
 from datetime import datetime, date, time
-from sqlalchemy import Column, String, DateTime, Date, Time, JSON, ForeignKey
+from sqlalchemy import Column, String, DateTime, Date, Time, JSON, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -38,6 +38,9 @@ class CustomerValidationRequest(Base):
     request_status = Column(String(20), nullable=False, default='PENDING')
     whatsapp_status = Column(String(20), nullable=False, default='NOT_SENT')
     
+    # WhatsApp message content
+    whatsapp_message = Column(Text, nullable=True)
+    
     # Fonnte API response
     fonnte_response = Column(JSON, nullable=True)
     
@@ -63,6 +66,7 @@ class CustomerValidationRequest(Base):
             "no_pol": self.no_pol,
             "request_status": self.request_status,
             "whatsapp_status": self.whatsapp_status,
+            "whatsapp_message": self.whatsapp_message,
             "fonnte_response": self.fonnte_response,
             "created_by": self.created_by,
             "created_date": self.created_date.isoformat() if self.created_date else None,

@@ -36,8 +36,6 @@ class DealerConfig(Base):
     # Contact information
     phone_number = Column(String(255), nullable=True)
     
-    # Autology integration
-    autology_access_key = Column(String(255), nullable=True)
     
     # Status
     is_active = Column(Boolean, default=True)
@@ -58,7 +56,6 @@ class DealerConfig(Base):
             "has_fonnte_config": bool(self.fonnte_api_key),
             "fonnte_api_url": self.fonnte_api_url,
             "phone_number": self.phone_number,
-            "has_autology_config": bool(self.autology_access_key),
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

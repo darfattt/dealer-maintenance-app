@@ -20,9 +20,18 @@ class CustomerValidationRequestRepository:
     def create(self, request_data: CustomerValidationRequestCreate, created_by: Optional[str] = None) -> CustomerValidationRequest:
         """Create a new customer validation request"""
         try:
-            # Parse the datetime strings
-            created_datetime = datetime.strptime(request_data.createdTime, '%d/%m/%Y %H:%M:%S')
-            modified_datetime = datetime.strptime(request_data.modifiedTime, '%d/%m/%Y %H:%M:%S')
+            # Parse the datetime strings or use current time as default
+            current_time = datetime.utcnow()
+            
+            if request_data.createdTime:
+                created_datetime = datetime.strptime(request_data.createdTime, '%d/%m/%Y %H:%M:%S')
+            else:
+                created_datetime = current_time
+                
+            if request_data.modifiedTime:
+                modified_datetime = datetime.strptime(request_data.modifiedTime, '%d/%m/%Y %H:%M:%S')
+            else:
+                modified_datetime = current_time
             
             # Create the model instance
             db_request = CustomerValidationRequest(
@@ -68,10 +77,11 @@ class CustomerValidationRequestRepository:
         request_id: str, 
         request_status: Optional[str] = None,
         whatsapp_status: Optional[str] = None,
+        whatsapp_message: Optional[str] = None,
         fonnte_response: Optional[dict] = None,
         modified_by: Optional[str] = None
     ) -> Optional[CustomerValidationRequest]:
-        """Update customer validation request status"""
+        """Update customer validation request status and WhatsApp message"""
         try:
             db_request = self.get_by_id(request_id)
             if not db_request:
@@ -82,6 +92,9 @@ class CustomerValidationRequestRepository:
             
             if whatsapp_status:
                 db_request.whatsapp_status = whatsapp_status
+            
+            if whatsapp_message:
+                db_request.whatsapp_message = whatsapp_message
             
             if fonnte_response:
                 db_request.fonnte_response = fonnte_response
@@ -144,10 +157,8 @@ class CustomerValidationRequestRepository:
         total_requests = query.count()
         
         # Count by WhatsApp status
-        delivered_count = query.filter(CustomerValidationRequest.whatsapp_status == 'delivered').count()
-        failed_count = query.filter(CustomerValidationRequest.whatsapp_status == 'failed').count()
-        sent_count = query.filter(CustomerValidationRequest.whatsapp_status == 'sent').count()
-        not_sent_count = query.filter(CustomerValidationRequest.whatsapp_status == 'not_sent').count()
+        delivered_count = query.filter(CustomerValidationRequest.whatsapp_status == 'SENT').count()
+        failed_count = query.filter(CustomerValidationRequest.whatsapp_status == 'FAILED').count()
         
         # Calculate delivery percentage
         delivery_percentage = round((delivered_count / total_requests * 100) if total_requests > 0 else 0, 2)
@@ -156,8 +167,6 @@ class CustomerValidationRequestRepository:
             'total_requests': total_requests,
             'delivered_count': delivered_count,
             'failed_count': failed_count,
-            'sent_count': sent_count,
-            'not_sent_count': not_sent_count,
             'delivery_percentage': delivery_percentage
         }
     
