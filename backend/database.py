@@ -44,6 +44,8 @@ class Dealer(Base):
     api_key = Column(String(255))
     api_token = Column(String(255))
     secret_key = Column(String(255))
+    fonnte_api_key = Column(String(255), nullable=True)
+    fonnte_api_url = Column(String(255), nullable=True, default='https://api.fonnte.com/send')
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

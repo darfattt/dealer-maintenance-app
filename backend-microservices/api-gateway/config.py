@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     
     # Service URLs
     account_service_url: str = "http://account_service:8100"
+    customer_service_url: str = "http://customer_service:8300"
     dealer_dashboard_service_url: str = "http://backend:8000"
     dashboard_dealer_service_url: str = "http://dashboard_dealer_service:8200"
     
@@ -57,6 +58,7 @@ class Settings(BaseSettings):
             "/api/v1/auth": self.account_service_url,
             "/api/v1/users": self.account_service_url,
             "/api/v1/health": self.account_service_url,
+            "/api/v1/customer": self.customer_service_url,
             "/api/v1/dealers": self.dealer_dashboard_service_url,
             "/api/v1/dashboard": self.dashboard_dealer_service_url,
             "/api/v1/jobs": self.dealer_dashboard_service_url,
