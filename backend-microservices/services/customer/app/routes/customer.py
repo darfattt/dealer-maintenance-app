@@ -13,8 +13,7 @@ from app.schemas.customer_validation_request import (
     CustomerValidationResponse,
     CustomerValidationRequestResponse
 )
-from app.dependencies import get_db, get_dealer_from_access_key
-from app.models.dealer_access_key import DealerAccessKey
+from app.dependencies import get_db, get_current_user, UserContext
 
 logger = logging.getLogger(__name__)
 
@@ -25,47 +24,48 @@ router = APIRouter(prefix="/customer", tags=["Customer Validation"])
     "/validate-customer",
     response_model=CustomerValidationResponse,
     summary="Validate customer and send WhatsApp notification",
-    description="Process customer validation request with access key authentication, store in database, and send WhatsApp notification via Fonnte API"
+    description="Process customer validation request with JWT Bearer token authentication, store in database, and send WhatsApp notification via Fonnte API"
 )
 async def validate_customer(
     request: CustomerValidationRequestCreate,
-    access_key_record: DealerAccessKey = Depends(get_dealer_from_access_key),
+    current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> CustomerValidationResponse:
     """
     Validate customer data and send WhatsApp notification
     
     This endpoint:
-    1. Validates access key authentication (dealer identification)
-    2. Validates that dealerId in request matches access key dealer
-    3. Validates dealer exists and has Fonnte configuration
-    4. Stores the request in the database
-    5. Sends a WhatsApp message to the customer
-    6. Returns a success confirmation
+    1. Validates JWT Bearer token authentication (user identification)
+    2. Validates dealer exists and has Fonnte configuration
+    3. Stores the request in the database
+    4. Sends a WhatsApp message to the customer
+    5. Returns a success confirmation
     
-    Authentication: Requires X-Access-Key header with valid access key
+    Authentication: Requires Authorization: Bearer <token> header with valid JWT token
     """
     try:
-        # Validate that dealer ID in request matches the access key dealer
-        if request.dealerId != access_key_record.dealer_id:
-            logger.warning(f"Dealer ID mismatch: request={request.dealerId}, access_key={access_key_record.dealer_id}")
+        # Use dealer_id from authenticated user context
+        dealer_id = current_user.dealer_id
+        
+        if not dealer_id:
+            logger.warning(f"User {current_user.email} does not have a dealer_id")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Dealer ID in request body ({request.dealerId}) does not match access key dealer ({access_key_record.dealer_id})"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is not associated with a dealer"
             )
         
-        logger.info(f"Dealer ID validation passed: {request.dealerId}")
-        
-        # Dealer ID is already correct, no need to override
-        # request.dealerId = access_key_record.dealer_id
+        logger.info(f"Processing customer validation for dealer {dealer_id}, user {current_user.email}")
         
         controller = CustomerController(db)
-        result = await controller.validate_customer(request)
+        result = await controller.validate_customer(request, dealer_id)
         
-        logger.info(f"Customer validation processed for dealer {access_key_record.dealer_id}, customer {request.namaPembawa}")
+        logger.info(f"Customer validation processed for dealer {dealer_id}, customer {request.namaPembawa}")
         
         return result
         
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         logger.error(f"Error processing customer validation: {str(e)}")
         raise HTTPException(

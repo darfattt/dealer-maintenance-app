@@ -190,7 +190,7 @@ class TestCustomerController:
             
             # Verify
             assert result.status == 1
-            assert result.message["confirmation"] == "Data berhasil disimpan"
+            assert result.message["confirmation"] == "Data berhasil diproses"
     
     @pytest.mark.asyncio
     async def test_validate_customer_dealer_not_found(self, test_db, sample_customer_request):
@@ -243,7 +243,7 @@ class TestCustomerAPI:
             
             mock_response = Mock()
             mock_response.status = 1
-            mock_response.message = {"confirmation": "Data berhasil disimpan"}
+            mock_response.message = {"confirmation": "Data berhasil diproses"}
             mock_response.data = None
             mock_controller.validate_customer.return_value = mock_response
             
@@ -257,7 +257,7 @@ class TestCustomerAPI:
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == 1
-            assert data["message"]["confirmation"] == "Data berhasil disimpan"
+            assert data["message"]["confirmation"] == "Data berhasil diproses"
 
 
 class TestSchemaValidation:

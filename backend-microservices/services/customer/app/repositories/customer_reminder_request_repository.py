@@ -1,0 +1,257 @@
+"""
+Customer reminder request repository
+"""
+
+from typing import Optional, List
+from datetime import datetime, date, time
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.models.customer_reminder_request import CustomerReminderRequest
+from app.schemas.customer_reminder_request import CustomerReminderRequestCreate
+
+
+class CustomerReminderRequestRepository:
+    """Repository for customer reminder request operations"""
+    
+    def __init__(self, db: Session):
+        self.db = db
+    
+    def create(self, request_data: CustomerReminderRequestCreate, created_by: Optional[str] = None) -> CustomerReminderRequest:
+        """Create a new customer reminder request"""
+        try:
+            # Parse the datetime strings or use current time as default
+            current_time = datetime.utcnow()
+            
+            if request_data.createdTime:
+                created_datetime = datetime.strptime(request_data.createdTime, '%d/%m/%Y %H:%M:%S')
+            else:
+                created_datetime = current_time
+                
+            if request_data.modifiedTime:
+                modified_datetime = datetime.strptime(request_data.modifiedTime, '%d/%m/%Y %H:%M:%S')
+            else:
+                modified_datetime = current_time
+            
+            # Create the model instance
+            db_request = CustomerReminderRequest(
+                dealer_id=request_data.dealerId,
+                request_date=created_datetime.date(),
+                request_time=created_datetime.time(),
+                customer_name=request_data.customerName,
+                no_telp=request_data.noTelp,
+                reminder_type=request_data.reminderType,
+                request_status='PENDING',
+                whatsapp_status='NOT_SENT',
+                created_by=created_by or 'system',
+                created_date=created_datetime,
+                last_modified_by=created_by or 'system',
+                last_modified_date=modified_datetime
+            )
+            
+            self.db.add(db_request)
+            self.db.commit()
+            self.db.refresh(db_request)
+            
+            return db_request
+            
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise e
+    
+    def get_by_id(self, request_id: str) -> Optional[CustomerReminderRequest]:
+        """Get customer reminder request by ID"""
+        return self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.id == request_id
+        ).first()
+    
+    def get_by_dealer_id(self, dealer_id: str, limit: int = 100) -> List[CustomerReminderRequest]:
+        """Get customer reminder requests by dealer ID"""
+        return self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        ).order_by(CustomerReminderRequest.created_date.desc()).limit(limit).all()
+    
+    def update_status(
+        self, 
+        request_id: str, 
+        request_status: Optional[str] = None,
+        whatsapp_status: Optional[str] = None,
+        whatsapp_message: Optional[str] = None,
+        fonnte_response: Optional[dict] = None,
+        modified_by: Optional[str] = None
+    ) -> Optional[CustomerReminderRequest]:
+        """Update customer reminder request status and WhatsApp message"""
+        try:
+            db_request = self.get_by_id(request_id)
+            if not db_request:
+                return None
+            
+            if request_status:
+                db_request.request_status = request_status
+            
+            if whatsapp_status:
+                db_request.whatsapp_status = whatsapp_status
+            
+            if whatsapp_message:
+                db_request.whatsapp_message = whatsapp_message
+            
+            if fonnte_response:
+                db_request.fonnte_response = fonnte_response
+            
+            if modified_by:
+                db_request.last_modified_by = modified_by
+            
+            db_request.last_modified_date = datetime.utcnow()
+            
+            self.db.commit()
+            self.db.refresh(db_request)
+            
+            return db_request
+            
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise e
+    
+    def get_requests_by_status(self, status: str, limit: int = 100) -> List[CustomerReminderRequest]:
+        """Get customer reminder requests by status"""
+        return self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.request_status == status
+        ).order_by(CustomerReminderRequest.created_date.desc()).limit(limit).all()
+    
+    def get_requests_by_reminder_type(self, reminder_type: str, limit: int = 100) -> List[CustomerReminderRequest]:
+        """Get customer reminder requests by reminder type"""
+        return self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.reminder_type == reminder_type
+        ).order_by(CustomerReminderRequest.created_date.desc()).limit(limit).all()
+    
+    def get_requests_by_phone(self, phone_number: str) -> List[CustomerReminderRequest]:
+        """Get customer reminder requests by phone number"""
+        return self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.no_telp == phone_number
+        ).order_by(CustomerReminderRequest.created_date.desc()).all()
+    
+    def count_requests_by_dealer(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> int:
+        """Count customer reminder requests by dealer and date range"""
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        return query.count()
+    
+    def get_whatsapp_status_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> dict:
+        """Get WhatsApp status statistics for a dealer"""
+        from sqlalchemy import func
+        
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        # Count total requests
+        total_requests = query.count()
+        
+        # Count by WhatsApp status
+        delivered_count = query.filter(CustomerReminderRequest.whatsapp_status == 'SENT').count()
+        failed_count = query.filter(CustomerReminderRequest.whatsapp_status == 'FAILED').count()
+        pending_count = query.filter(CustomerReminderRequest.whatsapp_status == 'NOT_SENT').count()
+        
+        # Calculate delivery percentage
+        delivery_percentage = round((delivered_count / total_requests * 100) if total_requests > 0 else 0, 2)
+        
+        return {
+            'total_requests': total_requests,
+            'delivered_count': delivered_count,
+            'failed_count': failed_count,
+            'pending_count': pending_count,
+            'delivery_percentage': delivery_percentage
+        }
+    
+    def get_reminder_type_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> dict:
+        """Get reminder type statistics for a dealer"""
+        from sqlalchemy import func
+        
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        # Count by reminder type
+        reminder_stats = query.with_entities(
+            CustomerReminderRequest.reminder_type,
+            func.count(CustomerReminderRequest.id).label('count')
+        ).group_by(CustomerReminderRequest.reminder_type).all()
+        
+        return {reminder_type: count for reminder_type, count in reminder_stats}
+    
+    def get_paginated_requests_by_dealer(
+        self, 
+        dealer_id: str, 
+        page: int = 1, 
+        page_size: int = 10,
+        date_from: Optional[date] = None, 
+        date_to: Optional[date] = None,
+        reminder_type: Optional[str] = None
+    ) -> dict:
+        """Get paginated customer reminder requests by dealer with date and type filtering"""
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_type:
+            query = query.filter(CustomerReminderRequest.reminder_type == reminder_type)
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply pagination and ordering
+        offset = (page - 1) * page_size
+        requests = query.order_by(
+            CustomerReminderRequest.request_date.desc(),
+            CustomerReminderRequest.request_time.desc()
+        ).offset(offset).limit(page_size).all()
+        
+        return {
+            'items': [request.to_dict() for request in requests],
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total + page_size - 1) // page_size
+        }
+    
+    def delete(self, request_id: str) -> bool:
+        """Delete customer reminder request"""
+        try:
+            db_request = self.get_by_id(request_id)
+            if not db_request:
+                return False
+            
+            self.db.delete(db_request)
+            self.db.commit()
+            
+            return True
+            
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise e

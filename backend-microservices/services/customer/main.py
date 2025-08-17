@@ -17,6 +17,7 @@ if utils_path not in sys.path:
 
 from app.config import settings
 from app.routes.customer import router as customer_router
+from app.routes.customer_reminder import router as customer_reminder_router
 from app.routes.health import router as health_router
 from utils.database import DatabaseManager
 from utils.logger import setup_logger
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI):
     try:
         # Import models to register them with Base
         from app.models.customer_validation_request import CustomerValidationRequest, Base
+        from app.models.customer_reminder_request import CustomerReminderRequest
         
         # Create schema and tables with checkfirst=True to avoid conflicts
         logger.info("Creating database schema and tables...")
@@ -65,7 +67,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title="Customer Service",
-    description="Customer validation and WhatsApp notification microservice for Dealer Dashboard",
+    description="Customer validation and reminder WhatsApp notification microservice for Dealer Dashboard",
     version=settings.service_version,
     lifespan=lifespan,
     docs_url="/docs" if settings.debug else None,
@@ -121,6 +123,7 @@ async def general_exception_handler(request, exc):
 
 # Include routers
 app.include_router(customer_router, prefix="/api/v1")
+app.include_router(customer_reminder_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1")
 
 

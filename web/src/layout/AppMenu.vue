@@ -10,7 +10,10 @@ const model = ref([
     },
     {
         label: 'Customer',
-        items: [{ label: 'Customer Validation Request', icon: 'pi pi-fw pi-users', to: '/customer-validation' }]
+        items: [
+            { label: 'Customer Validation Request', icon: 'pi pi-fw pi-users', to: '/customer-validation' },
+            { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' }
+        ]
     }
 ]);
 </script>

@@ -63,6 +63,11 @@ const router = createRouter({
                     path: '/customer-validation',
                     name: 'customer-validation',
                     component: () => import('@/views/CustomerValidationRequest.vue')
+                },
+                {
+                    path: '/customer-reminders',
+                    name: 'customer-reminders',
+                    component: () => import('@/views/CustomerReminderRequest.vue')
                 }
             ]
         },

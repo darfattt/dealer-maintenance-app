@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     db_schema: str = "customer"
     dealer_integration_schema: str = "dealer_integration"
     
+    # JWT Configuration
+    jwt_secret_key: str = "your-super-secret-jwt-key-here-change-this-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 30
+    jwt_refresh_token_expire_days: int = 7
+    
     # CORS
     allowed_origins: str = "http://autology.id:5000,http://localhost:3000,http://localhost:3001,http://localhost:5000,http://localhost:5173,http://localhost:5174,http://localhost:8501,http://localhost:8502,http://localhost:8080"
     

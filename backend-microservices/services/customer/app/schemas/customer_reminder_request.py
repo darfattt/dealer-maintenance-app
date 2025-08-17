@@ -1,23 +1,29 @@
 """
-Pydantic schemas for customer validation request
+Pydantic schemas for customer reminder request
 """
 
 from typing import Optional, Dict, Any
 from datetime import datetime, date, time
 from pydantic import BaseModel, Field, field_validator
+from enum import Enum
 
 
-class CustomerValidationRequestCreate(BaseModel):
-    """Schema for creating a customer validation request"""
+class ReminderType(str, Enum):
+    """Enum for reminder types"""
+    SERVICE_REMINDER = "SERVICE_REMINDER"
+    PAYMENT_REMINDER = "PAYMENT_REMINDER"
+    APPOINTMENT_REMINDER = "APPOINTMENT_REMINDER"
+    MAINTENANCE_REMINDER = "MAINTENANCE_REMINDER"
+    FOLLOW_UP_REMINDER = "FOLLOW_UP_REMINDER"
+    CUSTOM_REMINDER = "CUSTOM_REMINDER"
+
+
+class CustomerReminderRequestCreate(BaseModel):
+    """Schema for creating a customer reminder request"""
     
-    namaPembawa: str = Field(..., min_length=1, max_length=255, description="Customer name")
+    customerName: str = Field(..., min_length=1, max_length=255, description="Customer name")
     noTelp: str = Field(..., min_length=8, max_length=20, description="Phone number")
-    tipeUnit: str = Field(..., min_length=1, max_length=100, description="Unit type")
-    noPol: str = Field(..., min_length=1, max_length=20, description="License plate number")
-    kodeAhass: Optional[str] = Field(None, min_length=1, max_length=10, description="AHASS code")
-    namaAhass: Optional[str] = Field(None, min_length=1, max_length=255, description="AHASS name")
-    alamatAhass: Optional[str] = Field(None, min_length=1, description="AHASS address")
-    noMesin: Optional[str] = Field(None, min_length=1, max_length=50, description="Engine number")
+    reminderType: ReminderType = Field(..., description="Type of reminder")
     createdTime: Optional[str] = Field(None, description="Created time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
     modifiedTime: Optional[str] = Field(None, description="Modified time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
     dealerId: str = Field(..., min_length=4, max_length=10, description="Dealer ID")
@@ -53,27 +59,23 @@ class CustomerValidationRequestCreate(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "kodeAhass": "00999",
-                "namaAhass": "Daya Adicipta Motora",
-                "alamatAhass": "Jl Cibereum no 26",
-                "namaPembawa": "Budi",
-                "noTelp": "628561111111",
-                "noMesin": "JB22E1572318",
-                "noPol": "D1234XY",
-                "tipeUnit": "VARIO 125 CBS ISS",
-                "dealerId": "00999"
+                "customerName": "John Doe",
+                "noTelp": "082148523421",
+                "reminderType": "SERVICE_REMINDER",
+                "dealerId": "0009999"
             }
         }
 
 
-class CustomerValidationResponseData(BaseModel):
-    """Schema for customer validation response data"""
+class CustomerReminderResponseData(BaseModel):
+    """Schema for customer reminder response data"""
     
     request_id: str = Field(..., description="Request UUID")
     dealer_id: str = Field(..., description="Dealer ID")
     request_status: str = Field(..., description="Request processing status")
     whatsapp_status: str = Field(..., description="WhatsApp message status")
     whatsapp_message: str = Field(..., description="WhatsApp message content")
+    reminder_type: str = Field(..., description="Type of reminder")
     created_at: str = Field(..., description="Request creation timestamp")
     fonnte_response: Optional[Dict[str, Any]] = Field(None, description="Fonnte API response data")
     
@@ -84,7 +86,8 @@ class CustomerValidationResponseData(BaseModel):
                 "dealer_id": "12284",
                 "request_status": "PROCESSED",
                 "whatsapp_status": "SENT",
-                "whatsapp_message": "Halo John,\n\nTerima kasih telah melakukan validasi customer untuk unit Motor dengan nomor polisi B1234ABC...",
+                "whatsapp_message": "Halo John Doe,\n\nIni adalah pengingat untuk servis kendaraan Anda...",
+                "reminder_type": "SERVICE_REMINDER",
                 "created_at": "2025-01-10T10:30:00.000Z",
                 "fonnte_response": {
                     "detail": "success! message in queue",
@@ -98,26 +101,27 @@ class CustomerValidationResponseData(BaseModel):
         }
 
 
-class CustomerValidationResponse(BaseModel):
-    """Schema for customer validation response"""
+class CustomerReminderResponse(BaseModel):
+    """Schema for customer reminder response"""
     
     status: int = Field(..., description="Status code (1 for success)")
     message: Dict[str, str] = Field(..., description="Response message")
-    data: Optional[CustomerValidationResponseData] = Field(None, description="Response data")
+    data: Optional[CustomerReminderResponseData] = Field(None, description="Response data")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "status": 1,
                 "message": {
-                    "confirmation": "Data berhasil diproses"
+                    "confirmation": "Reminder berhasil dibuat"
                 },
                 "data": {
                     "request_id": "123e4567-e89b-12d3-a456-426614174000",
                     "dealer_id": "12284",
                     "request_status": "PROCESSED",
                     "whatsapp_status": "SENT",
-                    "whatsapp_message": "Halo John,\n\nTerima kasih telah melakukan validasi customer...",
+                    "whatsapp_message": "Halo John Doe,\n\nIni adalah pengingat untuk servis kendaraan Anda...",
+                    "reminder_type": "SERVICE_REMINDER",
                     "created_at": "2025-01-10T10:30:00.000Z",
                     "fonnte_response": {
                         "status": True,
@@ -129,23 +133,19 @@ class CustomerValidationResponse(BaseModel):
         }
 
 
-class CustomerValidationRequestResponse(BaseModel):
-    """Schema for detailed customer validation request response"""
+class CustomerReminderRequestResponse(BaseModel):
+    """Schema for detailed customer reminder request response"""
     
     id: str
     dealer_id: str
     request_date: str
     request_time: str
-    nama_pembawa: str
+    customer_name: str
     no_telp: str
-    tipe_unit: str
-    no_pol: str
-    kode_ahass: Optional[str]
-    nama_ahass: Optional[str]
-    alamat_ahass: Optional[str]
-    nomor_mesin: Optional[str]
     request_status: str
     whatsapp_status: str
+    reminder_type: str
+    whatsapp_message: Optional[str]
     fonnte_response: Optional[Dict[str, Any]]
     created_by: Optional[str]
     created_date: str
@@ -156,29 +156,29 @@ class CustomerValidationRequestResponse(BaseModel):
         from_attributes = True
 
 
-class WhatsAppMessageRequest(BaseModel):
-    """Schema for WhatsApp message request"""
+class WhatsAppReminderRequest(BaseModel):
+    """Schema for WhatsApp reminder message request"""
     
     dealer_id: str
     phone_number: str
     customer_name: str
-    unit_type: str
-    license_plate: str
+    reminder_type: ReminderType
+    custom_message: Optional[str] = Field(None, description="Custom message content (optional)")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "dealer_id": "0009999",
                 "phone_number": "082148523421",
-                "customer_name": "Adit",
-                "unit_type": "BeAT Street",
-                "license_plate": "D 123 AD"
+                "customer_name": "John Doe",
+                "reminder_type": "SERVICE_REMINDER",
+                "custom_message": "Jangan lupa service rutin kendaraan Anda minggu ini"
             }
         }
 
 
-class WhatsAppMessageResponse(BaseModel):
-    """Schema for WhatsApp message response"""
+class WhatsAppReminderResponse(BaseModel):
+    """Schema for WhatsApp reminder message response"""
     
     success: bool
     message: str
@@ -188,10 +188,37 @@ class WhatsAppMessageResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "success": True,
-                "message": "WhatsApp message sent successfully",
+                "message": "WhatsApp reminder sent successfully",
                 "response_data": {
                     "status": "sent",
                     "id": "message_id_123"
+                }
+            }
+        }
+
+
+class CustomerReminderStatsResponse(BaseModel):
+    """Schema for customer reminder statistics response"""
+    
+    total_reminders: int
+    pending_reminders: int
+    sent_reminders: int
+    failed_reminders: int
+    delivery_percentage: float
+    reminder_type_breakdown: Dict[str, int]
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "total_reminders": 150,
+                "pending_reminders": 10,
+                "sent_reminders": 130,
+                "failed_reminders": 10,
+                "delivery_percentage": 86.67,
+                "reminder_type_breakdown": {
+                    "SERVICE_REMINDER": 80,
+                    "PAYMENT_REMINDER": 40,
+                    "APPOINTMENT_REMINDER": 30
                 }
             }
         }

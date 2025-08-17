@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     dashboard_dealer_service_url: str = "http://dashboard_dealer_service:8200"
     
     # JWT Configuration (should match account service)
-    jwt_secret_key: str = "your-super-secret-jwt-key-here"
+    jwt_secret_key: str = "your-super-secret-jwt-key-here-change-this-in-production"
     jwt_algorithm: str = "HS256"
     
     # CORS
