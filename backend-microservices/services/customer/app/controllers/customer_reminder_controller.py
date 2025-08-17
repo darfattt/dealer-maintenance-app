@@ -381,7 +381,7 @@ Salam,
         page_size: int = 10,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
-        reminder_type: Optional[str] = None
+        reminder_target: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get paginated customer reminder requests by dealer ID with filtering"""
         try:
@@ -416,7 +416,7 @@ Salam,
                 page_size=page_size,
                 date_from=parsed_date_from,
                 date_to=parsed_date_to,
-                reminder_type=reminder_type
+                reminder_target=reminder_target
             )
             
             return {

@@ -275,9 +275,9 @@ class CustomerReminderRequestRepository:
         page_size: int = 10,
         date_from: Optional[date] = None, 
         date_to: Optional[date] = None,
-        reminder_type: Optional[str] = None
+        reminder_target: Optional[str] = None
     ) -> dict:
-        """Get paginated customer reminder requests by dealer with date and type filtering"""
+        """Get paginated customer reminder requests by dealer with date and target filtering"""
         query = self.db.query(CustomerReminderRequest).filter(
             CustomerReminderRequest.dealer_id == dealer_id
         )
@@ -288,8 +288,8 @@ class CustomerReminderRequestRepository:
         if date_to:
             query = query.filter(CustomerReminderRequest.request_date <= date_to)
         
-        if reminder_type:
-            query = query.filter(CustomerReminderRequest.reminder_type == reminder_type)
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
         
         # Get total count
         total = query.count()

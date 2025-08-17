@@ -105,7 +105,7 @@ export class CustomerService {
             if (dateTo) params.append('date_to', dateTo)
             
             const queryString = params.toString()
-            const url = `/v1/reminder/stats${queryString ? `?${queryString}` : ''}`
+            const url = `/api/v1/reminder/stats${queryString ? `?${queryString}` : ''}`
             
             const response = await api.get(url)
             return response.data
@@ -122,7 +122,7 @@ export class CustomerService {
      * @param {number} options.pageSize - Number of items per page
      * @param {string} options.dateFrom - Start date in YYYY-MM-DD format
      * @param {string} options.dateTo - End date in YYYY-MM-DD format
-     * @param {string} options.reminderType - Filter by reminder type
+     * @param {string} options.reminderTarget - Filter by reminder target
      * @returns {Promise<Object>} Paginated list of reminder requests
      */
     async getReminderRequests(options = {}) {
@@ -132,7 +132,7 @@ export class CustomerService {
                 pageSize = 10,
                 dateFrom = null,
                 dateTo = null,
-                reminderType = null
+                reminderTarget = null
             } = options
 
             const params = new URLSearchParams()
@@ -140,9 +140,9 @@ export class CustomerService {
             params.append('page_size', pageSize.toString())
             if (dateFrom) params.append('date_from', dateFrom)
             if (dateTo) params.append('date_to', dateTo)
-            if (reminderType) params.append('reminder_type', reminderType)
+            if (reminderTarget) params.append('reminder_target', reminderTarget)
             
-            const url = `/v1/reminder/reminders?${params.toString()}`
+            const url = `/api/v1/reminder/reminders?${params.toString()}`
             
             const response = await api.get(url)
             return response.data
@@ -158,7 +158,7 @@ export class CustomerService {
      */
     async getReminderTypes() {
         try {
-            const response = await api.get('/v1/reminder/types')
+            const response = await api.get('/api/v1/reminder/types')
             return response.data
         } catch (error) {
             console.error('Error fetching reminder types:', error)
@@ -173,7 +173,7 @@ export class CustomerService {
      */
     async getReminderById(reminderId) {
         try {
-            const response = await api.get(`/v1/reminder/${reminderId}`)
+            const response = await api.get(`/api/v1/reminder/${reminderId}`)
             return response.data
         } catch (error) {
             console.error('Error fetching reminder request:', error)
@@ -191,7 +191,7 @@ export class CustomerService {
      */
     async createReminder(reminderData) {
         try {
-            const response = await api.post('/v1/reminder/create', reminderData)
+            const response = await api.post('/api/v1/reminder/create', reminderData)
             return response.data
         } catch (error) {
             console.error('Error creating reminder:', error)
@@ -205,7 +205,7 @@ export class CustomerService {
      */
     async testReminderWhatsAppConfig() {
         try {
-            const response = await api.post('/v1/reminder/test-whatsapp')
+            const response = await api.post('/api/v1/reminder/test-whatsapp')
             return response.data
         } catch (error) {
             console.error('Error testing reminder WhatsApp config:', error)

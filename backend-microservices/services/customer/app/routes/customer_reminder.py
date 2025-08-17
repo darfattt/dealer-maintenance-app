@@ -78,38 +78,6 @@ async def add_bulk_reminders(
 
 
 @router.get(
-    "/{reminder_id}",
-    summary="Get customer reminder request by ID",
-    description="Retrieve a specific customer reminder request by its ID"
-)
-async def get_reminder(
-    reminder_id: str,
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """Get customer reminder request by ID"""
-    try:
-        controller = CustomerReminderController(db)
-        result = controller.get_reminder_by_id(reminder_id)
-        
-        if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=result["message"]
-            )
-        
-        return result
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting reminder {reminder_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
-
-
-@router.get(
     "/reminders",
     summary="Get customer reminder requests for authenticated dealer",
     description="Retrieve paginated customer reminder requests for the authenticated dealer with date and type filtering"
@@ -119,7 +87,7 @@ async def get_dealer_reminders(
     page_size: int = 10,
     date_from: str = None,
     date_to: str = None,
-    reminder_type: str = None,
+    reminder_target: str = None,
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
@@ -142,7 +110,7 @@ async def get_dealer_reminders(
             page_size=page_size,
             date_from=date_from,
             date_to=date_to,
-            reminder_type=reminder_type
+            reminder_target=reminder_target
         )
         
         if not result["success"]:
@@ -211,6 +179,30 @@ async def get_dealer_reminder_stats(
         )
 
 
+@router.get(
+    "/types",
+    summary="Get available reminder types",
+    description="Get list of available reminder types"
+)
+async def get_reminder_types() -> Dict[str, Any]:
+    """Get available reminder types"""
+    from app.schemas.customer_reminder_request import ReminderType
+    
+    return {
+        "success": True,
+        "message": "Available reminder types",
+        "data": {
+            "reminder_types": [
+                {
+                    "value": reminder_type.value,
+                    "description": reminder_type.value.replace('_', ' ').title()
+                }
+                for reminder_type in ReminderType
+            ]
+        }
+    }
+
+
 @router.post(
     "/test-whatsapp",
     summary="Test WhatsApp configuration for reminders",
@@ -254,24 +246,32 @@ async def test_reminder_whatsapp_config(
 
 
 @router.get(
-    "/types",
-    summary="Get available reminder types",
-    description="Get list of available reminder types"
+    "/{reminder_id}",
+    summary="Get customer reminder request by ID",
+    description="Retrieve a specific customer reminder request by its ID"
 )
-async def get_reminder_types() -> Dict[str, Any]:
-    """Get available reminder types"""
-    from app.schemas.customer_reminder_request import ReminderType
-    
-    return {
-        "success": True,
-        "message": "Available reminder types",
-        "data": {
-            "reminder_types": [
-                {
-                    "value": reminder_type.value,
-                    "description": reminder_type.value.replace('_', ' ').title()
-                }
-                for reminder_type in ReminderType
-            ]
-        }
-    }
+async def get_reminder(
+    reminder_id: str,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Get customer reminder request by ID"""
+    try:
+        controller = CustomerReminderController(db)
+        result = controller.get_reminder_by_id(reminder_id)
+        
+        if not result["success"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=result["message"]
+            )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting reminder {reminder_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )

@@ -17,7 +17,7 @@ const authStore = useAuthStore();
 const selectedDealer = ref(authStore.userRole === 'DEALER_USER' ? authStore.userDealerId : '12284');
 const selectedDateFrom = ref(new Date(new Date().getFullYear(), 0, 1));
 const selectedDateTo = ref(new Date());
-const selectedReminderType = ref('');
+const selectedReminderTarget = ref('');
 
 // Dealer options
 const dealerOptions = ref([
@@ -25,15 +25,16 @@ const dealerOptions = ref([
     { label: 'Test Dealer (00999)', value: '00999' }
 ]);
 
-// Reminder type options
-const reminderTypeOptions = ref([
+// Reminder target options
+const reminderTargetOptions = ref([
     { label: 'All Types', value: '' },
-    { label: 'Service Reminder', value: 'SERVICE_REMINDER' },
-    { label: 'Payment Reminder', value: 'PAYMENT_REMINDER' },
-    { label: 'Appointment Reminder', value: 'APPOINTMENT_REMINDER' },
-    { label: 'Maintenance Reminder', value: 'MAINTENANCE_REMINDER' },
-    { label: 'Follow Up Reminder', value: 'FOLLOW_UP_REMINDER' },
-    { label: 'Custom Reminder', value: 'CUSTOM_REMINDER' }
+    { label: 'KPB-1', value: 'KPB-1' },
+    { label: 'KPB-2', value: 'KPB-2' },
+    { label: 'KPB-3', value: 'KPB-3' },
+    { label: 'KPB-4', value: 'KPB-4' },
+    { label: 'Non KPB', value: 'Non KPB' },
+    { label: 'Booking Service', value: 'Booking Service' },
+    { label: 'Ultah Konsumen', value: 'Ultah Konsumen' }
 ]);
 
 // Check if user is DEALER_USER role
@@ -120,7 +121,7 @@ const loadReminders = async (page = 0) => {
             pageSize: pageSize.value,
             dateFrom: formattedDateFrom.value,
             dateTo: formattedDateTo.value,
-            reminderType: selectedReminderType.value || null
+            reminderTarget: selectedReminderTarget.value || null
         });
         
         if (response.success && response.data) {
@@ -235,7 +236,7 @@ const getTopReminderTypes = computed(() => {
 });
 
 // Watch for filter changes - removed selectedDealer since we use authenticated dealer
-watch([formattedDateFrom, formattedDateTo, selectedReminderType], () => {
+watch([formattedDateFrom, formattedDateTo, selectedReminderTarget], () => {
     loadStats();
     loadReminders(0);
 }, { deep: true });
@@ -270,8 +271,8 @@ onMounted(() => {
                 <label for="type-filter" class="text-sm font-medium">Type:</label>
                 <Dropdown
                     id="type-filter"
-                    v-model="selectedReminderType"
-                    :options="reminderTypeOptions"
+                    v-model="selectedReminderTarget"
+                    :options="reminderTargetOptions"
                     optionLabel="label"
                     optionValue="value"
                     placeholder="All Types"
@@ -402,8 +403,8 @@ onMounted(() => {
                             {{ formatTime(slotProps.data.request_time) }}
                         </template>
                     </Column>
-                    <Column field="customer_name" header="Customer Name" />
-                    <Column field="no_telp" header="No. Telepon" />
+                    <Column field="nama_pemilik" header="Customer Name" />
+                    <Column field="nomor_telepon_pelanggan" header="No. Telepon" />
                     <Column field="reminder_type" header="Reminder Type">
                         <template #body="slotProps">
                             <Tag 
