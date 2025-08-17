@@ -200,3 +200,96 @@ Salam Satu Hati."""
                 "success": False,
                 "message": f"Error testing connection: {str(e)}"
             }
+    
+    async def send_reminder_message(
+        self, 
+        dealer_id: str, 
+        phone_number: str, 
+        customer_name: str, 
+        message: str
+    ) -> WhatsAppMessageResponse:
+        """Send WhatsApp reminder message with custom content"""
+        try:
+            # Get dealer's Fonnte configuration
+            fonnte_config = self.dealer_config_repo.get_fonnte_config(dealer_id)
+            
+            if not fonnte_config:
+                logger.error(f"No Fonnte configuration found for dealer {dealer_id}")
+                return WhatsAppMessageResponse(
+                    success=False,
+                    message=f"Fonnte configuration not found for dealer {dealer_id}",
+                    response_data=None
+                )
+            
+            # Format phone number
+            formatted_phone = self._format_phone_number(phone_number)
+            
+            # Prepare Fonnte API request
+            api_url = fonnte_config['api_url']
+            api_key = fonnte_config['api_key']
+            
+            payload = {
+                'target': formatted_phone,
+                'message': message,
+                'countryCode': '62'
+            }
+            
+            headers = {
+                'Authorization': api_key,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            logger.info(f"Sending WhatsApp reminder to {formatted_phone} via dealer {dealer_id}")
+            
+            # Send request to Fonnte API
+            response = requests.post(
+                api_url,
+                data=payload,
+                headers=headers,
+                timeout=self.default_timeout
+            )
+            
+            response_data = {}
+            try:
+                response_data = response.json()
+            except ValueError:
+                response_data = {"raw_response": response.text}
+            
+            if response.status_code == 200:
+                logger.info(f"WhatsApp reminder sent successfully to {formatted_phone}")
+                return WhatsAppMessageResponse(
+                    success=True,
+                    message="WhatsApp reminder sent successfully",
+                    response_data=response_data
+                )
+            else:
+                logger.error(f"Failed to send WhatsApp reminder: {response.status_code} - {response.text}")
+                return WhatsAppMessageResponse(
+                    success=False,
+                    message=f"Failed to send WhatsApp reminder: {response.status_code}",
+                    response_data=response_data
+                )
+                
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout sending WhatsApp reminder to {phone_number}")
+            return WhatsAppMessageResponse(
+                success=False,
+                message="Timeout while sending WhatsApp reminder",
+                response_data={"error": "timeout"}
+            )
+            
+        except requests.exceptions.ConnectionError:
+            logger.error(f"Connection error sending WhatsApp reminder to {phone_number}")
+            return WhatsAppMessageResponse(
+                success=False,
+                message="Connection error while sending WhatsApp reminder",
+                response_data={"error": "connection_error"}
+            )
+            
+        except Exception as e:
+            logger.error(f"Unexpected error sending WhatsApp reminder: {str(e)}")
+            return WhatsAppMessageResponse(
+                success=False,
+                message=f"Unexpected error: {str(e)}",
+                response_data={"error": "unexpected_error", "details": str(e)}
+            )

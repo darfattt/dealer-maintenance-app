@@ -59,6 +59,7 @@ class Settings(BaseSettings):
             "/api/v1/users": self.account_service_url,
             "/api/v1/health": self.account_service_url,
             "/api/v1/customer": self.customer_service_url,
+            "/api/v1/reminder": self.customer_service_url,
             "/api/v1/dealers": self.dealer_dashboard_service_url,
             "/api/v1/dashboard": self.dashboard_dealer_service_url,
             "/api/v1/jobs": self.dealer_dashboard_service_url,

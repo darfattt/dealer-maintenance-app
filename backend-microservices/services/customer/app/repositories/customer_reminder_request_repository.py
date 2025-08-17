@@ -2,13 +2,16 @@
 Customer reminder request repository
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, date, time
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+import logging
 
 from app.models.customer_reminder_request import CustomerReminderRequest
-from app.schemas.customer_reminder_request import CustomerReminderRequestCreate
+from app.schemas.customer_reminder_request import CustomerReminderRequestCreate, BulkReminderCustomerData
+
+logger = logging.getLogger(__name__)
 
 
 class CustomerReminderRequestRepository:
@@ -23,30 +26,96 @@ class CustomerReminderRequestRepository:
             # Parse the datetime strings or use current time as default
             current_time = datetime.utcnow()
             
-            if request_data.createdTime:
-                created_datetime = datetime.strptime(request_data.createdTime, '%d/%m/%Y %H:%M:%S')
+            if request_data.created_time:
+                created_datetime = datetime.strptime(request_data.created_time, '%d/%m/%Y %H:%M:%S')
             else:
                 created_datetime = current_time
                 
-            if request_data.modifiedTime:
-                modified_datetime = datetime.strptime(request_data.modifiedTime, '%d/%m/%Y %H:%M:%S')
+            if request_data.modified_time:
+                modified_datetime = datetime.strptime(request_data.modified_time, '%d/%m/%Y %H:%M:%S')
             else:
                 modified_datetime = current_time
             
             # Create the model instance
             db_request = CustomerReminderRequest(
-                dealer_id=request_data.dealerId,
+                dealer_id=request_data.dealer_id,
                 request_date=created_datetime.date(),
                 request_time=created_datetime.time(),
-                customer_name=request_data.customerName,
-                no_telp=request_data.noTelp,
-                reminder_type=request_data.reminderType,
+                nama_pemilik=request_data.nama_pemilik,
+                nomor_telepon_pelanggan=request_data.nomor_telepon_pelanggan,
+                reminder_type=request_data.reminder_type,
                 request_status='PENDING',
                 whatsapp_status='NOT_SENT',
                 created_by=created_by or 'system',
                 created_date=created_datetime,
                 last_modified_by=created_by or 'system',
                 last_modified_date=modified_datetime
+            )
+            
+            self.db.add(db_request)
+            self.db.commit()
+            self.db.refresh(db_request)
+            
+            return db_request
+            
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise e
+    
+    def create_bulk_reminder(
+        self, 
+        customer_data: BulkReminderCustomerData, 
+        ahass_data: Dict[str, Any],
+        reminder_target: str,
+        reminder_type: str,
+        dealer_id: str,
+        transaction_id: Optional[str] = None,
+        created_by: Optional[str] = None
+    ) -> CustomerReminderRequest:
+        """Create a new customer reminder request from bulk data"""
+        try:
+            current_time = datetime.utcnow()
+            
+            # Parse date strings
+            tanggal_beli = None
+            tanggal_expired_kpb = None
+            
+            try:
+                tanggal_beli = datetime.strptime(customer_data.tanggal_beli, '%Y-%m-%d').date()
+            except ValueError:
+                logger.warning(f"Invalid tanggal_beli format: {customer_data.tanggal_beli}")
+            
+            try:
+                tanggal_expired_kpb = datetime.strptime(customer_data.tanggal_expired_kpb, '%Y-%m-%d').date()
+            except ValueError:
+                logger.warning(f"Invalid tanggal_expired_kpb format: {customer_data.tanggal_expired_kpb}")
+            
+            # Create the model instance
+            db_request = CustomerReminderRequest(
+                dealer_id=dealer_id,
+                request_date=current_time.date(),
+                request_time=current_time.time(),
+                nama_pemilik=customer_data.nama_pemilik,
+                nomor_telepon_pelanggan=customer_data.nomor_telepon_pelanggan,
+                nama_pembawa=customer_data.nama_pembawa,
+                no_telepon_pembawa=customer_data.no_telepon_pembawa,
+                nomor_mesin=customer_data.nomor_mesin,
+                nomor_polisi=customer_data.nomor_polisi,
+                tipe_unit=customer_data.tipe_unit,
+                tanggal_beli=tanggal_beli,
+                tanggal_expired_kpb=tanggal_expired_kpb,
+                kode_ahass=ahass_data.get('kode_ahass'),
+                nama_ahass=ahass_data.get('nama_ahass'),
+                alamat_ahass=ahass_data.get('alamat_ahass'),
+                reminder_target=reminder_target,
+                reminder_type=reminder_type,
+                transaction_id=transaction_id,
+                request_status='PENDING',
+                whatsapp_status='NOT_SENT',
+                created_by=created_by or 'system',
+                created_date=current_time,
+                last_modified_by=created_by or 'system',
+                last_modified_date=current_time
             )
             
             self.db.add(db_request)
@@ -127,7 +196,7 @@ class CustomerReminderRequestRepository:
     def get_requests_by_phone(self, phone_number: str) -> List[CustomerReminderRequest]:
         """Get customer reminder requests by phone number"""
         return self.db.query(CustomerReminderRequest).filter(
-            CustomerReminderRequest.no_telp == phone_number
+            CustomerReminderRequest.nomor_telepon_pelanggan == phone_number
         ).order_by(CustomerReminderRequest.created_date.desc()).all()
     
     def count_requests_by_dealer(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> int:

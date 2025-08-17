@@ -9,13 +9,17 @@ from sqlalchemy.orm import Session
 
 from app.repositories.customer_reminder_request_repository import CustomerReminderRequestRepository
 from app.repositories.dealer_config_repository import DealerConfigRepository
+from app.repositories.customer_reminder_processing_repository import CustomerReminderProcessingRepository
 from app.services.whatsapp_service import WhatsAppService
 from app.schemas.customer_reminder_request import (
     CustomerReminderRequestCreate,
     CustomerReminderResponse,
     CustomerReminderResponseData,
     WhatsAppReminderRequest,
-    ReminderType
+    ReminderType,
+    BulkReminderRequest,
+    BulkReminderResponse,
+    BulkReminderCustomerData
 )
 
 logger = logging.getLogger(__name__)
@@ -28,6 +32,7 @@ class CustomerReminderController:
         self.db = db
         self.reminder_repo = CustomerReminderRequestRepository(db)
         self.dealer_repo = DealerConfigRepository(db)
+        self.processing_repo = CustomerReminderProcessingRepository(db)
         self.whatsapp_service = WhatsAppService(self.dealer_repo)
     
     def _determine_whatsapp_status(self, whatsapp_response) -> str:
@@ -57,14 +62,14 @@ class CustomerReminderController:
         # If no status field or unclear, default to ERROR
         return 'ERROR'
     
-    def _create_reminder_message_template(self, customer_name: str, reminder_type: ReminderType, dealer_name: str, custom_message: Optional[str] = None) -> str:
+    def _create_reminder_message_template(self, nama_pemilik: str, reminder_type: ReminderType, dealer_name: str, custom_message: Optional[str] = None) -> str:
         """Create WhatsApp message template based on reminder type"""
         
         if custom_message:
-            return f"Halo {customer_name},\n\n{custom_message}\n\nTerima kasih,\n{dealer_name}"
+            return f"Halo {nama_pemilik},\n\n{custom_message}\n\nTerima kasih,\n{dealer_name}"
         
         templates = {
-            ReminderType.SERVICE_REMINDER: f"""Halo {customer_name},
+            ReminderType.SERVICE_REMINDER: f"""Halo {nama_pemilik},
 
 Ini adalah pengingat untuk servis rutin kendaraan Anda. Jangan lupa untuk melakukan perawatan berkala agar kendaraan selalu dalam kondisi prima.
 
@@ -73,7 +78,7 @@ Silakan hubungi kami untuk membuat jadwal servis.
 Terima kasih,
 {dealer_name}""",
             
-            ReminderType.PAYMENT_REMINDER: f"""Halo {customer_name},
+            ReminderType.PAYMENT_REMINDER: f"""Halo {nama_pemilik},
 
 Ini adalah pengingat bahwa Anda memiliki pembayaran yang jatuh tempo. Mohon segera lakukan pembayaran untuk menghindari keterlambatan.
 
@@ -82,7 +87,7 @@ Silakan hubungi kami jika ada pertanyaan.
 Terima kasih,
 {dealer_name}""",
             
-            ReminderType.APPOINTMENT_REMINDER: f"""Halo {customer_name},
+            ReminderType.APPOINTMENT_REMINDER: f"""Halo {nama_pemilik},
 
 Ini adalah pengingat untuk janji temu Anda dengan kami. Mohon hadir tepat waktu sesuai jadwal yang telah ditentukan.
 
@@ -91,7 +96,7 @@ Jika ada perubahan jadwal, mohon hubungi kami segera.
 Terima kasih,
 {dealer_name}""",
             
-            ReminderType.MAINTENANCE_REMINDER: f"""Halo {customer_name},
+            ReminderType.MAINTENANCE_REMINDER: f"""Halo {nama_pemilik},
 
 Saatnya untuk melakukan maintenance rutin kendaraan Anda. Perawatan berkala sangat penting untuk menjaga performa dan keamanan kendaraan.
 
@@ -100,7 +105,7 @@ Hubungi kami untuk menjadwalkan maintenance.
 Terima kasih,
 {dealer_name}""",
             
-            ReminderType.FOLLOW_UP_REMINDER: f"""Halo {customer_name},
+            ReminderType.FOLLOW_UP_REMINDER: f"""Halo {nama_pemilik},
 
 Kami ingin menindaklanjuti layanan yang telah Anda terima. Apakah ada yang bisa kami bantu atau perbaiki?
 
@@ -109,7 +114,7 @@ Kepuasan Anda adalah prioritas kami.
 Terima kasih,
 {dealer_name}""",
             
-            ReminderType.CUSTOM_REMINDER: f"""Halo {customer_name},
+            ReminderType.CUSTOM_REMINDER: f"""Halo {nama_pemilik},
 
 Kami ingin mengingatkan Anda tentang layanan kami. Jangan ragu untuk menghubungi kami jika membutuhkan bantuan.
 
@@ -119,13 +124,13 @@ Terima kasih,
         
         return templates.get(reminder_type, templates[ReminderType.CUSTOM_REMINDER])
     
-    async def create_reminder(self, request_data: CustomerReminderRequestCreate, dealer_id: str) -> CustomerReminderResponse:
-        """Handle customer reminder creation"""
+    async def add_bulk_reminders(self, request_data: BulkReminderRequest, dealer_id: str) -> BulkReminderResponse:
+        """Handle bulk customer reminder creation"""
         try:
             # Step 1: Validate dealer exists
             if not self.dealer_repo.validate_dealer_exists(dealer_id):
                 logger.warning(f"Dealer {dealer_id} not found or inactive")
-                return CustomerReminderResponse(
+                return BulkReminderResponse(
                     status=0,
                     message={"error": "Dealer tidak ditemukan atau tidak aktif"},
                     data=None
@@ -135,129 +140,179 @@ Terima kasih,
             has_config, config_error = self.dealer_repo.validate_dealer_fonnte_config(dealer_id)
             if not has_config:
                 logger.warning(f"Dealer {dealer_id} missing Fonnte config: {config_error}")
-                return CustomerReminderResponse(
+                return BulkReminderResponse(
                     status=0,
                     message={"error": "Konfigurasi WhatsApp tidak tersedia untuk dealer ini"},
                     data=None
                 )
             
-            # Step 3: Store request in database
-            try:
-                # Override dealerId with authenticated user's dealer_id
-                request_data.dealerId = dealer_id
-                db_request = self.reminder_repo.create(request_data, created_by='api')
-                logger.info(f"Customer reminder request created: {db_request.id}")
-            except Exception as e:
-                logger.error(f"Failed to store customer reminder request: {str(e)}")
-                return CustomerReminderResponse(
-                    status=0,
-                    message={"error": "Gagal menyimpan data ke database"},
-                    data=None
-                )
-            
-            # Step 4: Send WhatsApp message
-            dealer_name = self.dealer_repo.get_dealer_name(dealer_id) or "Dealer"
-            whatsapp_message = self._create_reminder_message_template(
-                customer_name=request_data.customerName,
-                reminder_type=request_data.reminderType,
-                dealer_name=dealer_name
+            # Step 3: Create processing tracker
+            processing_tracker = self.processing_repo.create_processing_tracker(
+                created_by='api'
             )
+            transaction_id = processing_tracker.transaction_id
             
-            whatsapp_request = WhatsAppReminderRequest(
-                dealer_id=dealer_id,
-                phone_number=request_data.noTelp,
-                customer_name=request_data.customerName,
-                reminder_type=request_data.reminderType
-            )
+            # Step 4: Process each customer in the bulk request
+            total_customers = len(request_data.data)
+            successful_reminders = 0
+            failed_reminders = 0
             
-            try:
-                # Use the existing WhatsApp service (adapt it for reminders)
-                # For now, we'll create a basic response structure
-                whatsapp_response = await self._send_reminder_whatsapp(whatsapp_request, whatsapp_message)
-                
-                # Determine WhatsApp status based on response
-                whatsapp_status = self._determine_whatsapp_status(whatsapp_response)
-                
-                # Update request status based on WhatsApp response
-                if whatsapp_response.success:
-                    request_status = 'PROCESSED'
-                    self.reminder_repo.update_status(
-                        request_id=str(db_request.id),
-                        request_status=request_status,
-                        whatsapp_status=whatsapp_status,
-                        whatsapp_message=whatsapp_message,
-                        fonnte_response=whatsapp_response.response_data,
+            logger.info(f"Processing {total_customers} customer reminders for dealer {dealer_id} (transaction: {transaction_id})")
+            
+            for customer_data in request_data.data:
+                try:
+                    # Create individual reminder record with transaction_id
+                    db_request = self.reminder_repo.create_bulk_reminder(
+                        customer_data=customer_data,
+                        ahass_data={
+                            "kode_ahass": request_data.kode_ahass,
+                            "nama_ahass": request_data.nama_ahass,
+                            "alamat_ahass": request_data.alamat_ahass
+                        },
+                        reminder_target=request_data.filter_target,
+                        reminder_type=request_data.filter_data,
+                        dealer_id=dealer_id,
+                        transaction_id=transaction_id,
+                        created_by='api'
+                    )
+                    
+                    # Send WhatsApp message to customer
+                    whatsapp_message = self._create_bulk_reminder_message_template(
+                        nama_pemilik=customer_data.nama_pemilik,
+                        reminder_target=request_data.filter_target,
+                        reminder_type=request_data.filter_data,
+                        dealer_name=self.dealer_repo.get_dealer_name(dealer_id) or "Dealer"
+                    )
+                    
+                    try:
+                        # Send WhatsApp to customer phone number
+                        whatsapp_response = await self._send_bulk_reminder_whatsapp(
+                            dealer_id=dealer_id,
+                            phone_number=customer_data.nomor_telepon_pelanggan,
+                            nama_pemilik=customer_data.nama_pemilik,
+                            message=whatsapp_message
+                        )
+                        
+                        # Determine WhatsApp status
+                        whatsapp_status = self._determine_whatsapp_status(whatsapp_response)
+                        
+                        # Update request status
+                        request_status = 'PROCESSED' if whatsapp_response.success else 'FAILED'
+                        self.reminder_repo.update_status(
+                            request_id=str(db_request.id),
+                            request_status=request_status,
+                            whatsapp_status=whatsapp_status,
+                            whatsapp_message=whatsapp_message,
+                            fonnte_response=whatsapp_response.response_data,
+                            modified_by='system'
+                        )
+                        
+                        if whatsapp_response.success:
+                            successful_reminders += 1
+                            logger.info(f"WhatsApp reminder sent successfully for customer {customer_data.nama_pemilik}")
+                        else:
+                            failed_reminders += 1
+                            logger.error(f"WhatsApp reminder failed for customer {customer_data.nama_pemilik}")
+                        
+                        # Update processing progress
+                        progress = round((successful_reminders + failed_reminders) / total_customers * 100)
+                        self.processing_repo.update_progress(
+                            transaction_id=transaction_id,
+                            progress=progress,
+                            modified_by='system'
+                        )
+                            
+                    except Exception as e:
+                        failed_reminders += 1
+                        logger.error(f"Error sending WhatsApp for customer {customer_data.nama_pemilik}: {str(e)}")
+                        self.reminder_repo.update_status(
+                            request_id=str(db_request.id),
+                            request_status='FAILED',
+                            whatsapp_status='ERROR',
+                            fonnte_response={"error": str(e)},
+                            modified_by='system'
+                        )
+                        
+                        # Update processing progress
+                        progress = round((successful_reminders + failed_reminders) / total_customers * 100)
+                        self.processing_repo.update_progress(
+                            transaction_id=transaction_id,
+                            progress=progress,
+                            modified_by='system'
+                        )
+                        
+                except Exception as e:
+                    failed_reminders += 1
+                    logger.error(f"Error processing customer {customer_data.nama_pemilik}: {str(e)}")
+                    
+                    # Update processing progress even on error
+                    progress = round((successful_reminders + failed_reminders) / total_customers * 100)
+                    self.processing_repo.update_progress(
+                        transaction_id=transaction_id,
+                        progress=progress,
                         modified_by='system'
                     )
-                    logger.info(f"WhatsApp reminder sent successfully for request {db_request.id}")
-                else:
-                    request_status = 'FAILED'
-                    self.reminder_repo.update_status(
-                        request_id=str(db_request.id),
-                        request_status=request_status,
-                        whatsapp_status=whatsapp_status,
-                        whatsapp_message=whatsapp_message,
-                        fonnte_response=whatsapp_response.response_data,
-                        modified_by='system'
-                    )
-                    logger.error(f"WhatsApp reminder failed for request {db_request.id}: {whatsapp_response.message}")
-                
-                # Get updated request from database
-                updated_request = self.reminder_repo.get_by_id(str(db_request.id))
-                
-                # Return detailed response with data
-                response_data = CustomerReminderResponseData(
-                    request_id=str(updated_request.id),
-                    dealer_id=updated_request.dealer_id,
-                    request_status=updated_request.request_status,
-                    whatsapp_status=updated_request.whatsapp_status,
-                    whatsapp_message=updated_request.whatsapp_message or "",
-                    reminder_type=updated_request.reminder_type,
-                    created_at=updated_request.created_date.isoformat(),
-                    fonnte_response={"status": "success"}
-                )
-                
-                return CustomerReminderResponse(
-                    status=1,
-                    message={"confirmation": "Reminder berhasil dibuat"},
-                    data=response_data
-                )
-                
-            except Exception as e:
-                logger.error(f"Error sending WhatsApp reminder for request {db_request.id}: {str(e)}")
-                self.reminder_repo.update_status(
-                    request_id=str(db_request.id),
-                    request_status='FAILED',
-                    whatsapp_status='ERROR',
-                    fonnte_response={"error": str(e)},
-                    modified_by='system'
-                )
-                
-                # Return error response with basic data
-                response_data = CustomerReminderResponseData(
-                    request_id=str(db_request.id),
-                    dealer_id=db_request.dealer_id,
-                    request_status='FAILED',
-                    whatsapp_status='ERROR',
-                    whatsapp_message="",
-                    reminder_type=db_request.reminder_type,
-                    created_at=db_request.created_date.isoformat(),
-                    fonnte_response={"error": str(e)}
-                )
-                
-                return CustomerReminderResponse(
-                    status=1,
-                    message={"confirmation": "Reminder berhasil dibuat"},
-                    data=response_data
-                )
+            
+            # Mark processing as completed
+            self.processing_repo.update_status(
+                transaction_id=transaction_id,
+                status='completed',
+                progress=100,
+                modified_by='system'
+            )
+            
+            # Calculate success rate
+            success_rate = round((successful_reminders / total_customers * 100) if total_customers > 0 else 0, 2)
+            
+            # Return response with statistics
+            return BulkReminderResponse(
+                status=1,
+                message={"confirmation": "Bulk reminders berhasil diproses"},
+                data={
+                    "transaction_id": str(transaction_id),
+                    "total_customers": total_customers,
+                    "successful_reminders": successful_reminders,
+                    "failed_reminders": failed_reminders,
+                    "success_rate": success_rate,
+                    "processing_status": "completed",
+                    "kode_ahass": request_data.kode_ahass,
+                    "filter_target": request_data.filter_target,
+                    "filter_data": request_data.filter_data
+                }
+            )
             
         except Exception as e:
-            logger.error(f"Unexpected error in create_reminder: {str(e)}")
-            return CustomerReminderResponse(
+            logger.error(f"Unexpected error in add_bulk_reminders: {str(e)}")
+            return BulkReminderResponse(
                 status=0,
                 message={"error": "Terjadi kesalahan sistem"},
                 data=None
             )
+    
+    def _create_bulk_reminder_message_template(self, nama_pemilik: str, reminder_target: str, reminder_type: str, dealer_name: str) -> str:
+        """Create WhatsApp message template for bulk reminders"""
+        # For now, return a basic template. Will be enhanced later based on reminder_target and reminder_type
+        return f"""Halo {nama_pemilik},
+
+Ini adalah pengingat dari {dealer_name} terkait {reminder_target}.
+
+{reminder_type}
+
+Terima kasih atas perhatian Anda.
+
+Salam,
+{dealer_name}"""
+    
+    async def _send_bulk_reminder_whatsapp(self, dealer_id: str, phone_number: str, nama_pemilik: str, message: str):
+        """Send WhatsApp message for bulk reminder using Fonnte API"""
+        return await self.whatsapp_service.send_reminder_message(
+            dealer_id=dealer_id,
+            phone_number=phone_number,
+            customer_name=nama_pemilik,
+            message=message
+        )
+
+# NOTE: create_reminder method has been removed and replaced with add_bulk_reminders
     
     async def _send_reminder_whatsapp(self, request: WhatsAppReminderRequest, message: str):
         """Send WhatsApp reminder message using existing service"""
@@ -269,7 +324,7 @@ Terima kasih,
         whatsapp_msg_request = WhatsAppMessageRequest(
             dealer_id=request.dealer_id,
             phone_number=request.phone_number,
-            customer_name=request.customer_name,
+            customer_name=request.nama_pemilik,
             unit_type="",  # Not applicable for reminders
             license_plate=""  # Not applicable for reminders
         )

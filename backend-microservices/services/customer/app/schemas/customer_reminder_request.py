@@ -2,33 +2,127 @@
 Pydantic schemas for customer reminder request
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime, date, time
 from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
+class ReminderTarget(str, Enum):
+    """Enum for reminder targets"""
+    KPB_1 = "KPB-1"
+    KPB_2 = "KPB-2"
+    KPB_3 = "KPB-3"
+    KPB_4 = "KPB-4"
+    NON_KPB = "Non KPB"
+    BOOKING_SERVICE = "Booking Service"
+    ULTAH_KONSUMEN = "Ultah Konsumen"
+
+
 class ReminderType(str, Enum):
     """Enum for reminder types"""
-    SERVICE_REMINDER = "SERVICE_REMINDER"
-    PAYMENT_REMINDER = "PAYMENT_REMINDER"
-    APPOINTMENT_REMINDER = "APPOINTMENT_REMINDER"
-    MAINTENANCE_REMINDER = "MAINTENANCE_REMINDER"
-    FOLLOW_UP_REMINDER = "FOLLOW_UP_REMINDER"
-    CUSTOM_REMINDER = "CUSTOM_REMINDER"
+    # KPB-1 Types
+    KPB_1_H_PLUS_30 = "H+30 tanggal beli (by WA)"
+    KPB_1_H_MINUS_7 = "H-7 dari expired KPB-1 (by WA)"
+    
+    # KPB-2 Types
+    KPB_2_H_MINUS_60 = "H-60 dari expired KPB-2 (by WA)"
+    KPB_2_H_MINUS_30 = "H-30 dari expired KPB-2 (by WA)"
+    KPB_2_H_MINUS_7 = "H-7 dari expired KPB-2 (by WA)"
+    
+    # KPB-3 Types
+    KPB_3_H_MINUS_60 = "H-60 dari expired KPB-3 (by WA)"
+    KPB_3_H_MINUS_30 = "H-30 dari expired KPB-3 (by WA)"
+    KPB_3_H_MINUS_7 = "H-7 dari expired KPB-3 (by WA)"
+    
+    # KPB-4 Types
+    KPB_4_H_MINUS_60 = "H-60 dari expired KPB-4 (by WA)"
+    KPB_4_H_MINUS_30 = "H-30 dari expired KPB-4 (by WA)"
+    KPB_4_H_MINUS_7 = "H-7 dari expired KPB-4 (by WA)"
+    
+    # Other Types
+    NON_KPB = "N/A"
+    BOOKING_SERVICE = "N/A"
+    ULTAH_KONSUMEN = "N/A"
+
+
+class BulkReminderCustomerData(BaseModel):
+    """Schema for individual customer data in bulk reminder"""
+    
+    nama_pemilik: str = Field(..., min_length=1, max_length=255, description="Vehicle owner name")
+    nama_pelanggan: str = Field(..., min_length=1, max_length=255, description="Customer name")
+    nomor_telepon_pelanggan: str = Field(..., min_length=8, max_length=20, description="Customer phone number")
+    nama_pembawa: str = Field(..., min_length=1, max_length=255, description="Person bringing vehicle")
+    no_telepon_pembawa: str = Field(..., min_length=8, max_length=20, description="Person phone number")
+    nomor_mesin: str = Field(..., min_length=1, max_length=50, description="Engine number")
+    nomor_polisi: str = Field(..., min_length=1, max_length=20, description="License plate number")
+    tipe_unit: str = Field(..., min_length=1, max_length=100, description="Unit type")
+    tanggal_beli: str = Field(..., description="Purchase date in YYYY-MM-DD format")
+    tanggal_expired_kpb: str = Field(..., description="KPB expiry date in YYYY-MM-DD format")
+    
+    @field_validator('nomor_telepon_pelanggan', 'no_telepon_pembawa')
+    @classmethod
+    def validate_phone_numbers(cls, v):
+        """Validate phone number format"""
+        # Remove common phone number prefixes and spaces
+        cleaned = v.replace('+62', '0').replace(' ', '').replace('-', '')
+        if not cleaned.startswith('0'):
+            cleaned = '0' + cleaned
+        
+        # Check if it's a valid Indonesian phone number
+        if not (cleaned.startswith('08') and len(cleaned) >= 10 and len(cleaned) <= 13):
+            raise ValueError('Invalid Indonesian phone number format')
+        
+        return cleaned
+
+
+class BulkReminderRequest(BaseModel):
+    """Schema for bulk reminder request"""
+    
+    kode_ahass: str = Field(..., min_length=1, max_length=10, description="AHASS code")
+    nama_ahass: str = Field(..., min_length=1, max_length=255, description="AHASS name")
+    alamat_ahass: str = Field(..., min_length=1, description="AHASS address")
+    filter_target: str = Field(..., description="Filter target (maps to reminder_target)")
+    filter_data: str = Field(..., description="Filter data (maps to reminder_type)")
+    data: List[BulkReminderCustomerData] = Field(..., min_items=1, description="List of customer data")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "kode_ahass": "00999",
+                "nama_ahass": "Daya Adicipta Motora",
+                "alamat_ahass": "Jl Cibereum no 26",
+                "filter_target": "KPB-1",
+                "filter_data": "H-7 dari expired KPB",
+                "data": [
+                    {
+                        "nama_pemilik": "Firman",
+                        "nama_pelanggan": "Firman",
+                        "nomor_telepon_pelanggan": "628561111112",
+                        "nama_pembawa": "Budi",
+                        "no_telepon_pembawa": "628561111112",
+                        "nomor_mesin": "JB22E1572318",
+                        "nomor_polisi": "D1234XY",
+                        "tipe_unit": "VARIO 125 CBS ISS",
+                        "tanggal_beli": "2025-06-25",
+                        "tanggal_expired_kpb": "2025-08-25"
+                    }
+                ]
+            }
+        }
 
 
 class CustomerReminderRequestCreate(BaseModel):
     """Schema for creating a customer reminder request"""
     
-    customerName: str = Field(..., min_length=1, max_length=255, description="Customer name")
-    noTelp: str = Field(..., min_length=8, max_length=20, description="Phone number")
-    reminderType: ReminderType = Field(..., description="Type of reminder")
-    createdTime: Optional[str] = Field(None, description="Created time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
-    modifiedTime: Optional[str] = Field(None, description="Modified time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
-    dealerId: str = Field(..., min_length=4, max_length=10, description="Dealer ID")
+    nama_pemilik: str = Field(..., min_length=1, max_length=255, description="Owner name")
+    nomor_telepon_pelanggan: str = Field(..., min_length=8, max_length=20, description="Customer phone number")
+    reminder_type: ReminderType = Field(..., description="Type of reminder")
+    created_time: Optional[str] = Field(None, description="Created time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
+    modified_time: Optional[str] = Field(None, description="Modified time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
+    dealer_id: str = Field(..., min_length=4, max_length=10, description="Dealer ID")
     
-    @field_validator('noTelp')
+    @field_validator('nomor_telepon_pelanggan')
     @classmethod
     def validate_phone_number(cls, v):
         """Validate phone number format"""
@@ -43,7 +137,7 @@ class CustomerReminderRequestCreate(BaseModel):
         
         return cleaned
     
-    @field_validator('createdTime', 'modifiedTime')
+    @field_validator('created_time', 'modified_time')
     @classmethod
     def validate_datetime_format(cls, v):
         """Validate datetime format DD/MM/YYYY HH:mm:ss (optional fields)"""
@@ -59,10 +153,10 @@ class CustomerReminderRequestCreate(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "customerName": "John Doe",
-                "noTelp": "082148523421",
-                "reminderType": "SERVICE_REMINDER",
-                "dealerId": "0009999"
+                "nama_pemilik": "John Doe",
+                "nomor_telepon_pelanggan": "082148523421",
+                "reminder_type": "SERVICE_REMINDER",
+                "dealer_id": "0009999"
             }
         }
 
@@ -140,8 +234,8 @@ class CustomerReminderRequestResponse(BaseModel):
     dealer_id: str
     request_date: str
     request_time: str
-    customer_name: str
-    no_telp: str
+    nama_pemilik: str
+    nomor_telepon_pelanggan: str
     request_status: str
     whatsapp_status: str
     reminder_type: str
@@ -161,7 +255,7 @@ class WhatsAppReminderRequest(BaseModel):
     
     dealer_id: str
     phone_number: str
-    customer_name: str
+    nama_pemilik: str
     reminder_type: ReminderType
     custom_message: Optional[str] = Field(None, description="Custom message content (optional)")
     
@@ -170,7 +264,7 @@ class WhatsAppReminderRequest(BaseModel):
             "example": {
                 "dealer_id": "0009999",
                 "phone_number": "082148523421",
-                "customer_name": "John Doe",
+                "nama_pemilik": "John Doe",
                 "reminder_type": "SERVICE_REMINDER",
                 "custom_message": "Jangan lupa service rutin kendaraan Anda minggu ini"
             }
@@ -192,6 +286,35 @@ class WhatsAppReminderResponse(BaseModel):
                 "response_data": {
                     "status": "sent",
                     "id": "message_id_123"
+                }
+            }
+        }
+
+
+class BulkReminderResponse(BaseModel):
+    """Schema for bulk reminder response"""
+    
+    status: int = Field(..., description="Status code (1 for success)")
+    message: Dict[str, str] = Field(..., description="Response message")
+    data: Optional[Dict[str, Any]] = Field(None, description="Response data with processing results")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": 1,
+                "message": {
+                    "confirmation": "Bulk reminders berhasil diproses"
+                },
+                "data": {
+                    "transaction_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "total_customers": 10,
+                    "successful_reminders": 8,
+                    "failed_reminders": 2,
+                    "success_rate": 80.0,
+                    "processing_status": "completed",
+                    "kode_ahass": "00999",
+                    "filter_target": "KPB-1",
+                    "filter_data": "H-7 dari expired KPB"
                 }
             }
         }

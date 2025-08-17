@@ -12,7 +12,9 @@ from app.schemas.customer_reminder_request import (
     CustomerReminderRequestCreate,
     CustomerReminderResponse,
     CustomerReminderRequestResponse,
-    CustomerReminderStatsResponse
+    CustomerReminderStatsResponse,
+    BulkReminderRequest,
+    BulkReminderResponse
 )
 from app.dependencies import get_db, get_current_user, UserContext
 
@@ -22,25 +24,25 @@ router = APIRouter(prefix="/reminder", tags=["Customer Reminder"])
 
 
 @router.post(
-    "/create",
-    response_model=CustomerReminderResponse,
-    summary="Create customer reminder and send WhatsApp notification",
-    description="Process customer reminder request with JWT Bearer token authentication, store in database, and send WhatsApp reminder via Fonnte API"
+    "/add-bulk",
+    response_model=BulkReminderResponse,
+    summary="Create bulk customer reminders and send WhatsApp notifications",
+    description="Process bulk customer reminder requests with JWT Bearer token authentication, store in database, and send WhatsApp reminders via Fonnte API"
 )
-async def create_reminder(
-    request: CustomerReminderRequestCreate,
+async def add_bulk_reminders(
+    request: BulkReminderRequest,
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db)
-) -> CustomerReminderResponse:
+) -> BulkReminderResponse:
     """
-    Create customer reminder and send WhatsApp notification
+    Create bulk customer reminders and send WhatsApp notifications
     
     This endpoint:
     1. Validates JWT Bearer token authentication (user identification)
     2. Validates dealer exists and has Fonnte configuration
-    3. Stores the reminder request in the database
-    4. Sends a WhatsApp reminder message to the customer
-    5. Returns a success confirmation
+    3. Stores multiple reminder requests in the database
+    4. Sends WhatsApp reminder messages to customers
+    5. Returns a success confirmation with processing statistics
     
     Authentication: Requires Authorization: Bearer <token> header with valid JWT token
     """
@@ -55,12 +57,12 @@ async def create_reminder(
                 detail="User is not associated with a dealer"
             )
         
-        logger.info(f"Processing customer reminder for dealer {dealer_id}, user {current_user.email}")
+        logger.info(f"Processing bulk customer reminders for dealer {dealer_id}, user {current_user.email}, customers: {len(request.data)}")
         
         controller = CustomerReminderController(db)
-        result = await controller.create_reminder(request, dealer_id)
+        result = await controller.add_bulk_reminders(request, dealer_id)
         
-        logger.info(f"Customer reminder processed for dealer {dealer_id}, customer {request.customerName}")
+        logger.info(f"Bulk customer reminders processed for dealer {dealer_id}, total customers: {len(request.data)}")
         
         return result
         
@@ -68,7 +70,7 @@ async def create_reminder(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error processing customer reminder: {str(e)}")
+        logger.error(f"Error processing bulk customer reminders: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error while processing request"
