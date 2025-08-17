@@ -296,8 +296,18 @@ onMounted(() => {
                         </template>
                     </Column>
                     <Column field="nama_pembawa" header="Nama Pembawa" />
-                    <Column field="no_telp" header="No. Telepon" />
-                    <Column field="no_pol" header="No. Polisi" />
+                    <Column field="nomor_telepon_pembawa" header="No. Telepon" />
+                    <Column field="nomor_polisi" header="No. Polisi" />
+                    <Column field="kode_ahass" header="Kode AHASS" />
+                    <Column field="nama_ahass" header="Nama AHASS" />
+                    <Column field="alamat_ahass" header="Alamat AHASS" style="max-width: 200px;">
+                        <template #body="slotProps">
+                            <div class="text-ellipsis overflow-hidden whitespace-nowrap" :title="slotProps.data.alamat_ahass">
+                                {{ slotProps.data.alamat_ahass }}
+                            </div>
+                        </template>
+                    </Column>
+                    <Column field="nomor_mesin" header="Nomor Mesin" />
                     <Column field="whatsapp_status" header="Status WhatsApp">
                         <template #body="slotProps">
                             <Tag 
@@ -354,6 +364,17 @@ onMounted(() => {
 :deep(.p-datatable-customers .p-datatable-thead > tr > th) {
     background-color: var(--surface-50);
     font-weight: 600;
+}
+
+/* Responsive table for AHASS fields */
+@media (max-width: 1024px) {
+    :deep(.p-datatable-customers) {
+        font-size: 0.875rem;
+    }
+    
+    :deep(.p-datatable-customers .p-datatable-tbody > tr > td) {
+        padding: 0.5rem 0.75rem;
+    }
 }
 
 /* Status tag styling */

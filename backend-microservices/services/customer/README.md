@@ -53,13 +53,16 @@ This service handles customer phone validation requests and sends WhatsApp notif
 
 ```json
 {
-  "namaPembawa": "Adit",
-  "noTelp": "082148523421", 
-  "tipeUnit": "BeAT Street",
-  "noPol": "D 123 AD",
-  "createdTime": "31/12/2019 15:40:50",
-  "modifiedTime": "31/12/2019 15:40:50",
-  "dealerId": "0009999"
+  "nama_pembawa": "Adit",
+  "nomor_telepon_pembawa": "082148523421", 
+  "tipe_unit": "BeAT Street",
+  "nomor_polisi": "D 123 AD",
+  "kode_ahass": "00999",
+  "nama_ahass": "Daya Adicipta Motora",
+  "alamat_ahass": "Jl Cibereum no 26",
+  "nomor_mesin": "JB22E1572318",
+  "created_time": "31/12/2019 15:40:50",
+  "modified_time": "31/12/2019 15:40:50"
 }
 ```
 
@@ -85,11 +88,16 @@ CREATE TABLE customer.customer_validation_request (
     request_date DATE NOT NULL,
     request_time TIME NOT NULL,
     nama_pembawa VARCHAR(255) NOT NULL,
-    no_telp VARCHAR(20) NOT NULL,
+    nomor_telepon_pembawa VARCHAR(20) NOT NULL,
     tipe_unit VARCHAR(100) NOT NULL,
-    no_pol VARCHAR(20) NOT NULL,
+    nomor_polisi VARCHAR(20) NOT NULL,
+    kode_ahass VARCHAR(10),
+    nama_ahass VARCHAR(255),
+    alamat_ahass TEXT,
+    nomor_mesin VARCHAR(50),
     request_status VARCHAR(20) DEFAULT 'PENDING',
     whatsapp_status VARCHAR(20) DEFAULT 'NOT_SENT',
+    whatsapp_message TEXT,
     fonnte_response JSON,
     created_by VARCHAR(100),
     created_date TIMESTAMP DEFAULT NOW(),
@@ -171,14 +179,18 @@ curl http://localhost:8300/api/v1/health/
 # Test customer validation
 curl -X POST http://localhost:8300/api/v1/customer/validate-customer \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-jwt-token>" \
   -d '{
-    "namaPembawa": "Test Customer",
-    "noTelp": "082148523421",
-    "tipeUnit": "BeAT Street", 
-    "noPol": "D 123 AD",
-    "createdTime": "31/12/2019 15:40:50",
-    "modifiedTime": "31/12/2019 15:40:50",
-    "dealerId": "0009999"
+    "nama_pembawa": "Test Customer",
+    "nomor_telepon_pembawa": "082148523421",
+    "tipe_unit": "BeAT Street", 
+    "nomor_polisi": "D 123 AD",
+    "kode_ahass": "00999",
+    "nama_ahass": "Daya Adicipta Motora",
+    "alamat_ahass": "Jl Cibereum no 26",
+    "nomor_mesin": "JB22E1572318",
+    "created_time": "31/12/2019 15:40:50",
+    "modified_time": "31/12/2019 15:40:50"
   }'
 ```
 

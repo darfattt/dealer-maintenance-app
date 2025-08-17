@@ -17,35 +17,35 @@ class CustomerValidationRequestRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def create(self, request_data: CustomerValidationRequestCreate, created_by: Optional[str] = None) -> CustomerValidationRequest:
+    def create(self, request_data: CustomerValidationRequestCreate, dealer_id: str, created_by: Optional[str] = None) -> CustomerValidationRequest:
         """Create a new customer validation request"""
         try:
             # Parse the datetime strings or use current time as default
             current_time = datetime.utcnow()
             
-            if request_data.createdTime:
-                created_datetime = datetime.strptime(request_data.createdTime, '%d/%m/%Y %H:%M:%S')
+            if request_data.created_time:
+                created_datetime = datetime.strptime(request_data.created_time, '%d/%m/%Y %H:%M:%S')
             else:
                 created_datetime = current_time
                 
-            if request_data.modifiedTime:
-                modified_datetime = datetime.strptime(request_data.modifiedTime, '%d/%m/%Y %H:%M:%S')
+            if request_data.modified_time:
+                modified_datetime = datetime.strptime(request_data.modified_time, '%d/%m/%Y %H:%M:%S')
             else:
                 modified_datetime = current_time
             
             # Create the model instance
             db_request = CustomerValidationRequest(
-                dealer_id=request_data.dealerId,
+                dealer_id=dealer_id,
                 request_date=created_datetime.date(),
                 request_time=created_datetime.time(),
-                nama_pembawa=request_data.namaPembawa,
-                no_telp=request_data.noTelp,
-                tipe_unit=request_data.tipeUnit,
-                no_pol=request_data.noPol,
-                kode_ahass=request_data.kodeAhass,
-                nama_ahass=request_data.namaAhass,
-                alamat_ahass=request_data.alamatAhass,
-                nomor_mesin=request_data.noMesin,
+                nama_pembawa=request_data.nama_pembawa,
+                nomor_telepon_pembawa=request_data.nomor_telepon_pembawa,
+                tipe_unit=request_data.tipe_unit,
+                nomor_polisi=request_data.nomor_polisi,
+                kode_ahass=request_data.kode_ahass,
+                nama_ahass=request_data.nama_ahass,
+                alamat_ahass=request_data.alamat_ahass,
+                nomor_mesin=request_data.nomor_mesin,
                 request_status='PENDING',
                 whatsapp_status='NOT_SENT',
                 created_by=created_by or 'system',
@@ -126,7 +126,7 @@ class CustomerValidationRequestRepository:
     def get_requests_by_phone(self, phone_number: str) -> List[CustomerValidationRequest]:
         """Get customer validation requests by phone number"""
         return self.db.query(CustomerValidationRequest).filter(
-            CustomerValidationRequest.no_telp == phone_number
+            CustomerValidationRequest.nomor_telepon_pembawa == phone_number
         ).order_by(CustomerValidationRequest.created_date.desc()).all()
     
     def count_requests_by_dealer(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> int:

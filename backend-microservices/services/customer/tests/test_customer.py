@@ -54,13 +54,16 @@ def client():
 def sample_customer_request():
     """Sample customer validation request data"""
     return CustomerValidationRequestCreate(
-        namaPembawa="Adit",
-        noTelp="082148523421",
-        tipeUnit="BeAT Street",
-        noPol="D 123 AD",
-        createdTime="31/12/2019 15:40:50",
-        modifiedTime="31/12/2019 15:40:50",
-        dealerId="0009999"
+        nama_pembawa="Adit",
+        nomor_telepon_pembawa="082148523421",
+        tipe_unit="BeAT Street",
+        nomor_polisi="D 123 AD",
+        kode_ahass="00999",
+        nama_ahass="Test AHASS",
+        alamat_ahass="Test Address",
+        nomor_mesin="TEST123456",
+        created_time="31/12/2019 15:40:50",
+        modified_time="31/12/2019 15:40:50"
     )
 
 
@@ -85,13 +88,13 @@ class TestCustomerValidationRequestRepository:
         repo = CustomerValidationRequestRepository(test_db)
         
         # Create request
-        request = repo.create(sample_customer_request, created_by="test")
+        request = repo.create(sample_customer_request, dealer_id="test_dealer", created_by="test")
         
         # Verify
         assert request.id is not None
-        assert request.dealer_id == sample_customer_request.dealerId
-        assert request.nama_pembawa == sample_customer_request.namaPembawa
-        assert request.no_telp == sample_customer_request.noTelp
+        assert request.dealer_id == "test_dealer"  # From dealer_id parameter
+        assert request.nama_pembawa == sample_customer_request.nama_pembawa
+        assert request.nomor_telepon_pembawa == sample_customer_request.nomor_telepon_pembawa
         assert request.request_status == "PENDING"
         assert request.whatsapp_status == "NOT_SENT"
     
@@ -100,20 +103,20 @@ class TestCustomerValidationRequestRepository:
         repo = CustomerValidationRequestRepository(test_db)
         
         # Create and retrieve
-        created_request = repo.create(sample_customer_request, created_by="test")
+        created_request = repo.create(sample_customer_request, dealer_id="test_dealer", created_by="test")
         retrieved_request = repo.get_by_id(str(created_request.id))
         
         # Verify
         assert retrieved_request is not None
         assert retrieved_request.id == created_request.id
-        assert retrieved_request.nama_pembawa == sample_customer_request.namaPembawa
+        assert retrieved_request.nama_pembawa == sample_customer_request.nama_pembawa
     
     def test_update_status(self, test_db, sample_customer_request):
         """Test updating request status"""
         repo = CustomerValidationRequestRepository(test_db)
         
         # Create and update
-        created_request = repo.create(sample_customer_request, created_by="test")
+        created_request = repo.create(sample_customer_request, dealer_id="test_dealer", created_by="test")
         updated_request = repo.update_status(
             request_id=str(created_request.id),
             request_status="PROCESSED",
@@ -266,29 +269,35 @@ class TestSchemaValidation:
     def test_valid_customer_request(self):
         """Test valid customer request creation"""
         data = {
-            "namaPembawa": "Adit",
-            "noTelp": "082148523421",
-            "tipeUnit": "BeAT Street",
-            "noPol": "D 123 AD",
-            "createdTime": "31/12/2019 15:40:50",
-            "modifiedTime": "31/12/2019 15:40:50",
-            "dealerId": "0009999"
+            "nama_pembawa": "Adit",
+            "nomor_telepon_pembawa": "082148523421",
+            "tipe_unit": "BeAT Street",
+            "nomor_polisi": "D 123 AD",
+            "kode_ahass": "00999",
+            "nama_ahass": "Test AHASS",
+            "alamat_ahass": "Test Address",
+            "nomor_mesin": "TEST123456",
+            "created_time": "31/12/2019 15:40:50",
+            "modified_time": "31/12/2019 15:40:50"
         }
         
         request = CustomerValidationRequestCreate(**data)
-        assert request.namaPembawa == "Adit"
-        assert request.noTelp == "082148523421"
+        assert request.nama_pembawa == "Adit"
+        assert request.nomor_telepon_pembawa == "082148523421"
     
     def test_invalid_phone_number(self):
         """Test invalid phone number validation"""
         data = {
-            "namaPembawa": "Adit",
-            "noTelp": "123",  # Invalid phone number
-            "tipeUnit": "BeAT Street",
-            "noPol": "D 123 AD",
-            "createdTime": "31/12/2019 15:40:50",
-            "modifiedTime": "31/12/2019 15:40:50",
-            "dealerId": "0009999"
+            "nama_pembawa": "Adit",
+            "nomor_telepon_pembawa": "123",  # Invalid phone number
+            "tipe_unit": "BeAT Street",
+            "nomor_polisi": "D 123 AD",
+            "kode_ahass": "00999",
+            "nama_ahass": "Test AHASS",
+            "alamat_ahass": "Test Address",
+            "nomor_mesin": "TEST123456",
+            "created_time": "31/12/2019 15:40:50",
+            "modified_time": "31/12/2019 15:40:50"
         }
         
         with pytest.raises(ValueError):
@@ -297,13 +306,16 @@ class TestSchemaValidation:
     def test_invalid_datetime_format(self):
         """Test invalid datetime format validation"""
         data = {
-            "namaPembawa": "Adit",
-            "noTelp": "082148523421",
-            "tipeUnit": "BeAT Street",
-            "noPol": "D 123 AD",
-            "createdTime": "invalid-date",  # Invalid format
-            "modifiedTime": "31/12/2019 15:40:50",
-            "dealerId": "0009999"
+            "nama_pembawa": "Adit",
+            "nomor_telepon_pembawa": "082148523421",
+            "tipe_unit": "BeAT Street",
+            "nomor_polisi": "D 123 AD",
+            "kode_ahass": "00999",
+            "nama_ahass": "Test AHASS",
+            "alamat_ahass": "Test Address",
+            "nomor_mesin": "TEST123456",
+            "created_time": "invalid-date",  # Invalid format
+            "modified_time": "31/12/2019 15:40:50"
         }
         
         with pytest.raises(ValueError):

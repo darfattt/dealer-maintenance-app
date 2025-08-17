@@ -80,9 +80,8 @@ class CustomerController:
             
             # Step 3: Store request in database
             try:
-                # Override dealerId with authenticated user's dealer_id
-                request_data.dealerId = dealer_id
-                db_request = self.customer_repo.create(request_data, created_by='api')
+                # Use dealer_id from authenticated user
+                db_request = self.customer_repo.create(request_data, dealer_id, created_by='api')
                 logger.info(f"Customer validation request created: {db_request.id}")
             except Exception as e:
                 logger.error(f"Failed to store customer validation request: {str(e)}")
@@ -95,10 +94,10 @@ class CustomerController:
             # Step 4: Send WhatsApp message
             whatsapp_request = WhatsAppMessageRequest(
                 dealer_id=dealer_id,
-                phone_number=request_data.noTelp,
-                customer_name=request_data.namaPembawa,
-                unit_type=request_data.tipeUnit,
-                license_plate=request_data.noPol
+                phone_number=request_data.nomor_telepon_pembawa,
+                customer_name=request_data.nama_pembawa,
+                unit_type=request_data.tipe_unit,
+                license_plate=request_data.nomor_polisi
             )
             
             try:
@@ -106,9 +105,9 @@ class CustomerController:
                 
                 # Get the generated WhatsApp message from the service
                 whatsapp_message = self.whatsapp_service._create_message_template(
-                    customer_name=request_data.namaPembawa,
-                    unit_type=request_data.tipeUnit,
-                    license_plate=request_data.noPol,
+                    customer_name=request_data.nama_pembawa,
+                    unit_type=request_data.tipe_unit,
+                    license_plate=request_data.nomor_polisi,
                     dealer_name=self.dealer_repo.get_dealer_name(dealer_id) or "Dealer"
                 )
                 

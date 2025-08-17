@@ -30,9 +30,9 @@ class CustomerValidationRequest(Base):
     
     # Customer data
     nama_pembawa = Column(String(255), nullable=False)
-    no_telp = Column(String(20), nullable=False)
+    nomor_telepon_pembawa = Column(String(20), nullable=False)
     tipe_unit = Column(String(100), nullable=False)
-    no_pol = Column(String(20), nullable=False)
+    nomor_polisi = Column(String(20), nullable=False)
     
     # AHASS data
     kode_ahass = Column(String(10), nullable=True)
@@ -67,9 +67,9 @@ class CustomerValidationRequest(Base):
             "request_date": self.request_date.isoformat() if self.request_date else None,
             "request_time": self.request_time.isoformat() if self.request_time else None,
             "nama_pembawa": self.nama_pembawa,
-            "no_telp": self.no_telp,
+            "nomor_telepon_pembawa": self.nomor_telepon_pembawa,
             "tipe_unit": self.tipe_unit,
-            "no_pol": self.no_pol,
+            "nomor_polisi": self.nomor_polisi,
             "kode_ahass": self.kode_ahass,
             "nama_ahass": self.nama_ahass,
             "alamat_ahass": self.alamat_ahass,

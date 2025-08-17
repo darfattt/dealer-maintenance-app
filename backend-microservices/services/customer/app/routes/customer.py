@@ -59,7 +59,7 @@ async def validate_customer(
         controller = CustomerController(db)
         result = await controller.validate_customer(request, dealer_id)
         
-        logger.info(f"Customer validation processed for dealer {dealer_id}, customer {request.namaPembawa}")
+        logger.info(f"Customer validation processed for dealer {dealer_id}, customer {request.nama_pembawa}")
         
         return result
         

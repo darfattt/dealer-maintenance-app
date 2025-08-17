@@ -10,19 +10,18 @@ from pydantic import BaseModel, Field, field_validator
 class CustomerValidationRequestCreate(BaseModel):
     """Schema for creating a customer validation request"""
     
-    namaPembawa: str = Field(..., min_length=1, max_length=255, description="Customer name")
-    noTelp: str = Field(..., min_length=8, max_length=20, description="Phone number")
-    tipeUnit: str = Field(..., min_length=1, max_length=100, description="Unit type")
-    noPol: str = Field(..., min_length=1, max_length=20, description="License plate number")
-    kodeAhass: Optional[str] = Field(None, min_length=1, max_length=10, description="AHASS code")
-    namaAhass: Optional[str] = Field(None, min_length=1, max_length=255, description="AHASS name")
-    alamatAhass: Optional[str] = Field(None, min_length=1, description="AHASS address")
-    noMesin: Optional[str] = Field(None, min_length=1, max_length=50, description="Engine number")
-    createdTime: Optional[str] = Field(None, description="Created time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
-    modifiedTime: Optional[str] = Field(None, description="Modified time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
-    dealerId: str = Field(..., min_length=4, max_length=10, description="Dealer ID")
+    nama_pembawa: str = Field(..., min_length=1, max_length=255, description="Customer name")
+    nomor_telepon_pembawa: str = Field(..., min_length=8, max_length=20, description="Phone number")
+    tipe_unit: str = Field(..., min_length=1, max_length=100, description="Unit type")
+    nomor_polisi: str = Field(..., min_length=1, max_length=20, description="License plate number")
+    kode_ahass: str = Field(..., min_length=1, max_length=10, description="AHASS code")
+    nama_ahass: str = Field(..., min_length=1, max_length=255, description="AHASS name")
+    alamat_ahass: str = Field(..., min_length=1, description="AHASS address")
+    nomor_mesin: str = Field(..., min_length=1, max_length=50, description="Engine number")
+    created_time: Optional[str] = Field(None, description="Created time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
+    modified_time: Optional[str] = Field(None, description="Modified time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
     
-    @field_validator('noTelp')
+    @field_validator('nomor_telepon_pembawa')
     @classmethod
     def validate_phone_number(cls, v):
         """Validate phone number format"""
@@ -37,7 +36,7 @@ class CustomerValidationRequestCreate(BaseModel):
         
         return cleaned
     
-    @field_validator('createdTime', 'modifiedTime')
+    @field_validator('created_time', 'modified_time')
     @classmethod
     def validate_datetime_format(cls, v):
         """Validate datetime format DD/MM/YYYY HH:mm:ss (optional fields)"""
@@ -53,15 +52,14 @@ class CustomerValidationRequestCreate(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "kodeAhass": "00999",
-                "namaAhass": "Daya Adicipta Motora",
-                "alamatAhass": "Jl Cibereum no 26",
-                "namaPembawa": "Budi",
-                "noTelp": "628561111111",
-                "noMesin": "JB22E1572318",
-                "noPol": "D1234XY",
-                "tipeUnit": "VARIO 125 CBS ISS",
-                "dealerId": "00999"
+                "kode_ahass": "00999",
+                "nama_ahass": "Daya Adicipta Motora",
+                "alamat_ahass": "Jl Cibereum no 26",
+                "nama_pembawa": "Budi",
+                "nomor_telepon_pembawa": "628561111111",
+                "nomor_mesin": "JB22E1572318",
+                "nomor_polisi": "D1234XY",
+                "tipe_unit": "VARIO 125 CBS ISS"
             }
         }
 
@@ -81,7 +79,6 @@ class CustomerValidationResponseData(BaseModel):
         json_schema_extra = {
             "example": {
                 "request_id": "123e4567-e89b-12d3-a456-426614174000",
-                "dealer_id": "12284",
                 "request_status": "PROCESSED",
                 "whatsapp_status": "SENT",
                 "whatsapp_message": "Halo John,\n\nTerima kasih telah melakukan validasi customer untuk unit Motor dengan nomor polisi B1234ABC...",
@@ -114,7 +111,6 @@ class CustomerValidationResponse(BaseModel):
                 },
                 "data": {
                     "request_id": "123e4567-e89b-12d3-a456-426614174000",
-                    "dealer_id": "12284",
                     "request_status": "PROCESSED",
                     "whatsapp_status": "SENT",
                     "whatsapp_message": "Halo John,\n\nTerima kasih telah melakukan validasi customer...",
@@ -137,9 +133,9 @@ class CustomerValidationRequestResponse(BaseModel):
     request_date: str
     request_time: str
     nama_pembawa: str
-    no_telp: str
+    nomor_telepon_pembawa: str
     tipe_unit: str
-    no_pol: str
+    nomor_polisi: str
     kode_ahass: Optional[str]
     nama_ahass: Optional[str]
     alamat_ahass: Optional[str]

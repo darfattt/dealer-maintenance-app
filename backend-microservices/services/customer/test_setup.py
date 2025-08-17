@@ -49,13 +49,16 @@ def test_service_info():
 def test_validate_customer_api():
     """Test validate customer API endpoint"""
     test_data = {
-        "namaPembawa": "Test Customer",
-        "noTelp": "082148523421",
-        "tipeUnit": "BeAT Street",
-        "noPol": "D 123 AD",
-        "createdTime": "31/12/2019 15:40:50",
-        "modifiedTime": "31/12/2019 15:40:50",
-        "dealerId": "0009999"
+        "nama_pembawa": "Test Customer",
+        "nomor_telepon_pembawa": "082148523421",
+        "tipe_unit": "BeAT Street",
+        "nomor_polisi": "D 123 AD",
+        "kode_ahass": "00999",
+        "nama_ahass": "Test AHASS",
+        "alamat_ahass": "Test Address",
+        "nomor_mesin": "TEST123456",
+        "created_time": "31/12/2019 15:40:50",
+        "modified_time": "31/12/2019 15:40:50"
     }
     
     try:
