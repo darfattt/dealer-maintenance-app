@@ -309,6 +309,27 @@ class CustomerReminderRequestRepository:
             'total_pages': (total + page_size - 1) // page_size
         }
     
+    def get_reminders_by_transaction_id(self, transaction_id: str) -> dict:
+        """Get customer reminder requests by transaction ID without pagination"""
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.transaction_id == transaction_id
+        )
+        
+        # Get total count
+        total = query.count()
+        
+        # Get all requests ordered by creation date
+        requests = query.order_by(
+            CustomerReminderRequest.request_date.desc(),
+            CustomerReminderRequest.request_time.desc()
+        ).all()
+        
+        return {
+            'items': [request.to_dict() for request in requests],
+            'total': total,
+            'transaction_id': transaction_id
+        }
+    
     def delete(self, request_id: str) -> bool:
         """Delete customer reminder request"""
         try:

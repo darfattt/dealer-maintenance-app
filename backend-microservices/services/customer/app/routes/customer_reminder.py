@@ -246,6 +246,39 @@ async def test_reminder_whatsapp_config(
 
 
 @router.get(
+    "/transaction/{transaction_id}",
+    summary="Get customer reminder requests by transaction ID",
+    description="Retrieve all customer reminder requests for a specific transaction ID without pagination"
+)
+async def get_reminders_by_transaction(
+    transaction_id: str,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Get customer reminder requests by transaction ID"""
+    try:
+        controller = CustomerReminderController(db)
+        result = controller.get_reminders_by_transaction_id(transaction_id)
+        
+        if not result["success"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=result["message"]
+            )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting reminders for transaction {transaction_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.get(
     "/{reminder_id}",
     summary="Get customer reminder request by ID",
     description="Retrieve a specific customer reminder request by its ID"

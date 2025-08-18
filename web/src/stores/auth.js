@@ -12,13 +12,14 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const userRole = computed(() => user.value?.role || null)
   const userName = computed(() => user.value?.full_name || user.value?.email || 'User')
+  const userDealerId = computed(() => user.value?.dealer_id || null)
 
   // Actions
   const login = async (credentials) => {
     try {
       console.log('Attempting login with:', credentials.email)
-      // Use direct backend URL to bypass CORS issues
-      const response = await axios.post('http://localhost:8080/api/v1/auth/login', credentials, {
+      // Use proxy path to avoid CORS issues
+      const response = await axios.post('/api/v1/auth/login', credentials, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -41,10 +42,22 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('Login error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        headers: error.response?.headers,
+        data: error.response?.data,
+        message: error.message,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+          data: error.config?.data
+        }
+      })
       return {
         success: false,
-        message: error.response?.data?.error?.message || error.response?.data?.detail || 'Login failed'
+        message: error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error?.message || `HTTP ${error.response?.status}: Login failed`
       }
     }
   }
@@ -125,6 +138,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     userRole,
     userName,
+    userDealerId,
     // Actions
     login,
     logout,

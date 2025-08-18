@@ -494,6 +494,34 @@ Salam,
                 "data": None
             }
     
+    def get_reminders_by_transaction_id(self, transaction_id: str) -> Dict[str, Any]:
+        """Get customer reminder requests by transaction ID without pagination"""
+        try:
+            # Validate transaction_id is provided
+            if not transaction_id:
+                return {
+                    "success": False,
+                    "message": "Transaction ID is required",
+                    "data": None
+                }
+            
+            # Get reminders by transaction ID
+            result = self.reminder_repo.get_reminders_by_transaction_id(transaction_id)
+            
+            return {
+                "success": True,
+                "message": f"Found {result['total']} reminders for transaction",
+                "data": result
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting reminders for transaction {transaction_id}: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}",
+                "data": None
+            }
+    
     async def test_reminder_whatsapp_config(self, dealer_id: str) -> Dict[str, Any]:
         """Test WhatsApp configuration for reminder sending"""
         try:
