@@ -22,16 +22,17 @@ class Settings(BaseSettings):
     
     # Service URLs
     account_service_url: str = "http://account_service:8100"
+    customer_service_url: str = "http://customer_service:8300"
     dealer_dashboard_service_url: str = "http://backend:8000"
     dashboard_dealer_service_url: str = "http://dashboard_dealer_service:8200"
     
     # JWT Configuration (should match account service)
-    jwt_secret_key: str = "your-super-secret-jwt-key-here"
+    jwt_secret_key: str = "your-super-secret-jwt-key-here-change-this-in-production"
     jwt_algorithm: str = "HS256"
     
     # CORS
     allowed_origins: str = Field(
-        default="http://localhost:3000,http://localhost:3001,http://localhost:5000,http://localhost:5173,http://localhost:5174,http://localhost:8501,http://localhost:8502",
+        default="http://autology.id:5000,http://localhost:3000,http://localhost:3001,http://localhost:5000,http://localhost:5173,http://localhost:5174,http://localhost:8501,http://localhost:8502,http://127.0.0.1:5173,http://127.0.0.1:5000",
         env="ALLOWED_ORIGINS"
     )
     
@@ -54,12 +55,23 @@ class Settings(BaseSettings):
     def get_service_routes(self) -> Dict[str, str]:
         """Get service routing configuration"""
         return {
+            # Primary routes with /api prefix
             "/api/v1/auth": self.account_service_url,
             "/api/v1/users": self.account_service_url,
             "/api/v1/health": self.account_service_url,
+            "/api/v1/customer": self.customer_service_url,
+            "/api/v1/reminder": self.customer_service_url,
             "/api/v1/dealers": self.dealer_dashboard_service_url,
             "/api/v1/dashboard": self.dashboard_dealer_service_url,
             "/api/v1/jobs": self.dealer_dashboard_service_url,
+            # Fallback routes without /api prefix (for debugging/compatibility)
+            "/v1/auth": self.account_service_url,
+            "/v1/users": self.account_service_url,
+            "/v1/customer": self.customer_service_url,
+            "/v1/reminder": self.customer_service_url,
+            "/v1/dealers": self.dealer_dashboard_service_url,
+            "/v1/dashboard": self.dashboard_dealer_service_url,
+            "/v1/jobs": self.dealer_dashboard_service_url,
         }
 
 

@@ -227,11 +227,16 @@ class PKBDataProcessor(BaseDataProcessor):
                             valid_services.append(service)
 
                     if valid_services:
-                        # Bulk insert services (no conflict resolution needed as they're child records)
-                        for chunk in self.process_in_chunks(valid_services, chunk_size=1000):
-                            db.bulk_insert_mappings(PKBService, chunk)
+                        # Bulk upsert services with conflict resolution
+                        services_processed = self.bulk_upsert(
+                            db,
+                            PKBService,
+                            valid_services,
+                            conflict_columns=['pkb_data_id', 'id_job'],
+                            batch_size=500
+                        )
 
-                        self.logger.info(f"Processed {len(valid_services)} PKB services for dealer {dealer_id}")
+                        self.logger.info(f"Processed {services_processed} PKB services for dealer {dealer_id}")
 
             # Process part records if any
             if part_records:
@@ -256,19 +261,22 @@ class PKBDataProcessor(BaseDataProcessor):
                             valid_parts.append(part)
 
                     if valid_parts:
-                        # Bulk insert parts (no conflict resolution needed as they're child records)
-                        for chunk in self.process_in_chunks(valid_parts, chunk_size=1000):
-                            db.bulk_insert_mappings(PKBPart, chunk)
+                        # Bulk upsert parts with conflict resolution
+                        parts_processed = self.bulk_upsert(
+                            db,
+                            PKBPart,
+                            valid_parts,
+                            conflict_columns=['pkb_data_id', 'id_job', 'parts_number'],
+                            batch_size=500
+                        )
 
-                        self.logger.info(f"Processed {len(valid_parts)} PKB parts for dealer {dealer_id}")
+                        self.logger.info(f"Processed {parts_processed} PKB parts for dealer {dealer_id}")
 
-            db.commit()
             self.logger.info(f"Successfully processed {main_processed} PKB records for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             self.logger.error(f"Error processing PKB records for dealer {dealer_id}: {e}")
             raise
 

@@ -124,18 +124,29 @@ class ProxyMiddleware:
     async def proxy_request(self, request: Request) -> Response:
         """Proxy request to target service"""
         path = str(request.url.path)
-        logger.info(f"Proxying request to path: {path}")
-        logger.info(f"Available service routes: {self.service_routes}")
+        full_url = str(request.url)
+        method = request.method
+        
+        logger.info(f"=== PROXY REQUEST DEBUG ===")
+        logger.info(f"Method: {method}")
+        logger.info(f"Full URL: {full_url}")
+        logger.info(f"Path: {path}")
+        logger.info(f"Available service routes: {list(self.service_routes.keys())}")
 
         target_service = self.get_target_service(path)
         if not target_service:
-            logger.error(f"No service found for path: {path}")
+            logger.error(f"❌ No service found for path: {path}")
+            logger.error(f"Available routes: {list(self.service_routes.keys())}")
+            # Check if any routes partially match
+            partial_matches = [route for route in self.service_routes.keys() if route in path or path in route]
+            if partial_matches:
+                logger.error(f"Partial matches found: {partial_matches}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Service not found"
+                detail=f"Service not found for path: {path}"
             )
 
-        logger.info(f"Found target service: {target_service}")
+        logger.info(f"✅ Found target service: {target_service} for path: {path}")
         
         # Build target URL
         target_url = f"{target_service}{request.url.path}"

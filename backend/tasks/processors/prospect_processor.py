@@ -191,13 +191,11 @@ class ProspectDataProcessor(BaseDataProcessor):
 
                         self.logger.info(f"Processed {len(valid_units)} prospect units for dealer {dealer_id}")
 
-            db.commit()
             self.logger.info(f"Successfully processed {main_processed} prospect records for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             self.logger.error(f"Error processing prospect records for dealer {dealer_id}: {e}")
             raise
     

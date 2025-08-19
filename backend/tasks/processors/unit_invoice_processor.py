@@ -181,13 +181,11 @@ class UnitInvoiceDataProcessor(BaseDataProcessor):
                     batch_size=500
                 )
 
-            db.commit()
             self.logger.info(f"Successfully processed {main_processed} unit invoice records and {unit_processed} units for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             self.logger.error(f"Error processing unit invoice records for dealer {dealer_id}: {e}")
             raise
     

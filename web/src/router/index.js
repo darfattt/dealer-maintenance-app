@@ -58,6 +58,16 @@ const router = createRouter({
                     path: '/document-handling-detail',
                     name: 'document-handling-detail',
                     component: () => import('@/views/DocumentHandlingDetail.vue')
+                },
+                {
+                    path: '/customer-validation',
+                    name: 'customer-validation',
+                    component: () => import('@/views/CustomerValidationRequest.vue')
+                },
+                {
+                    path: '/customer-reminders',
+                    name: 'customer-reminders',
+                    component: () => import('@/views/CustomerReminderRequest.vue')
                 }
             ]
         },

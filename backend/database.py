@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Date, Time, Integer, Text, ForeignKey, Float, JSON, Numeric
+from sqlalchemy import create_engine, Column, String, Boolean, DateTime, Date, Time, Integer, Text, ForeignKey, Float, JSON, Numeric,UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -44,6 +44,8 @@ class Dealer(Base):
     api_key = Column(String(255))
     api_token = Column(String(255))
     secret_key = Column(String(255))
+    fonnte_api_key = Column(String(255), nullable=True)
+    fonnte_api_url = Column(String(255), nullable=True, default='https://api.fonnte.com/send')
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -212,6 +214,11 @@ class PKBData(Base):
     modified_time = Column(String(50))
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('dealer_id', 'no_work_order', name='uq_pkb_dealer_work_order'),
+    )
+
     # Relationships
     dealer = relationship("Dealer", back_populates="pkb_data")
     services = relationship("PKBService", back_populates="pkb_data", cascade="all, delete-orphan")
@@ -233,6 +240,11 @@ class PKBService(Base):
     created_time = Column(String(50))
     modified_time = Column(String(50))
 
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('pkb_data_id', 'id_job', name='uq_pkb_service_data_id_job'),
+    )
+
     # Relationships
     pkb_data = relationship("PKBData", back_populates="services")
 
@@ -253,6 +265,11 @@ class PKBPart(Base):
     kuantitas = Column(Integer)
     created_time = Column(String(50))
     modified_time = Column(String(50))
+
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('pkb_data_id', 'id_job', 'parts_number', name='uq_pkb_part_data_id_job_parts_number'),
+    )
 
     # Relationships
     pkb_data = relationship("PKBData", back_populates="parts")
@@ -573,6 +590,11 @@ class DPHLOData(Base):
     modified_time = Column(String(50), nullable=True)
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('dealer_id', 'id_hlo_document', name='uq_dp_hlo_dealer_document'),
+    )
+
     # Relationships
     dealer = relationship("Dealer", back_populates="dp_hlo_data")
     parts = relationship("DPHLOPart", back_populates="dp_hlo_data", cascade="all, delete-orphan")
@@ -694,6 +716,11 @@ class UnpaidHLOData(Base):
     modified_time = Column(String(50), nullable=True)
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('dealer_id', 'id_hlo_document', name='uq_unpaid_hlo_dealer_document'),
+    )
+
     # Relationships
     dealer = relationship("Dealer", back_populates="unpaid_hlo_data")
     parts = relationship("UnpaidHLOPart", back_populates="unpaid_hlo_data", cascade="all, delete-orphan")
@@ -737,6 +764,11 @@ class PartsInvoiceData(Base):
     modified_time = Column(String(50), nullable=True)
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('dealer_id', 'no_invoice', name='uq_parts_invoice_dealer_no_invoice'),
+    )
+
     # Relationships
     dealer = relationship("Dealer", back_populates="parts_invoice_data")
     parts = relationship("PartsInvoicePart", back_populates="parts_invoice_data", cascade="all, delete-orphan")
@@ -757,6 +789,11 @@ class PartsInvoicePart(Base):
     diskon_per_parts_number = Column(Numeric(15, 2), nullable=True)
     created_time = Column(String(50), nullable=True)
     modified_time = Column(String(50), nullable=True)
+
+    # Unique constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('parts_invoice_data_id', 'parts_number', 'no_po', name='uq_parts_invoice_part_data_id_parts_number_no_po'),
+    )
 
     # Relationships
     parts_invoice_data = relationship("PartsInvoiceData", back_populates="parts")
@@ -807,6 +844,11 @@ class SPKDealingProcessData(Base):
     modified_time = Column(String(50), nullable=True)
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
+    # Table constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('dealer_id', 'id_spk', name='uq_spk_dealing_dealer_id_spk'),
+    )
+
     # Relationships
     dealer = relationship("Dealer", back_populates="spk_dealing_process_data")
     units = relationship("SPKDealingProcessUnit", back_populates="spk_dealing_process_data", cascade="all, delete-orphan")
@@ -834,6 +876,11 @@ class SPKDealingProcessUnit(Base):
     created_time = Column(String(50), nullable=True)
     modified_time = Column(String(50), nullable=True)
 
+    # Table constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('spk_dealing_process_data_id', 'kode_tipe_unit', 'kode_warna', name='uq_spk_dealing_unit_data_id_tipe_warna'),
+    )
+
     # Relationships
     spk_dealing_process_data = relationship("SPKDealingProcessData", back_populates="units")
 
@@ -847,6 +894,11 @@ class SPKDealingProcessFamilyMember(Base):
     anggota_kk = Column(String(200), nullable=True)
     created_time = Column(String(50), nullable=True)
     modified_time = Column(String(50), nullable=True)
+
+    # Table constraints for bulk upsert operations
+    __table_args__ = (
+        UniqueConstraint('spk_dealing_process_data_id', 'anggota_kk', name='uq_spk_dealing_family_data_id_anggota_kk'),
+    )
 
     # Relationships
     spk_dealing_process_data = relationship("SPKDealingProcessData", back_populates="family_members")

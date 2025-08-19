@@ -129,13 +129,11 @@ class BillingProcessDataProcessor(BaseDataProcessor):
                 batch_size=500
             )
 
-            db.commit()
             logger.info(f"Successfully processed {main_processed} billing process records for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             logger.error(f"Error processing billing process records for dealer {dealer_id}: {e}")
             raise
     

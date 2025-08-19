@@ -185,13 +185,11 @@ class DocumentHandlingDataProcessor(BaseDataProcessor):
                     batch_size=500
                 )
 
-            db.commit()
             self.logger.info(f"Successfully processed {main_processed} document handling records and {unit_processed} units for dealer {dealer_id}")
 
             return main_processed
 
         except Exception as e:
-            db.rollback()
             self.logger.error(f"Error processing document handling records for dealer {dealer_id}: {e}")
             raise
     

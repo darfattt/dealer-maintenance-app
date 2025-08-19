@@ -7,6 +7,13 @@ const model = ref([
     {
         label: 'Home',
         items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' }]
+    },
+    {
+        label: 'Customer',
+        items: [
+            { label: 'Customer Validation Request', icon: 'pi pi-fw pi-users', to: '/customer-validation' },
+            { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' }
+        ]
     }
 ]);
 </script>

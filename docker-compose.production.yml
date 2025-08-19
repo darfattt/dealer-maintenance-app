@@ -199,10 +199,11 @@ services:
       target: production
       args:
         NODE_ENV: production
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.yourdomain.com}
+        VITE_API_BASE_URL: /api
     container_name: dealer_web_app_prod
     environment:
       - NODE_ENV=production
+      - BACKEND_URL=http://api_gateway:8080
     ports:
       - "${WEB_APP_PORT:-5000}:80"
     depends_on:
