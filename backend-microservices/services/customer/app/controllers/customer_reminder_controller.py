@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.repositories.customer_reminder_request_repository import CustomerReminderRequestRepository
 from app.repositories.dealer_config_repository import DealerConfigRepository
 from app.repositories.customer_reminder_processing_repository import CustomerReminderProcessingRepository
+from app.repositories.whatsapp_template_repository import WhatsAppTemplateRepository
 from app.services.whatsapp_service import WhatsAppService
 from app.schemas.customer_reminder_request import (
     CustomerReminderRequestCreate,
@@ -33,6 +34,7 @@ class CustomerReminderController:
         self.reminder_repo = CustomerReminderRequestRepository(db)
         self.dealer_repo = DealerConfigRepository(db)
         self.processing_repo = CustomerReminderProcessingRepository(db)
+        self.template_repo = WhatsAppTemplateRepository(db)
         self.whatsapp_service = WhatsAppService(self.dealer_repo)
     
     def _determine_whatsapp_status(self, whatsapp_response) -> str:
@@ -62,67 +64,6 @@ class CustomerReminderController:
         # If no status field or unclear, default to ERROR
         return 'ERROR'
     
-    def _create_reminder_message_template(self, nama_pemilik: str, reminder_type: ReminderType, dealer_name: str, custom_message: Optional[str] = None) -> str:
-        """Create WhatsApp message template based on reminder type"""
-        
-        if custom_message:
-            return f"Halo {nama_pemilik},\n\n{custom_message}\n\nTerima kasih,\n{dealer_name}"
-        
-        templates = {
-            ReminderType.SERVICE_REMINDER: f"""Halo {nama_pemilik},
-
-Ini adalah pengingat untuk servis rutin kendaraan Anda. Jangan lupa untuk melakukan perawatan berkala agar kendaraan selalu dalam kondisi prima.
-
-Silakan hubungi kami untuk membuat jadwal servis.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.PAYMENT_REMINDER: f"""Halo {nama_pemilik},
-
-Ini adalah pengingat bahwa Anda memiliki pembayaran yang jatuh tempo. Mohon segera lakukan pembayaran untuk menghindari keterlambatan.
-
-Silakan hubungi kami jika ada pertanyaan.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.APPOINTMENT_REMINDER: f"""Halo {nama_pemilik},
-
-Ini adalah pengingat untuk janji temu Anda dengan kami. Mohon hadir tepat waktu sesuai jadwal yang telah ditentukan.
-
-Jika ada perubahan jadwal, mohon hubungi kami segera.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.MAINTENANCE_REMINDER: f"""Halo {nama_pemilik},
-
-Saatnya untuk melakukan maintenance rutin kendaraan Anda. Perawatan berkala sangat penting untuk menjaga performa dan keamanan kendaraan.
-
-Hubungi kami untuk menjadwalkan maintenance.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.FOLLOW_UP_REMINDER: f"""Halo {nama_pemilik},
-
-Kami ingin menindaklanjuti layanan yang telah Anda terima. Apakah ada yang bisa kami bantu atau perbaiki?
-
-Kepuasan Anda adalah prioritas kami.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.CUSTOM_REMINDER: f"""Halo {nama_pemilik},
-
-Kami ingin mengingatkan Anda tentang layanan kami. Jangan ragu untuk menghubungi kami jika membutuhkan bantuan.
-
-Terima kasih,
-{dealer_name}"""
-        }
-        
-        return templates.get(reminder_type, templates[ReminderType.CUSTOM_REMINDER])
     
     async def add_bulk_reminders(self, request_data: BulkReminderRequest, dealer_id: str) -> BulkReminderResponse:
         """Handle bulk customer reminder creation"""
@@ -176,11 +117,16 @@ Terima kasih,
                         created_by='api'
                     )
                     
-                    # Send WhatsApp message to customer
+                    # Send WhatsApp message to customer using enhanced template formatting
                     whatsapp_message = self._create_bulk_reminder_message_template(
-                        nama_pemilik=customer_data.nama_pemilik,
+                        customer_data=customer_data,
                         reminder_target=request_data.filter_target,
                         reminder_type=request_data.filter_data,
+                        ahass_data={
+                            "kode_ahass": request_data.kode_ahass,
+                            "nama_ahass": request_data.nama_ahass,
+                            "alamat_ahass": request_data.alamat_ahass
+                        },
                         dealer_name=self.dealer_repo.get_dealer_name(dealer_id) or "Dealer"
                     )
                     
@@ -289,10 +235,32 @@ Terima kasih,
                 data=None
             )
     
-    def _create_bulk_reminder_message_template(self, nama_pemilik: str, reminder_target: str, reminder_type: str, dealer_name: str) -> str:
-        """Create WhatsApp message template for bulk reminders"""
-        # For now, return a basic template. Will be enhanced later based on reminder_target and reminder_type
-        return f"""Halo {nama_pemilik},
+    def _create_bulk_reminder_message_template(
+        self, 
+        customer_data,
+        reminder_target: str, 
+        reminder_type: str, 
+        ahass_data: Dict[str, Any],
+        dealer_name: str
+    ) -> str:
+        """Create WhatsApp message template for bulk reminders using enhanced database templates"""
+        
+        # Try to get template from database with complete customer data
+        formatted_message = self.template_repo.format_template_with_customer_data(
+            reminder_target=reminder_target,
+            reminder_type=reminder_type,
+            customer_data=customer_data,
+            ahass_data=ahass_data,
+            dealer_name=dealer_name
+        )
+        
+        if formatted_message:
+            return formatted_message
+        
+        # Fallback to basic template if no database template found
+        logger.warning(f"No template found for {reminder_target} - {reminder_type}, using fallback")
+        customer_name = getattr(customer_data, 'nama_pemilik', 'Bpk/Ibu')
+        return f"""Halo {customer_name},
 
 Ini adalah pengingat dari {dealer_name} terkait {reminder_target}.
 
