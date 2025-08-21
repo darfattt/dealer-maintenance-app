@@ -1,18 +1,35 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useAuthStore } from '@/stores/auth';
 
 import AppMenuItem from './AppMenuItem.vue';
+
+const authStore = useAuthStore();
+
+// Check if user is DEALER_USER role
+const isDealerUser = computed(() => {
+    return authStore.userRole === 'DEALER_USER';
+});
 
 const model = ref([
     {
         label: 'Home',
-        items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' }]
+        items: [
+            // Hide Dashboard for DEALER_USER role
+            ...(!isDealerUser.value ? [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' }] : [])
+        ]
     },
     {
         label: 'Customer',
         items: [
             { label: 'Customer Validation Request', icon: 'pi pi-fw pi-users', to: '/customer-validation' },
             { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' }
+        ]
+    },
+    {
+        label: 'AI',
+        items: [
+            { label: 'Sentiment Analysis', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' }
         ]
     }
 ]);

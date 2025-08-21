@@ -12,7 +12,8 @@
       "Bash(docker compose:*)",
       "Bash(python:*)",
       "Bash(sed:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(docker-compose build:*)"
     ],
     "deny": []
   }
