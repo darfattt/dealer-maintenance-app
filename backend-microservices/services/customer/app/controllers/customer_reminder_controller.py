@@ -135,7 +135,7 @@ class CustomerReminderController:
                         whatsapp_response = await self._send_bulk_reminder_whatsapp(
                             dealer_id=dealer_id,
                             phone_number=customer_data.nomor_telepon_pelanggan,
-                            nama_pemilik=customer_data.nama_pemilik,
+                            nama_pelanggan=customer_data.nama_pelanggan,
                             message=whatsapp_message
                         )
                         
@@ -155,10 +155,10 @@ class CustomerReminderController:
                         
                         if whatsapp_response.success:
                             successful_reminders += 1
-                            logger.info(f"WhatsApp reminder sent successfully for customer {customer_data.nama_pemilik}")
+                            logger.info(f"WhatsApp reminder sent successfully for customer {customer_data.nama_pelanggan}")
                         else:
                             failed_reminders += 1
-                            logger.error(f"WhatsApp reminder failed for customer {customer_data.nama_pemilik}")
+                            logger.error(f"WhatsApp reminder failed for customer {customer_data.nama_pelanggan}")
                         
                         # Update processing progress
                         progress = round((successful_reminders + failed_reminders) / total_customers * 100)
@@ -170,7 +170,7 @@ class CustomerReminderController:
                             
                     except Exception as e:
                         failed_reminders += 1
-                        logger.error(f"Error sending WhatsApp for customer {customer_data.nama_pemilik}: {str(e)}")
+                        logger.error(f"Error sending WhatsApp for customer {customer_data.nama_pelanggan}: {str(e)}")
                         self.reminder_repo.update_status(
                             request_id=str(db_request.id),
                             request_status='FAILED',
@@ -189,7 +189,7 @@ class CustomerReminderController:
                         
                 except Exception as e:
                     failed_reminders += 1
-                    logger.error(f"Error processing customer {customer_data.nama_pemilik}: {str(e)}")
+                    logger.error(f"Error processing customer {customer_data.nama_pelanggan}: {str(e)}")
                     
                     # Update processing progress even on error
                     progress = round((successful_reminders + failed_reminders) / total_customers * 100)
@@ -259,7 +259,7 @@ class CustomerReminderController:
         
         # Fallback to basic template if no database template found
         logger.warning(f"No template found for {reminder_target} - {reminder_type}, using fallback")
-        customer_name = getattr(customer_data, 'nama_pemilik', 'Bpk/Ibu')
+        customer_name = getattr(customer_data, 'nama_pelanggan', 'Bpk/Ibu')
         return f"""Halo {customer_name},
 
 Ini adalah pengingat dari {dealer_name} terkait {reminder_target}.
@@ -271,12 +271,12 @@ Terima kasih atas perhatian Anda.
 Salam,
 {dealer_name}"""
     
-    async def _send_bulk_reminder_whatsapp(self, dealer_id: str, phone_number: str, nama_pemilik: str, message: str):
+    async def _send_bulk_reminder_whatsapp(self, dealer_id: str, phone_number: str, nama_pelanggan: str, message: str):
         """Send WhatsApp message for bulk reminder using Fonnte API"""
         return await self.whatsapp_service.send_reminder_message(
             dealer_id=dealer_id,
             phone_number=phone_number,
-            customer_name=nama_pemilik,
+            customer_name=nama_pelanggan,
             message=message
         )
 
@@ -292,7 +292,7 @@ Salam,
         whatsapp_msg_request = WhatsAppMessageRequest(
             dealer_id=request.dealer_id,
             phone_number=request.phone_number,
-            customer_name=request.nama_pemilik,
+            customer_name=request.nama_pelanggan,
             unit_type="",  # Not applicable for reminders
             license_plate=""  # Not applicable for reminders
         )

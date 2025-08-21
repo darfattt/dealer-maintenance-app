@@ -10,7 +10,9 @@
       "Bash(mkdir:*)",
       "Bash(docker-compose up:*)",
       "Bash(docker compose:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(sed:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

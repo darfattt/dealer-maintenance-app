@@ -40,10 +40,8 @@ Tim {dealer_name}"""
     
     # Create sample customer data
     sample_data = {
-        'nama_pemilik': 'Budi Santoso',
-        'nama_pembawa': 'Andi Wijaya',
+        'nama_pelanggan': 'Budi Santoso',
         'nomor_telepon_pelanggan': '081234567890',
-        'no_telepon_pembawa': '081987654321',
         'nomor_mesin': 'JB22E1572318',
         'nomor_polisi': 'D 1234 ABC',
         'tipe_unit': 'VARIO 125 CBS ISS',
@@ -123,8 +121,6 @@ def test_bulk_reminder_customer_data():
             nama_pemilik="Siti Nurhaliza",
             nama_pelanggan="Siti Nurhaliza", 
             nomor_telepon_pelanggan="081234567890",
-            nama_pembawa="Ahmad Rahman",
-            no_telepon_pembawa="081987654321",
             nomor_mesin="KC12E9876543",
             nomor_polisi="B 5678 XYZ",
             tipe_unit="PCX 160 CBS",

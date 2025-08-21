@@ -34,22 +34,22 @@ async def _initialize_whatsapp_templates(session):
     """Initialize WhatsApp templates in database"""
     try:
         from app.repositories.whatsapp_template_repository import WhatsAppTemplateRepository
-        from app.services.excel_template_reader import create_excel_template_reader
+        from utils.template_loader_utils import create_csv_template_loader
         
         template_repo = WhatsAppTemplateRepository(session)
         
-        # Try to load templates from Excel file first
-        excel_reader = create_excel_template_reader()
-        excel_success, excel_templates, excel_message = excel_reader.read_excel_templates()
+        # Try to load templates from CSV file first
+        csv_reader = create_csv_template_loader()
+        csv_success, csv_templates, csv_message = csv_reader.read_csv_templates()
         
-        if excel_success and excel_templates:
-            logger.info(f"Excel file found and loaded: {excel_message}")
+        if csv_success and csv_templates:
+            logger.info(f"CSV file found and loaded: {csv_message}")
             
-            # Update templates from Excel
-            update_result = template_repo.update_templates_from_excel(excel_templates)
+            # Update templates from CSV
+            update_result = template_repo.update_templates_from_excel(csv_templates)
             
             if update_result['success']:
-                logger.info(f"Templates successfully updated from Excel: {update_result['message']}")
+                logger.info(f"Templates successfully updated from CSV: {update_result['message']}")
                 
                 # Get current statistics
                 stats = template_repo.get_template_statistics()
@@ -57,15 +57,15 @@ async def _initialize_whatsapp_templates(session):
                           f"{stats['unique_targets']} targets, {stats['unique_types']} types")
                 return
             else:
-                logger.error(f"Failed to update templates from Excel: {update_result['message']}")
+                logger.error(f"Failed to update templates from CSV: {update_result['message']}")
                 if update_result['errors']:
                     for error in update_result['errors']:
-                        logger.error(f"Excel update error: {error}")
+                        logger.error(f"CSV update error: {error}")
                 
                 # Fall through to use hardcoded templates
                 logger.info("Falling back to hardcoded template initialization")
         else:
-            logger.info(f"Excel file not available or invalid: {excel_message}")
+            logger.info(f"CSV file not available or invalid: {csv_message}")
             logger.info("Using hardcoded template initialization")
         
 #         # Fallback: Use hardcoded template data if Excel fails or is unavailable

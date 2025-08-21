@@ -128,10 +128,8 @@ class WhatsAppTemplate(Base):
         # Prepare all possible template variables
         template_vars = {
             # Customer information
-            'nama_pemilik': safe_get('nama_pemilik', 'Bpk/Ibu'),
-            'nama_pembawa': safe_get('nama_pembawa', 'Tidak tersedia'),
+            'nama_pelanggan': safe_get('nama_pelanggan', 'Bpk/Ibu'),
             'nomor_telepon_pelanggan': safe_get('nomor_telepon_pelanggan', 'Tidak tersedia'),
-            'no_telepon_pembawa': safe_get('no_telepon_pembawa', 'Tidak tersedia'),
             
             # Vehicle information
             'nomor_polisi': safe_get('nomor_polisi', 'Tidak tersedia'),

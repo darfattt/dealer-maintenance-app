@@ -224,10 +224,8 @@ class WhatsAppTemplateRepository:
         if isinstance(customer_data, BulkReminderCustomerData):
             # Extract from Pydantic model
             return {
-                'nama_pemilik': customer_data.nama_pemilik,
-                'nama_pembawa': customer_data.nama_pembawa, 
+                'nama_pelanggan': customer_data.nama_pelanggan,
                 'nomor_telepon_pelanggan': customer_data.nomor_telepon_pelanggan,
-                'no_telepon_pembawa': customer_data.no_telepon_pembawa,
                 'nomor_mesin': customer_data.nomor_mesin,
                 'nomor_polisi': customer_data.nomor_polisi,
                 'tipe_unit': customer_data.tipe_unit,
@@ -237,10 +235,8 @@ class WhatsAppTemplateRepository:
         elif isinstance(customer_data, dict):
             # Return dictionary as-is but ensure all expected keys exist
             return {
-                'nama_pemilik': customer_data.get('nama_pemilik'),
-                'nama_pembawa': customer_data.get('nama_pembawa'),
+                'nama_pelanggan': customer_data.get('nama_pelanggan'),
                 'nomor_telepon_pelanggan': customer_data.get('nomor_telepon_pelanggan'),
-                'no_telepon_pembawa': customer_data.get('no_telepon_pembawa'),
                 'nomor_mesin': customer_data.get('nomor_mesin'),
                 'nomor_polisi': customer_data.get('nomor_polisi'),
                 'tipe_unit': customer_data.get('tipe_unit'),

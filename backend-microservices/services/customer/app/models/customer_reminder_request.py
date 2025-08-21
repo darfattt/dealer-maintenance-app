@@ -30,11 +30,9 @@ class CustomerReminderRequest(Base):
     
     # Customer data  
     nomor_telepon_pelanggan = Column(String(20), nullable=False)  # Customer primary phone number
+    nama_pelanggan = Column(String(255), nullable=False)  # Customer name field
     
     # Additional customer/vehicle data
-    nama_pemilik = Column(String(255), nullable=False)  # Primary customer/owner name field
-    nama_pembawa = Column(String(255), nullable=True)
-    no_telepon_pembawa = Column(String(20), nullable=True)
     nomor_mesin = Column(String(50), nullable=True)
     nomor_polisi = Column(String(20), nullable=True)
     tipe_unit = Column(String(100), nullable=True)
@@ -70,7 +68,7 @@ class CustomerReminderRequest(Base):
     last_modified_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     def __repr__(self):
-        return f"<CustomerReminderRequest(id={self.id}, dealer_id={self.dealer_id}, nama_pemilik={self.nama_pemilik})>"
+        return f"<CustomerReminderRequest(id={self.id}, dealer_id={self.dealer_id}, nama_pelanggan={self.nama_pelanggan})>"
     
     def to_dict(self):
         """Convert customer reminder request to dictionary"""
@@ -80,9 +78,7 @@ class CustomerReminderRequest(Base):
             "request_date": self.request_date.isoformat() if self.request_date else None,
             "request_time": self.request_time.isoformat() if self.request_time else None,
             "nomor_telepon_pelanggan": self.nomor_telepon_pelanggan,
-            "nama_pemilik": self.nama_pemilik,
-            "nama_pembawa": self.nama_pembawa,
-            "no_telepon_pembawa": self.no_telepon_pembawa,
+            "nama_pelanggan": self.nama_pelanggan,
             "nomor_mesin": self.nomor_mesin,
             "nomor_polisi": self.nomor_polisi,
             "tipe_unit": self.tipe_unit,
