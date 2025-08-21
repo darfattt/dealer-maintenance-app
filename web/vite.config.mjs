@@ -43,7 +43,8 @@ export default defineConfig(({ command, mode }) => {
             port: 5173,
             proxy: {
                 '/api': {
-                    target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+                    // Use Docker service name when in container, localhost for local dev
+                    target: process.env.DOCKER_ENV ? 'http://api_gateway:8080' : (process.env.VITE_API_BASE_URL || 'http://localhost:8080'),
                     changeOrigin: true,
                     secure: false,
                     // Don't rewrite the path - preserve full /api/v1/... path
