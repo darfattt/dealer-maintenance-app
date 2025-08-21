@@ -331,7 +331,7 @@ Salam,
             return {
                 "success": True,
                 "message": "Reminder found",
-                "data": reminder.to_dict()
+                "data": reminder.to_safe_dict()
             }
             
         except Exception as e:

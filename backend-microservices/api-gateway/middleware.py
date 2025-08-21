@@ -153,6 +153,8 @@ class ProxyMiddleware:
         if request.url.query:
             target_url += f"?{request.url.query}"
         
+        logger.info(f"🎯 Proxying {method} {path} -> {target_url}")
+        
         try:
             # Get request body
             body = await request.body()
@@ -184,11 +186,11 @@ class ProxyMiddleware:
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                 detail="Service timeout"
             )
-        except httpx.ConnectError:
-            logger.error(f"Connection error when proxying to {target_url}")
+        except httpx.ConnectError as e:
+            logger.error(f"Connection error when proxying to {target_url}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Service unavailable"
+                detail=f"Service unavailable: {target_service}"
             )
         except Exception as e:
             logger.error(f"Error proxying request to {target_url}: {str(e)}")

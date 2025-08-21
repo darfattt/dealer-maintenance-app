@@ -99,3 +99,31 @@ class CustomerReminderRequest(Base):
             "last_modified_by": self.last_modified_by,
             "last_modified_date": self.last_modified_date.isoformat() if self.last_modified_date else None,
         }
+    
+    def to_safe_dict(self):
+        """Convert customer reminder request to dictionary without sensitive fields"""
+        return {
+            "id": str(self.id),
+            "request_date": self.request_date.isoformat() if self.request_date else None,
+            "request_time": self.request_time.isoformat() if self.request_time else None,
+            "nomor_telepon_pelanggan": self.nomor_telepon_pelanggan,
+            "nama_pelanggan": self.nama_pelanggan,
+            "nomor_mesin": self.nomor_mesin,
+            "nomor_polisi": self.nomor_polisi,
+            "tipe_unit": self.tipe_unit,
+            "tanggal_beli": self.tanggal_beli.isoformat() if self.tanggal_beli else None,
+            "tanggal_expired_kpb": self.tanggal_expired_kpb.isoformat() if self.tanggal_expired_kpb else None,
+            "kode_ahass": self.kode_ahass,
+            "nama_ahass": self.nama_ahass,
+            "alamat_ahass": self.alamat_ahass,
+            "request_status": self.request_status,
+            "whatsapp_status": self.whatsapp_status,
+            "reminder_target": self.reminder_target,
+            "reminder_type": self.reminder_type,
+            "whatsapp_message": self.whatsapp_message,
+            "transaction_id": str(self.transaction_id) if self.transaction_id else None,
+            "created_by": self.created_by,
+            "created_date": self.created_date.isoformat() if self.created_date else None,
+            "last_modified_by": self.last_modified_by,
+            "last_modified_date": self.last_modified_date.isoformat() if self.last_modified_date else None,
+        }

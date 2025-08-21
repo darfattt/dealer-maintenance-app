@@ -403,7 +403,7 @@ onMounted(() => {
                             {{ formatTime(slotProps.data.request_time) }}
                         </template>
                     </Column>
-                    <Column field="nama_pemilik" header="Customer Name" />
+                    <Column field="nama_pelanggan" header="Customer Name" />
                     <Column field="nomor_telepon_pelanggan" header="No. Telepon" />
                     <Column field="reminder_type" header="Reminder Type">
                         <template #body="slotProps">
