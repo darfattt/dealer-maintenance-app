@@ -25,13 +25,13 @@ const dealerOptions = ref([
     { label: 'Test Dealer (00999)', value: '00999' }
 ]);
 
-// Reminder target options
+// Reminder target options (matching backend reminder_target field values)
 const reminderTargetOptions = ref([
-    { label: 'All Types', value: '' },
-    { label: 'KPB-1', value: 'KPB-1' },
-    { label: 'KPB-2', value: 'KPB-2' },
-    { label: 'KPB-3', value: 'KPB-3' },
-    { label: 'KPB-4', value: 'KPB-4' },
+    { label: 'All Targets', value: '' },
+    { label: 'KPB 1', value: 'KPB-1' },
+    { label: 'KPB 2', value: 'KPB-2' },
+    { label: 'KPB 3', value: 'KPB-3' },
+    { label: 'KPB 4', value: 'KPB-4' },
     { label: 'Non KPB', value: 'Non KPB' },
     { label: 'Booking Service', value: 'Booking Service' },
     { label: 'Ultah Konsumen', value: 'Ultah Konsumen' }
@@ -143,42 +143,55 @@ const onPageChange = (event) => {
     loadReminders(event.page);
 };
 
-// Get reminder type severity for Tag component
-const getReminderTypeSeverity = (type) => {
-    switch (type) {
-        case 'SERVICE_REMINDER':
+// Get reminder target severity for Tag component (based on reminder_target field)
+const getReminderTargetSeverity = (target) => {
+    switch (target) {
+        case 'KPB 1':
+        case 'KPB-1':
             return 'info';
-        case 'PAYMENT_REMINDER':
-            return 'warning';
-        case 'APPOINTMENT_REMINDER':
-            return 'secondary';
-        case 'MAINTENANCE_REMINDER':
+        case 'KPB 2':
+        case 'KPB-2':
             return 'success';
-        case 'FOLLOW_UP_REMINDER':
+        case 'KPB 3':
+        case 'KPB-3':
+            return 'warning';
+        case 'KPB 4':
+        case 'KPB-4':
             return 'help';
-        case 'CUSTOM_REMINDER':
-        default:
+        case 'Non KPB':
+            return 'secondary';
+        case 'Booking Service':
             return 'contrast';
+        case 'Ultah Konsumen':
+            return 'danger';
+        default:
+            return 'info';
     }
 };
 
-// Get reminder type label for display
-const getReminderTypeLabel = (type) => {
-    switch (type) {
-        case 'SERVICE_REMINDER':
-            return 'Service';
-        case 'PAYMENT_REMINDER':
-            return 'Payment';
-        case 'APPOINTMENT_REMINDER':
-            return 'Appointment';
-        case 'MAINTENANCE_REMINDER':
-            return 'Maintenance';
-        case 'FOLLOW_UP_REMINDER':
-            return 'Follow Up';
-        case 'CUSTOM_REMINDER':
-            return 'Custom';
+// Get reminder target label for display (based on reminder_target field)
+const getReminderTargetLabel = (target) => {
+    switch (target) {
+        case 'KPB 1':
+        case 'KPB-1':
+            return 'KPB 1';
+        case 'KPB 2':
+        case 'KPB-2':
+            return 'KPB 2';
+        case 'KPB 3':
+        case 'KPB-3':
+            return 'KPB 3';
+        case 'KPB 4':
+        case 'KPB-4':
+            return 'KPB 4';
+        case 'Non KPB':
+            return 'Non KPB';
+        case 'Booking Service':
+            return 'Booking Service';
+        case 'Ultah Konsumen':
+            return 'Ultah Konsumen';
         default:
-            return 'Unknown';
+            return target || 'Unknown';
     }
 };
 
@@ -223,18 +236,19 @@ const formatTime = (time) => {
     return time;
 };
 
-// Get most common reminder types for display
-const getTopReminderTypes = computed(() => {
+// Get most common reminder targets for display
+/*
+const getTopReminderTargets = computed(() => {
     const breakdown = stats.value.reminder_type_breakdown;
     return Object.entries(breakdown)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 3)
-        .map(([type, count]) => ({
-            type: getReminderTypeLabel(type),
+        .map(([target, count]) => ({
+            type: getReminderTargetLabel(target),
             count
         }));
 });
-
+*/
 // Watch for filter changes - removed selectedDealer since we use authenticated dealer
 watch([formattedDateFrom, formattedDateTo, selectedReminderTarget], () => {
     loadStats();
@@ -266,16 +280,16 @@ onMounted(() => {
                 />
             </div>
 
-            <!-- Reminder Type Filter -->
+            <!-- Reminder Target Filter -->
             <div class="flex items-center space-x-2">
-                <label for="type-filter" class="text-sm font-medium">Type:</label>
+                <label for="target-filter" class="text-sm font-medium">Target:</label>
                 <Dropdown
-                    id="type-filter"
+                    id="target-filter"
                     v-model="selectedReminderTarget"
                     :options="reminderTargetOptions"
                     optionLabel="label"
                     optionValue="value"
-                    placeholder="All Types"
+                    placeholder="All Targets"
                     class="w-44"
                 />
             </div>
@@ -367,9 +381,9 @@ onMounted(() => {
             </Card>
         </div>
 
-        <!-- Reminder Type Breakdown -->
-        <div v-if="!statsLoading && getTopReminderTypes.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card class="text-center" v-for="item in getTopReminderTypes" :key="item.type">
+        <!-- Reminder Target Breakdown
+        <div v-if="!statsLoading && getTopReminderTargets.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card class="text-center" v-for="item in getTopReminderTargets" :key="item.type">
                 <template #content>
                     <h3 class="text-lg font-semibold text-surface-900 mb-2">{{ item.type }}</h3>
                     <div class="text-2xl font-bold text-indigo-600 mb-1">
@@ -379,6 +393,7 @@ onMounted(() => {
                 </template>
             </Card>
         </div>
+         -->
 
         <!-- Details Table -->
         <Card>
@@ -405,14 +420,15 @@ onMounted(() => {
                     </Column>
                     <Column field="nama_pelanggan" header="Customer Name" />
                     <Column field="nomor_telepon_pelanggan" header="No. Telepon" />
-                    <Column field="reminder_type" header="Reminder Type">
+                    <Column field="reminder_target" header="Reminder Target">
                         <template #body="slotProps">
                             <Tag 
-                                :value="getReminderTypeLabel(slotProps.data.reminder_type)" 
-                                :severity="getReminderTypeSeverity(slotProps.data.reminder_type)"
+                                :value="getReminderTargetLabel(slotProps.data.reminder_target)" 
+                                :severity="getReminderTargetSeverity(slotProps.data.reminder_target)"
                             />
                         </template>
                     </Column>
+                    <Column field="reminder_type" header="Reminder Type" />
                     <Column field="whatsapp_status" header="Status WhatsApp">
                         <template #body="slotProps">
                             <Tag 
