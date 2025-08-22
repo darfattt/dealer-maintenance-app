@@ -15,7 +15,7 @@ export class CustomerService {
             if (dateTo) params.append('date_to', dateTo)
             
             const queryString = params.toString()
-            const url = `/api/v1/customer/dealer/${dealerId}/stats${queryString ? `?${queryString}` : ''}`
+            const url = `/v1/customer/dealer/${dealerId}/stats${queryString ? `?${queryString}` : ''}`
             
             const response = await api.get(url)
             return response.data
@@ -50,7 +50,7 @@ export class CustomerService {
             if (dateFrom) params.append('date_from', dateFrom)
             if (dateTo) params.append('date_to', dateTo)
             
-            const url = `/api/v1/customer/dealer/${dealerId}/requests?${params.toString()}`
+            const url = `/v1/customer/dealer/${dealerId}/requests?${params.toString()}`
             
             const response = await api.get(url)
             return response.data
@@ -67,7 +67,7 @@ export class CustomerService {
      */
     async getRequestById(requestId) {
         try {
-            const response = await api.get(`/customer/request/${requestId}`)
+            const response = await api.get(`/api/v1/customer/request/${requestId}`)
             return response.data
         } catch (error) {
             console.error('Error fetching customer request:', error)
@@ -82,7 +82,7 @@ export class CustomerService {
      */
     async testWhatsAppConfig(dealerId) {
         try {
-            const response = await api.post(`/customer/dealer/${dealerId}/test-whatsapp`)
+            const response = await api.post(`/v1/customer/dealer/${dealerId}/test-whatsapp`)
             return response.data
         } catch (error) {
             console.error('Error testing WhatsApp config:', error)
@@ -105,7 +105,7 @@ export class CustomerService {
             if (dateTo) params.append('date_to', dateTo)
             
             const queryString = params.toString()
-            const url = `/api/v1/reminder/stats${queryString ? `?${queryString}` : ''}`
+            const url = `/v1/reminder/stats${queryString ? `?${queryString}` : ''}`
             
             const response = await api.get(url)
             return response.data
@@ -142,7 +142,7 @@ export class CustomerService {
             if (dateTo) params.append('date_to', dateTo)
             if (reminderTarget) params.append('reminder_target', reminderTarget)
             
-            const url = `/api/v1/reminder/reminders?${params.toString()}`
+            const url = `/v1/reminder/reminders?${params.toString()}`
             
             const response = await api.get(url)
             return response.data
@@ -158,7 +158,7 @@ export class CustomerService {
      */
     async getReminderTypes() {
         try {
-            const response = await api.get('/api/v1/reminder/types')
+            const response = await api.get('/v1/reminder/types')
             return response.data
         } catch (error) {
             console.error('Error fetching reminder types:', error)
@@ -173,7 +173,7 @@ export class CustomerService {
      */
     async getReminderById(reminderId) {
         try {
-            const response = await api.get(`/api/v1/reminder/${reminderId}`)
+            const response = await api.get(`/v1/reminder/${reminderId}`)
             return response.data
         } catch (error) {
             console.error('Error fetching reminder request:', error)
@@ -191,7 +191,7 @@ export class CustomerService {
      */
     async createReminder(reminderData) {
         try {
-            const response = await api.post('/api/v1/reminder/create', reminderData)
+            const response = await api.post('/v1/reminder/create', reminderData)
             return response.data
         } catch (error) {
             console.error('Error creating reminder:', error)
@@ -205,7 +205,7 @@ export class CustomerService {
      */
     async testReminderWhatsAppConfig() {
         try {
-            const response = await api.post('/api/v1/reminder/test-whatsapp')
+            const response = await api.post('/v1/reminder/test-whatsapp')
             return response.data
         } catch (error) {
             console.error('Error testing reminder WhatsApp config:', error)

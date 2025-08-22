@@ -13,7 +13,8 @@
       "Bash(python:*)",
       "Bash(sed:*)",
       "Bash(cp:*)",
-      "Bash(docker-compose build:*)"
+      "Bash(docker-compose build:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }
