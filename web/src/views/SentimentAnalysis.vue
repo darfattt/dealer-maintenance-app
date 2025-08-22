@@ -43,12 +43,7 @@ onMounted(() => {
 <template>
     <div class="space-y-6">
         <!-- Header -->
-        <div class="flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold text-surface-900 mb-2">Sentiment Analysis</h1>
-                <p class="text-surface-600">Analyze customer sentiment and feedback patterns</p>
-            </div>
-        </div>
+        
 
         <!-- Content Card -->
         <Card>
