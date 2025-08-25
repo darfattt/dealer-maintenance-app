@@ -36,7 +36,7 @@ onMounted(() => {
         if (loading.value) {
             loading.value = false;
         }
-    }, 3000); // 10 seconds timeout
+    }, 3000); // 3 seconds timeout
 });
 </script>
 
