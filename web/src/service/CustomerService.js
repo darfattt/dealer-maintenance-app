@@ -93,16 +93,20 @@ export class CustomerService {
     // ===== CUSTOMER REMINDER METHODS =====
 
     /**
-     * Get customer reminder statistics for the authenticated dealer
+     * Get customer reminder statistics for a dealer
      * @param {string} dateFrom - Start date in YYYY-MM-DD format
      * @param {string} dateTo - End date in YYYY-MM-DD format
+     * @param {string} dealerId - Dealer ID (optional, SUPER_ADMIN can specify dealer)
+     * @param {string} reminderTarget - Reminder target filter (optional)
      * @returns {Promise<Object>} Reminder statistics including sent/failed counts and type breakdown
      */
-    async getReminderStats(dateFrom = null, dateTo = null) {
+    async getReminderStats(dateFrom = null, dateTo = null, dealerId = null, reminderTarget = null) {
         try {
             const params = new URLSearchParams()
             if (dateFrom) params.append('date_from', dateFrom)
             if (dateTo) params.append('date_to', dateTo)
+            if (dealerId) params.append('dealer_id', dealerId)
+            if (reminderTarget) params.append('reminder_target', reminderTarget)
             
             const queryString = params.toString()
             const url = `/v1/reminder/stats${queryString ? `?${queryString}` : ''}`
@@ -116,13 +120,14 @@ export class CustomerService {
     }
 
     /**
-     * Get paginated customer reminder requests for the authenticated dealer
+     * Get paginated customer reminder requests for a dealer
      * @param {Object} options - Query options
      * @param {number} options.page - Page number (1-based)
      * @param {number} options.pageSize - Number of items per page
      * @param {string} options.dateFrom - Start date in YYYY-MM-DD format
      * @param {string} options.dateTo - End date in YYYY-MM-DD format
      * @param {string} options.reminderTarget - Filter by reminder target
+     * @param {string} options.dealerId - Dealer ID (optional, SUPER_ADMIN can specify dealer)
      * @returns {Promise<Object>} Paginated list of reminder requests
      */
     async getReminderRequests(options = {}) {
@@ -132,7 +137,8 @@ export class CustomerService {
                 pageSize = 10,
                 dateFrom = null,
                 dateTo = null,
-                reminderTarget = null
+                reminderTarget = null,
+                dealerId = null
             } = options
 
             const params = new URLSearchParams()
@@ -141,6 +147,7 @@ export class CustomerService {
             if (dateFrom) params.append('date_from', dateFrom)
             if (dateTo) params.append('date_to', dateTo)
             if (reminderTarget) params.append('reminder_target', reminderTarget)
+            if (dealerId) params.append('dealer_id', dealerId)
             
             const url = `/v1/reminder/reminders?${params.toString()}`
             

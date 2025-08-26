@@ -76,6 +76,7 @@ async def validate_customer(
 
 @router.get(
     "/request/{request_id}",
+    include_in_schema=False,
     summary="Get customer validation request by ID",
     description="Retrieve a specific customer validation request by its ID"
 )
@@ -188,6 +189,7 @@ async def get_dealer_stats(
 
 @router.post(
     "/dealer/{dealer_id}/test-whatsapp",
+    include_in_schema=False,
     summary="Test WhatsApp configuration",
     description="Test the Fonnte WhatsApp configuration for a dealer"
 )

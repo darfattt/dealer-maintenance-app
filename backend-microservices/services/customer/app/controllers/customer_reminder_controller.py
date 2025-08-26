@@ -405,7 +405,8 @@ Salam,
         self, 
         dealer_id: str,
         date_from: Optional[str] = None,
-        date_to: Optional[str] = None
+        date_to: Optional[str] = None,
+        reminder_target: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get dealer reminder statistics with breakdown by type and status"""
         try:
@@ -432,14 +433,16 @@ Salam,
             whatsapp_stats = self.reminder_repo.get_whatsapp_status_stats(
                 dealer_id=dealer_id,
                 date_from=parsed_date_from,
-                date_to=parsed_date_to
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
             )
             
             # Get reminder type statistics
             reminder_type_stats = self.reminder_repo.get_reminder_type_stats(
                 dealer_id=dealer_id,
                 date_from=parsed_date_from,
-                date_to=parsed_date_to
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
             )
             
             # Combine all stats

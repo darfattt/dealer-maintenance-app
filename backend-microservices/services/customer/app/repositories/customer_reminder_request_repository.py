@@ -211,7 +211,7 @@ class CustomerReminderRequestRepository:
         
         return query.count()
     
-    def get_whatsapp_status_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> dict:
+    def get_whatsapp_status_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
         """Get WhatsApp status statistics for a dealer"""
         from sqlalchemy import func
         
@@ -224,6 +224,9 @@ class CustomerReminderRequestRepository:
         
         if date_to:
             query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
         
         # Count total requests
         total_requests = query.count()
@@ -244,7 +247,7 @@ class CustomerReminderRequestRepository:
             'delivery_percentage': delivery_percentage
         }
     
-    def get_reminder_type_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> dict:
+    def get_reminder_type_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
         """Get reminder type statistics for a dealer"""
         from sqlalchemy import func
         
@@ -257,6 +260,9 @@ class CustomerReminderRequestRepository:
         
         if date_to:
             query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
         
         # Count by reminder type
         reminder_stats = query.with_entities(

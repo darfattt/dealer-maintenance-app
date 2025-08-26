@@ -82,7 +82,9 @@ const loadStats = async () => {
     try {
         const response = await CustomerService.getReminderStats(
             formattedDateFrom.value,
-            formattedDateTo.value
+            formattedDateTo.value,
+            selectedDealer.value,
+            selectedReminderTarget.value
         );
         
         if (response.success && response.data) {
@@ -121,7 +123,8 @@ const loadReminders = async (page = 0) => {
             pageSize: pageSize.value,
             dateFrom: formattedDateFrom.value,
             dateTo: formattedDateTo.value,
-            reminderTarget: selectedReminderTarget.value || null
+            reminderTarget: selectedReminderTarget.value || null,
+            dealerId: selectedDealer.value
         });
         
         if (response.success && response.data) {
@@ -249,8 +252,8 @@ const getTopReminderTargets = computed(() => {
         }));
 });
 */
-// Watch for filter changes - removed selectedDealer since we use authenticated dealer
-watch([formattedDateFrom, formattedDateTo, selectedReminderTarget], () => {
+// Watch for filter changes - includes selectedDealer for SUPER_ADMIN dealer switching
+watch([formattedDateFrom, formattedDateTo, selectedReminderTarget, selectedDealer], () => {
     loadStats();
     loadReminders(0);
 }, { deep: true });
@@ -420,6 +423,8 @@ onMounted(() => {
                     </Column>
                     <Column field="nama_pelanggan" header="Customer Name" />
                     <Column field="nomor_telepon_pelanggan" header="No. Telepon" />
+                    <Column field="nomor_polisi" header="No. Polisi" />
+                    <Column field="tipe_unit" header="Unit Type" />
                     <Column field="reminder_target" header="Reminder Target">
                         <template #body="slotProps">
                             <Tag 
@@ -437,11 +442,7 @@ onMounted(() => {
                             />
                         </template>
                     </Column>
-                    <Column field="created_date" header="Created Date">
-                        <template #body="slotProps">
-                            {{ formatDate(slotProps.data.created_date) }}
-                        </template>
-                    </Column>
+                    
                 </DataTable>
 
                 <!-- Pagination -->
