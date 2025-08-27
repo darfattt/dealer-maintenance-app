@@ -207,7 +207,7 @@ class CustomerController:
             return {
                 "success": True,
                 "message": "Request found",
-                "data": request.to_dict()
+                "data": request.to_safe_dict()
             }
             
         except Exception as e:

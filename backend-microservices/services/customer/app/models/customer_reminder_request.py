@@ -9,6 +9,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
+from app.utils.phone_masking import mask_phone_number
+
 Base = declarative_base()
 
 
@@ -106,7 +108,7 @@ class CustomerReminderRequest(Base):
             "id": str(self.id),
             "request_date": self.request_date.isoformat() if self.request_date else None,
             "request_time": self.request_time.isoformat() if self.request_time else None,
-            "nomor_telepon_pelanggan": self.nomor_telepon_pelanggan,
+            "nomor_telepon_pelanggan": mask_phone_number(self.nomor_telepon_pelanggan),
             "nama_pelanggan": self.nama_pelanggan,
             "nomor_mesin": self.nomor_mesin,
             "nomor_polisi": self.nomor_polisi,

@@ -204,7 +204,7 @@ class CustomerValidationRequestRepository:
         ).offset(offset).limit(page_size).all()
         
         return {
-            'items': [request.to_dict() for request in requests],
+            'items': [request.to_safe_dict() for request in requests],
             'total': total,
             'page': page,
             'page_size': page_size,
