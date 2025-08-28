@@ -75,6 +75,11 @@ const router = createRouter({
                     component: () => import('@/views/CustomerReminderRequest.vue')
                 },
                 {
+                    path: '/customer-satisfaction',
+                    name: 'customer-satisfaction',
+                    component: () => import('@/views/CustomerSatisfaction.vue')
+                },
+                {
                     path: '/sentiment-analysis',
                     name: 'sentiment-analysis',
                     component: () => import('@/views/SentimentAnalysis.vue')
