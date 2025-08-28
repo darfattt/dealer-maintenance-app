@@ -41,12 +41,30 @@
                             </div>
                         </div>
                         
+                        <!-- Override Option -->
+                        <div class="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                            <Checkbox 
+                                v-model="overrideExisting" 
+                                inputId="override-checkbox" 
+                                :binary="true"
+                            />
+                            <div class="flex-1">
+                                <label for="override-checkbox" class="text-sm font-medium text-orange-800 cursor-pointer">
+                                    Override existing records
+                                </label>
+                                <!-- <p class="text-xs text-orange-600 mt-1">
+                                    Replace records with same No Tiket. If unchecked, duplicates will be skipped.
+                                </p> -->
+                            </div>
+                        </div>
+                        
                         <!-- Upload Instructions -->
                         <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
                             <div class="text-xs text-blue-800">
                                 <strong>File Format:</strong> Excel (.xlsx, .xls) or CSV<br>
                                 <strong>Max Size:</strong> 10MB<br>
-                                <strong>Required Columns:</strong> No Tiket, Nama Konsumen, No AHASS
+                                <strong>Required Columns:</strong> No Tiket, Nama Konsumen, No AHASS<br>
+                                <strong>Duplicate Key:</strong> No Tiket (used for override detection)
                             </div>
                         </div>
                         
@@ -93,9 +111,25 @@
                             <span class="text-sm font-medium">Failed:</span>
                             <span class="text-sm text-red-600">{{ uploadResult.data?.failed_records || 0 }}</span>
                         </div>
+                        <div v-if="uploadResult.data?.replaced_records !== undefined" class="flex justify-between">
+                            <span class="text-sm font-medium">Replaced:</span>
+                            <span class="text-sm text-orange-600">{{ uploadResult.data?.replaced_records || 0 }}</span>
+                        </div>
+                        <div v-if="uploadResult.data?.skipped_records !== undefined" class="flex justify-between">
+                            <span class="text-sm font-medium">Skipped:</span>
+                            <span class="text-sm text-gray-600">{{ uploadResult.data?.skipped_records || 0 }}</span>
+                        </div>
                         <div v-if="uploadResult.data?.success_rate" class="flex justify-between">
                             <span class="text-sm font-medium">Success Rate:</span>
                             <span class="text-sm">{{ uploadResult.data.success_rate }}%</span>
+                        </div>
+                        <div v-if="uploadResult.data?.override_enabled !== undefined" class="flex justify-between">
+                            <span class="text-sm font-medium">Override Mode:</span>
+                            <Tag 
+                                :value="uploadResult.data.override_enabled ? 'Enabled' : 'Disabled'"
+                                :severity="uploadResult.data.override_enabled ? 'warning' : 'info'"
+                                class="text-xs"
+                            />
                         </div>
                     </div>
                 </template>
@@ -165,6 +199,7 @@ import Button from 'primevue/button';
 import FileUpload from 'primevue/fileupload';
 import Tag from 'primevue/tag';
 import ProgressSpinner from 'primevue/progressspinner';
+import Checkbox from 'primevue/checkbox';
 import CustomerService from '@/service/CustomerService';
 
 const props = defineProps({
@@ -182,6 +217,7 @@ const toast = useToast();
 const selectedFile = ref(null);
 const uploading = ref(false);
 const uploadResult = ref(null);
+const overrideExisting = ref(false);
 
 // History state
 const showHistory = ref(true);
@@ -192,6 +228,8 @@ const uploadHistory = ref([]);
 const onFileSelect = (event) => {
     selectedFile.value = event.files[0];
     uploadResult.value = null;
+    // Reset override option when new file is selected
+    // overrideExisting.value = false; // Uncomment if you want to reset on file change
 };
 
 // File upload
@@ -210,7 +248,10 @@ const uploadFile = async () => {
     uploadResult.value = null;
     
     try {
-        const result = await CustomerService.uploadCustomerSatisfactionFile(selectedFile.value);
+        const result = await CustomerService.uploadCustomerSatisfactionFile(
+            selectedFile.value, 
+            overrideExisting.value
+        );
         
         if (result.success) {
             uploadResult.value = result;

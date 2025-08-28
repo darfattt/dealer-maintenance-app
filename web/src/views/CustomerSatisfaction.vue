@@ -13,19 +13,6 @@
                 />
             </div>
 
-            <!-- Date Type Selector -->
-            <div class="flex items-center space-x-2">
-                <label for="date-type" class="text-sm font-medium">Date Type:</label>
-                <Dropdown 
-                    id="date-type"
-                    v-model="selectedDateType"
-                    :options="dateTypeOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Select date type"
-                    class="w-40"
-                />
-            </div>
 
             <!-- Date Range Filters -->
             <div class="flex items-center space-x-2">
@@ -77,57 +64,7 @@
 
         <!-- Overview Section -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <!-- Total Records Card -->
-            <Card class="text-center">
-                <template #content>
-                    <div v-if="loading" class="flex justify-center">
-                        <ProgressSpinner style="width: 30px; height: 30px;" />
-                    </div>
-                    <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Total Records</h3>
-                        <div class="text-3xl font-bold text-blue-600 mb-1">
-                            {{ statistics?.total_records || 0 }}
-                        </div>
-                        <p class="text-sm text-surface-500">Customer Satisfaction</p>
-                    </div>
-                </template>
-            </Card>
-
-            <!-- Average Rating Card -->
-            <Card class="text-center">
-                <template #content>
-                    <div v-if="loading" class="flex justify-center">
-                        <ProgressSpinner style="width: 30px; height: 30px;" />
-                    </div>
-                    <div v-else>
-                        <div class="flex items-center justify-center space-x-2 mb-2">
-                            <!-- <i class="pi pi-star-fill text-yellow-400 text-lg"></i> -->
-                            <h3 class="text-lg font-semibold text-surface-900">Average Rating</h3>
-                        </div>
-                        <div class="text-3xl font-bold text-green-600 mb-1">
-                            {{ getAverageRating() }}
-                        </div>
-                        <p class="text-sm text-surface-500">Overall Score</p>
-                    </div>
-                </template>
-            </Card>
-
-            <!-- Top Rating Card -->
-            <Card class="text-center">
-                <template #content>
-                    <div v-if="loading" class="flex justify-center">
-                        <ProgressSpinner style="width: 30px; height: 30px;" />
-                    </div>
-                    <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Most Common</h3>
-                        <div class="text-3xl font-bold text-orange-600 mb-1">
-                            {{ getTopRating() }}
-                        </div>
-                        <p class="text-sm text-surface-500">Rating Score</p>
-                    </div>
-                </template>
-            </Card>
-
+            
             <!-- AHASS Count Card -->
             <Card class="text-center">
                 <template #content>
@@ -135,14 +72,110 @@
                         <ProgressSpinner style="width: 30px; height: 30px;" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">AHASS Count</h3>
-                        <div class="text-3xl font-bold text-primary-600 mb-1">
-                            {{ statistics?.top_ahass?.length || 0 }}
-                        </div>
-                        <p class="text-sm text-surface-500">Unique Dealers</p>
+                        <h3 class="text-lg font-semibold text-surface-900 mb-2">SENTIMENT RECORD</h3>
+                       
+                        <p class="text-sm text-surface-500"><i>Work in progress</i></p>
                     </div>
                 </template>
             </Card>
+
+            
+
+            <!-- Top Complaints Card -->
+            <Card class="text-center">
+                <template #content>
+                    <div v-if="loading" class="flex justify-center">
+                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                    </div>
+                    <div v-else>
+                        <h3 class="text-lg font-semibold text-surface-900 mb-3">TOP 3 INDIKASI KELUHAN</h3>
+                        <div v-if="topComplaints && topComplaints.length > 0" class="space-y-2">
+                            <div 
+                                v-for="(complaint, index) in topComplaints" 
+                                :key="index"
+                                class="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                            >
+                                <div class="flex-1 text-left">
+                                    <div class="text-xs font-medium text-gray-800 truncate" :title="complaint.indikasi_keluhan">
+                                        {{ complaint.indikasi_keluhan || 'N/A' }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">{{ complaint.count }} cases</div>
+                                </div>
+                                <div class="text-sm font-bold" :class="getComplaintSeverityColor(complaint.percentage)">
+                                    {{ complaint.percentage }}%
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-sm text-gray-500">
+                            No complaint data
+                        </div>
+                    </div>
+                </template>
+            </Card>
+            
+
+            <!-- Overall Rating Card -->
+            <Card class="text-center">
+                <template #content>
+                    <div v-if="loading" class="flex justify-center">
+                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                    </div>
+                    <div v-else>
+                        <h3 class="text-lg font-semibold text-surface-900 mb-3">OVERALL RATING</h3>
+                        
+                        <div class="mb-4">
+                            <!-- Main Rating Display -->
+                            <div class="flex items-center justify-center space-x-3 mb-3">
+                                <span class="text-6xl font-bold text-surface-900">
+                                    {{ overallRating?.current_rating || '-' }}
+                                </span>
+                                <div class="flex items-center">
+                                    <!-- Star Rating Display -->
+                                    <div class="flex mr-2">
+                                        <i 
+                                            v-for="star in 5" 
+                                            :key="star"
+                                            class="pi pi-star-fill text-lg"
+                                            :class="getStarColor(star, overallRating?.current_rating)"
+                                        ></i>
+                                    </div>
+                                    <span class="text-base text-gray-600 font-medium">/ 5.0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Month-over-Month Comparison -->
+                        <div v-if="overallRating?.change !== null && overallRating?.change_direction" class="text-base">
+                            <span 
+                                :class="getChangeColor(overallRating?.change_direction)"
+                                class="font-medium"
+                            >
+                                {{ formatChangeText(overallRating?.change, overallRating?.change_direction) }}
+                            </span>
+                        </div>
+                        <div v-else class="text-base text-gray-500">
+                            No comparison data
+                        </div>
+                    </div>
+                </template>
+            </Card>
+
+            <!-- Total Reviews Card -->
+            <Card class="text-center">
+                <template #content>
+                    <div v-if="loading" class="flex justify-center">
+                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                    </div>
+                    <div v-else>
+                        <h3 class="text-lg font-semibold text-surface-900 mb-3">Total Review</h3>
+                        <div class="text-6xl font-bold text-blue-600 mb-2">
+                            {{ statistics?.total_records || 0 }}
+                        </div>
+                        <p class="text-base text-surface-500 font-medium">Reviews</p>
+                    </div>
+                </template>
+            </Card>
+            
         </div>
 
         <!-- Details Table -->
@@ -151,7 +184,7 @@
                 <h2 class="text-xl font-bold text-surface-900">Customer Satisfaction Data</h2>
             </template>
             <template #content>
-                <DataTable 
+            <DataTable 
                     :value="satisfactionData"
                     :loading="loading"
                     responsiveLayout="scroll"
@@ -159,36 +192,81 @@
                     dataKey="id"
                     class="p-datatable-customers"
                 >
+                    <!-- No (Index) Column -->
+                    <Column header="No" style="min-width: 60px">
+                        <template #body="{ index }">
+                            <span class="font-medium text-sm">
+                                {{ (pagination.page - 1) * pagination.page_size + index + 1 }}
+                            </span>
+                        </template>
+                    </Column>
+                    
+                    <!-- No Tiket Column -->
                     <Column field="no_tiket" header="No Tiket" style="min-width: 120px">
                         <template #body="{ data }">
-                            <span class="font-medium">{{ data.no_tiket || '-' }}</span>
+                            <span class="font-medium text-sm">{{ data.no_tiket || '-' }}</span>
                         </template>
                     </Column>
                     
-                    <Column field="nama_konsumen" header="Nama Konsumen" style="min-width: 200px">
+                    <!-- Tanggal Rating Column -->
+                    <Column field="tanggal_rating" header="Tanggal Rating" style="min-width: 120px">
                         <template #body="{ data }">
-                            {{ data.nama_konsumen || '-' }}
+                            <span class="text-sm">{{ data.tanggal_rating || '-' }}</span>
                         </template>
                     </Column>
                     
-                    <Column field="no_ahass" header="No AHASS" style="min-width: 100px">
+                    <!-- Nama Konsumen Column -->
+                    <Column field="nama_konsumen" header="Nama Konsumen" style="min-width: 180px">
                         <template #body="{ data }">
-                            <Tag :value="data.no_ahass || 'N/A'" severity="info" />
+                            <span class="text-sm">{{ data.nama_konsumen || '-' }}</span>
                         </template>
                     </Column>
                     
-                    <Column field="nama_ahass" header="Nama AHASS" style="min-width: 200px">
+                    <!-- No HP Column (with masking) -->
+                    <Column field="no_hp" header="No HP" style="min-width: 120px">
                         <template #body="{ data }">
-                            {{ data.nama_ahass || '-' }}
+                            <span class="text-sm font-mono">{{ maskPhoneNumber(data.no_hp) || '-' }}</span>
                         </template>
                     </Column>
                     
-                    <Column field="rating" header="Rating" style="min-width: 80px">
+                    <!-- Alamat Email Column (with masking) -->
+                    <Column field="alamat_email" header="Alamat Email" style="min-width: 150px">
                         <template #body="{ data }">
-                            <div v-if="data.rating" class="flex align-items-center gap-1">
+                            <span class="text-sm font-mono">{{ maskEmail(data.alamat_email) || '-' }}</span>
+                        </template>
+                    </Column>
+                    
+                    <!-- Kota Column -->
+                    <Column field="kota" header="Kota" style="min-width: 120px">
+                        <template #body="{ data }">
+                            <span class="text-sm">{{ data.kota || '-' }}</span>
+                        </template>
+                    </Column>
+                    
+                    <!-- Inbox Column -->
+                    <Column field="inbox" header="Inbox" style="min-width: 200px">
+                        <template #body="{ data }">
+                            <span class="text-sm" :title="data.inbox">
+                                {{ data.inbox ? (data.inbox.length > 50 ? data.inbox.substring(0, 50) + '...' : data.inbox) : '-' }}
+                            </span>
+                        </template>
+                    </Column>
+                    
+                    <!-- Indikasi Keluhan Column -->
+                    <Column field="indikasi_keluhan" header="Indikasi Keluhan" style="min-width: 180px">
+                        <template #body="{ data }">
+                            <span class="text-sm">{{ data.indikasi_keluhan || '-' }}</span>
+                        </template>
+                    </Column>
+                    
+                    <!-- Rating Column -->
+                    <Column field="rating" header="Rating" style="min-width: 100px">
+                        <template #body="{ data }">
+                            <div v-if="data.rating" class="flex align-items-center gap-2">
                                 <Tag 
                                     :value="data.rating"
                                     :severity="getRatingSeverity(data.rating)"
+                                    class="text-xs"
                                 />
                                 <div class="flex">
                                     <i 
@@ -200,34 +278,6 @@
                                 </div>
                             </div>
                             <span v-else class="text-gray-400">-</span>
-                        </template>
-                    </Column>
-                    
-                    <Column field="periode_utk_suspend" header="Periode UTK Suspend" style="min-width: 180px">
-                        <template #body="{ data }">
-                            <span class="text-sm">{{ data.periode_utk_suspend || '-' }}</span>
-                        </template>
-                    </Column>
-                    
-                    <Column field="submit_review_date_first_fu_cs" header="Submit Review Date" style="min-width: 150px">
-                        <template #body="{ data }">
-                            <span class="text-sm">{{ data.submit_review_date_first_fu_cs || '-' }}</span>
-                        </template>
-                    </Column>
-                    
-                    <Column field="indikasi_keluhan" header="Indikasi Keluhan" style="min-width: 200px">
-                        <template #body="{ data }">
-                            <span class="text-sm">{{ data.indikasi_keluhan || '-' }}</span>
-                        </template>
-                    </Column>
-                    
-                    <Column field="departemen" header="Departemen" style="min-width: 150px">
-                        <template #body="{ data }">
-                            <Tag 
-                                :value="data.departemen || 'N/A'"
-                                severity="secondary"
-                                class="text-xs"
-                            />
                         </template>
                     </Column>
                 </DataTable>
@@ -242,27 +292,27 @@
                     class="mt-4"
                 />
 
-                <!-- Last Upload Info -->
-                <div v-if="lastUploadInfo" class="mt-4 p-3 bg-surface-50 rounded-lg border">
-                    <div class="flex items-center justify-between text-sm">
-                        <div class="flex items-center space-x-2">
-                            <i class="pi pi-upload text-primary-500"></i>
-                            <span class="font-medium">Last Upload:</span>
-                            <span>{{ formatDate(lastUploadInfo.created_at) }}</span>
+                <!-- Simplified Latest Upload Info -->
+                <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center justify-center w-10 h-10 bg-blue-500 text-white rounded-full">
+                            <i class="pi pi-calendar text-lg"></i>
                         </div>
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center space-x-1">
-                                <span class="text-surface-600">Records:</span>
-                                <Tag :value="lastUploadInfo.total_records || 0" severity="info" />
-                            </div>
-                            <div class="flex items-center space-x-1">
-                                <span class="text-surface-600">Status:</span>
-                                <Tag 
-                                    :value="lastUploadInfo.status || 'Unknown'"
-                                    :severity="getUploadStatusSeverity(lastUploadInfo.status)"
-                                />
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-800 mb-1">Latest Upload</h4>
+                            <div class="text-sm text-gray-600">
+                                <span>{{ formatUploadDate(lastUploadInfo.latest_upload_date) }}</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- No Upload Info State -->
+                <div v-else-if="!loadingUploadInfo" class="mt-6 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+                    <div class="flex flex-col items-center space-y-2">
+                        <i class="pi pi-info-circle text-3xl text-gray-400"></i>
+                        <p class="text-sm text-gray-500">No upload information available</p>
+                        <p class="text-xs text-gray-400">Upload a file to see the latest upload details here</p>
                     </div>
                 </div>
             </template>
@@ -285,7 +335,6 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
@@ -296,12 +345,26 @@ import CustomerService from '@/service/CustomerService';
 const authStore = useAuthStore();
 const toast = useToast();
 
+// Date utility functions for current month defaults
+const getCurrentMonthFirstDay = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+};
+
+const getCurrentMonthLastDay = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+};
+
 // Data state
 const satisfactionData = ref([]);
 const statistics = ref(null);
 const loading = ref(false);
 const showUploadSidebar = ref(false);
 const lastUploadInfo = ref(null);
+const loadingUploadInfo = ref(false);
+const topComplaints = ref([]);
+const overallRating = ref(null);
 
 // Filter state
 const filters = reactive({
@@ -312,16 +375,11 @@ const filters = reactive({
     date_to: null
 });
 
-const selectedDateFrom = ref(null);
-const selectedDateTo = ref(null);
-const selectedDateType = ref('created');
+const selectedDateFrom = ref(getCurrentMonthFirstDay());
+const selectedDateTo = ref(getCurrentMonthLastDay());
+// Always use tanggal_rating for filtering
+const selectedDateType = 'tanggal_rating';
 
-// Date type options
-const dateTypeOptions = ref([
-    { label: 'Created Date', value: 'created' },
-    { label: 'Periode UTK Suspend', value: 'periode_suspend' },
-    { label: 'Submit Review Date', value: 'submit_review' }
-]);
 
 // Pagination state
 const pagination = reactive({
@@ -358,21 +416,35 @@ const loadData = async () => {
             page_size: pagination.page_size
         };
 
-        // Add date filters based on selected type
-        if (selectedDateType.value === 'created') {
-            apiFilters.date_from = selectedDateFrom.value ? formatDateForAPI(selectedDateFrom.value) : null;
-            apiFilters.date_to = selectedDateTo.value ? formatDateForAPI(selectedDateTo.value) : null;
-        }
+        // Always use tanggal_rating for date filtering
+        apiFilters.date_from = selectedDateFrom.value ? formatDateForAPI(selectedDateFrom.value) : null;
+        apiFilters.date_to = selectedDateTo.value ? formatDateForAPI(selectedDateTo.value) : null;
 
         // Auto-apply dealer filter for DEALER_USER
         if (isDealerUser.value && authStore.userDealerId) {
             apiFilters.no_ahass = authStore.userDealerId;
         }
 
-        // Load records
-        const [recordsResult, statsResult] = await Promise.all([
+        // Load records, statistics, top complaints, and overall rating
+        const [recordsResult, statsResult, complaintsResult, ratingResult] = await Promise.all([
             CustomerService.getCustomerSatisfactionRecords(apiFilters),
-            CustomerService.getCustomerSatisfactionStatistics(apiFilters)
+            CustomerService.getCustomerSatisfactionStatistics(apiFilters),
+            CustomerService.getTopIndikasiKeluhan({
+                periode_utk_suspend: apiFilters.periode_utk_suspend,
+                submit_review_date: apiFilters.submit_review_date,
+                no_ahass: apiFilters.no_ahass,
+                date_from: apiFilters.date_from,
+                date_to: apiFilters.date_to,
+                limit: 3
+            }),
+            CustomerService.getOverallRating({
+                periode_utk_suspend: apiFilters.periode_utk_suspend,
+                submit_review_date: apiFilters.submit_review_date,
+                no_ahass: apiFilters.no_ahass,
+                date_from: apiFilters.date_from,
+                date_to: apiFilters.date_to,
+                compare_previous_period: true
+            })
         ]);
 
         if (recordsResult.success) {
@@ -390,6 +462,14 @@ const loadData = async () => {
 
         if (statsResult.success) {
             statistics.value = statsResult.data;
+        }
+
+        if (complaintsResult.success) {
+            topComplaints.value = complaintsResult.data || [];
+        }
+
+        if (ratingResult.success) {
+            overallRating.value = ratingResult.data || null;
         }
 
     } catch (error) {
@@ -425,9 +505,11 @@ const clearFilters = () => {
     }
     filters.periode_utk_suspend = '';
     filters.submit_review_date = '';
-    selectedDateFrom.value = null;
-    selectedDateTo.value = null;
-    selectedDateType.value = 'created';
+    // Reset to current month defaults instead of null
+    selectedDateFrom.value = getCurrentMonthFirstDay();
+    selectedDateTo.value = getCurrentMonthLastDay();
+    // Reset to appropriate default based on user role
+    selectedDateType.value = isDealerUser.value ? 'tanggal_rating' : 'created';
     pagination.page = 1;
     loadData();
 };
@@ -453,6 +535,56 @@ const formatDateForAPI = (date) => {
            String(d.getDate()).padStart(2, '0');
 };
 
+// Masking utilities
+const maskPhoneNumber = (phoneNumber) => {
+    if (!phoneNumber || typeof phoneNumber !== 'string') {
+        return phoneNumber || '';
+    }
+    
+    // Remove any non-digit characters
+    const digitsOnly = phoneNumber.replace(/\D/g, '');
+    
+    // If phone number is too short (less than 6 digits), return as-is
+    if (digitsOnly.length < 6) {
+        return phoneNumber;
+    }
+    
+    // Show first 3 digits, mask middle with 5 asterisks, show last 2 digits
+    const prefix = digitsOnly.slice(0, 3);
+    const suffix = digitsOnly.slice(-2);
+    return `${prefix}*****${suffix}`;
+};
+
+const maskEmail = (email) => {
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return email || '';
+    }
+    
+    const [localPart, domain] = email.split('@');
+    
+    // If local part is too short, return as-is
+    if (localPart.length <= 3) {
+        return email;
+    }
+    
+    // Show first 3 characters of local part, mask the rest
+    const maskedLocal = localPart.slice(0, 3) + '***';
+    
+    // Mask domain but keep the extension
+    const domainParts = domain.split('.');
+    let maskedDomain;
+    
+    if (domainParts.length >= 2) {
+        const mainDomain = domainParts[0];
+        const extension = domainParts.slice(1).join('.');
+        maskedDomain = '***' + extension;
+    } else {
+        maskedDomain = '***' + domain;
+    }
+    
+    return `${maskedLocal}@${maskedDomain}`;
+};
+
 const getRatingSeverity = (rating) => {
     const ratingNum = parseInt(rating);
     if (ratingNum >= 4) return 'success';
@@ -476,28 +608,62 @@ const getAverageRating = () => {
     return totalCount > 0 ? (totalRating / totalCount).toFixed(1) : '-';
 };
 
-const getTopRating = () => {
-    if (!statistics.value?.rating_distribution) return '-';
-    
-    const maxItem = statistics.value.rating_distribution.reduce((max, item) => {
-        return item.count > max.count ? item : max;
-    }, { count: 0, rating: '-' });
-    
-    return maxItem.rating;
+const getComplaintSeverityColor = (percentage) => {
+    if (percentage >= 30) return 'text-red-600';
+    if (percentage >= 15) return 'text-orange-600';
+    return 'text-green-600';
 };
 
-// Load last upload info
+// Overall rating card helper functions
+const getStarColor = (starPosition, rating) => {
+    if (!rating) return 'text-gray-300';
+    
+    const ratingNum = parseFloat(rating);
+    if (starPosition <= Math.floor(ratingNum)) {
+        return 'text-yellow-400'; // Full star
+    } else if (starPosition === Math.ceil(ratingNum) && ratingNum % 1 !== 0) {
+        return 'text-yellow-400'; // Half star (for now, treating as full)
+    } else {
+        return 'text-gray-300'; // Empty star
+    }
+};
+
+const getChangeColor = (direction) => {
+    if (!direction) return 'text-gray-600';
+    
+    switch (direction) {
+        case 'increase': return 'text-green-600';
+        case 'decrease': return 'text-red-600';
+        case 'no_change': return 'text-gray-600';
+        default: return 'text-gray-600';
+    }
+};
+
+const formatChangeText = (change, direction) => {
+    if (!change || !direction || direction === 'no_change') {
+        return 'No change from last period';
+    }
+    
+    const changeAbs = Math.abs(change);
+    const prefix = direction === 'increase' ? '+' : '';
+    return `${prefix}${changeAbs} point from last period`;
+};
+
+// Load last upload info using simplified API
 const loadLastUploadInfo = async () => {
+    loadingUploadInfo.value = true;
     try {
-        const result = await CustomerService.getCustomerSatisfactionUploadTrackers({
-            page: 1,
-            page_size: 1
-        });
-        if (result.success && result.data?.records?.length > 0) {
-            lastUploadInfo.value = result.data.records[0];
+        const result = await CustomerService.getLatestUploadInfoSimple();
+        if (result.success && result.data) {
+            lastUploadInfo.value = result.data;
+        } else {
+            lastUploadInfo.value = null;
         }
     } catch (error) {
-        console.error('Error loading upload info:', error);
+        console.error('Error loading latest upload info:', error);
+        lastUploadInfo.value = null;
+    } finally {
+        loadingUploadInfo.value = false;
     }
 };
 
@@ -514,21 +680,33 @@ const formatDate = (dateString) => {
     });
 };
 
-const getUploadStatusSeverity = (status) => {
-    switch (status?.toLowerCase()) {
-        case 'completed':
-        case 'success':
-            return 'success';
-        case 'processing':
-        case 'pending':
-            return 'warning';
-        case 'failed':
-        case 'error':
-            return 'danger';
-        default:
-            return 'secondary';
+const formatUploadDate = (dateString) => {
+    if (!dateString) return 'Unknown date';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffHours < 1) {
+        return 'Just now';
+    } else if (diffHours < 24) {
+        return `${diffHours} hours ago`;
+    } else if (diffDays === 1) {
+        return 'Yesterday';
+    } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+    } else {
+        return date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     }
 };
+
 
 // Initialize
 onMounted(() => {

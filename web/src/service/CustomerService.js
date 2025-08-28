@@ -306,12 +306,14 @@ export class CustomerService {
     /**
      * Upload customer satisfaction file (Excel or CSV)
      * @param {File} file - The file to upload
+     * @param {boolean} overrideExisting - Whether to override existing records with same no_tiket
      * @returns {Promise<Object>} Upload result
      */
-    async uploadCustomerSatisfactionFile(file) {
+    async uploadCustomerSatisfactionFile(file, overrideExisting = false) {
         try {
             const formData = new FormData()
             formData.append('file', file)
+            formData.append('override_existing', overrideExisting.toString())
             
             const response = await api.post('/v1/customer-satisfaction/upload', formData, {
                 headers: {
@@ -367,6 +369,116 @@ export class CustomerService {
             return response.data
         } catch (error) {
             console.error('Error fetching upload tracker:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Get latest upload information for quick display
+     * @returns {Promise<Object>} Latest upload information
+     */
+    async getLatestUploadInfo() {
+        try {
+            const response = await api.get('/v1/customer-satisfaction/uploads/latest')
+            return response.data
+        } catch (error) {
+            console.error('Error fetching latest upload info:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Get latest upload information (simplified - by created_date only)
+     * @returns {Promise<Object>} Latest upload date information
+     */
+    async getLatestUploadInfoSimple() {
+        try {
+            const response = await api.get('/v1/customer-satisfaction/latest-upload-simple')
+            return response.data
+        } catch (error) {
+            console.error('Error fetching latest upload info simple:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Get top indikasi keluhan (complaint indicators) with filtering
+     * @param {Object} options - Filter options
+     * @param {string} options.periode_utk_suspend - Filter by periode untuk suspend
+     * @param {string} options.submit_review_date - Filter by submit review date
+     * @param {string} options.no_ahass - Filter by No AHASS
+     * @param {string} options.date_from - Start date in YYYY-MM-DD format
+     * @param {string} options.date_to - End date in YYYY-MM-DD format
+     * @param {number} options.limit - Number of top complaints to return (default 3)
+     * @returns {Promise<Object>} Top complaint indicators with counts and percentages
+     */
+    async getTopIndikasiKeluhan(options = {}) {
+        try {
+            const {
+                periode_utk_suspend = null,
+                submit_review_date = null,
+                no_ahass = null,
+                date_from = null,
+                date_to = null,
+                limit = 3
+            } = options
+
+            const params = new URLSearchParams()
+            if (periode_utk_suspend) params.append('periode_utk_suspend', periode_utk_suspend)
+            if (submit_review_date) params.append('submit_review_date', submit_review_date)
+            if (no_ahass) params.append('no_ahass', no_ahass)
+            if (date_from) params.append('date_from', date_from)
+            if (date_to) params.append('date_to', date_to)
+            params.append('limit', limit.toString())
+            
+            const queryString = params.toString()
+            const url = `/v1/customer-satisfaction/top-complaints${queryString ? `?${queryString}` : ''}`
+            
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching top indikasi keluhan:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Get overall customer satisfaction rating with period comparison
+     * @param {Object} options - Filter options
+     * @param {string} options.periode_utk_suspend - Filter by periode untuk suspend
+     * @param {string} options.submit_review_date - Filter by submit review date
+     * @param {string} options.no_ahass - Filter by No AHASS
+     * @param {string} options.date_from - Start date in YYYY-MM-DD format (uses tanggal_rating field)
+     * @param {string} options.date_to - End date in YYYY-MM-DD format (uses tanggal_rating field)
+     * @param {boolean} options.compare_previous_period - Whether to compare with previous period (default true)
+     * @returns {Promise<Object>} Overall rating with comparison data
+     */
+    async getOverallRating(options = {}) {
+        try {
+            const {
+                periode_utk_suspend = null,
+                submit_review_date = null,
+                no_ahass = null,
+                date_from = null,
+                date_to = null,
+                compare_previous_period = true
+            } = options
+
+            const params = new URLSearchParams()
+            if (periode_utk_suspend) params.append('periode_utk_suspend', periode_utk_suspend)
+            if (submit_review_date) params.append('submit_review_date', submit_review_date)
+            if (no_ahass) params.append('no_ahass', no_ahass)
+            if (date_from) params.append('date_from', date_from)
+            if (date_to) params.append('date_to', date_to)
+            params.append('compare_previous_period', compare_previous_period.toString())
+            
+            const queryString = params.toString()
+            const url = `/v1/customer-satisfaction/overall-rating${queryString ? `?${queryString}` : ''}`
+            
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching overall rating:', error)
             throw error
         }
     }
