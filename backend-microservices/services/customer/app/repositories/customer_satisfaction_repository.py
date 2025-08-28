@@ -4,10 +4,11 @@ Customer satisfaction repository for database operations
 
 import logging
 import uuid
+import re
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, desc
+from sqlalchemy import and_, func, desc, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.customer_satisfaction_raw import CustomerSatisfactionRaw, CustomerSatisfactionUploadTracker
@@ -18,8 +19,169 @@ logger = logging.getLogger(__name__)
 class CustomerSatisfactionRepository:
     """Repository for customer satisfaction operations"""
     
+    # Indonesian month names mapping
+    INDONESIAN_MONTHS = {
+        'januari': 1, 'februari': 2, 'maret': 3, 'april': 4,
+        'mei': 5, 'juni': 6, 'juli': 7, 'agustus': 8,
+        'september': 9, 'oktober': 10, 'november': 11, 'desember': 12
+    }
+    
+    ENGLISH_TO_INDONESIAN_MONTHS = {
+        1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+        5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+        9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+    }
+    
     def __init__(self, db: Session):
         self.db = db
+    
+    def _parse_indonesian_date(self, indo_date_str: str) -> Optional[datetime]:
+        """
+        Parse Indonesian date string like '24 Desember 2024' to datetime object
+        
+        Args:
+            indo_date_str: Indonesian date string
+            
+        Returns:
+            datetime object or None if parsing fails
+        """
+        if not indo_date_str or not isinstance(indo_date_str, str):
+            return None
+        
+        try:
+            # Clean and normalize the string
+            clean_date = indo_date_str.strip()
+            
+            # Pattern: DD Month YYYY or D Month YYYY
+            pattern = r'^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})$'
+            match = re.match(pattern, clean_date)
+            
+            if not match:
+                logger.warning(f"Invalid Indonesian date format: {indo_date_str}")
+                return None
+            
+            day_str, month_str, year_str = match.groups()
+            
+            # Convert to lowercase for lookup
+            month_lower = month_str.lower()
+            
+            if month_lower not in self.INDONESIAN_MONTHS:
+                logger.warning(f"Unknown Indonesian month: {month_str}")
+                return None
+            
+            day = int(day_str)
+            month = self.INDONESIAN_MONTHS[month_lower]
+            year = int(year_str)
+            
+            return datetime(year, month, day)
+            
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Error parsing Indonesian date '{indo_date_str}': {str(e)}")
+            return None
+    
+    def _datetime_to_indonesian_date(self, dt: datetime) -> str:
+        """
+        Convert datetime object to Indonesian date string
+        
+        Args:
+            dt: datetime object
+            
+        Returns:
+            Indonesian date string like '24 Desember 2024'
+        """
+        if not dt:
+            return None
+        
+        try:
+            day = dt.day
+            month_name = self.ENGLISH_TO_INDONESIAN_MONTHS.get(dt.month, f"Month{dt.month}")
+            year = dt.year
+            
+            return f"{day} {month_name} {year}"
+            
+        except Exception as e:
+            logger.warning(f"Error converting datetime to Indonesian date: {str(e)}")
+            return None
+    
+    def _build_tanggal_rating_date_filter(self, query, date_from: datetime = None, date_to: datetime = None):
+        """
+        Build date filter for tanggal_rating field using Indonesian date parsing
+        
+        Args:
+            query: SQLAlchemy query object
+            date_from: Start date filter
+            date_to: End date filter
+            
+        Returns:
+            Updated query with date filters
+        """
+        if not date_from and not date_to:
+            return query
+        
+        try:
+            # We'll use a subquery approach to parse Indonesian dates and compare them
+            date_conditions = []
+            
+            if date_from:
+                # Create SQL condition to parse Indonesian date and compare with date_from
+                date_from_str = date_from.strftime('%Y-%m-%d')
+                date_conditions.append(f"""
+                    CASE 
+                        WHEN tanggal_rating ~ '^[0-9]{{1,2}} [A-Za-z]+ [0-9]{{4}}$' THEN
+                            CASE LOWER(SPLIT_PART(tanggal_rating, ' ', 2))
+                                WHEN 'januari' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-01-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'februari' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-02-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'maret' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-03-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'april' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-04-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'mei' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-05-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'juni' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-06-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'juli' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-07-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'agustus' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-08-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'september' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-09-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'oktober' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-10-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'november' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-11-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'desember' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-12-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                ELSE NULL
+                            END >= TO_DATE('{date_from_str}', 'YYYY-MM-DD')
+                        ELSE FALSE
+                    END
+                """)
+            
+            if date_to:
+                date_to_str = date_to.strftime('%Y-%m-%d')
+                date_conditions.append(f"""
+                    CASE 
+                        WHEN tanggal_rating ~ '^[0-9]{{1,2}} [A-Za-z]+ [0-9]{{4}}$' THEN
+                            CASE LOWER(SPLIT_PART(tanggal_rating, ' ', 2))
+                                WHEN 'januari' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-01-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'februari' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-02-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'maret' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-03-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'april' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-04-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'mei' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-05-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'juni' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-06-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'juli' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-07-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'agustus' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-08-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'september' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-09-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'oktober' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-10-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'november' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-11-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                WHEN 'desember' THEN TO_DATE(SPLIT_PART(tanggal_rating, ' ', 3) || '-12-' || LPAD(SPLIT_PART(tanggal_rating, ' ', 1), 2, '0'), 'YYYY-MM-DD')
+                                ELSE NULL
+                            END <= TO_DATE('{date_to_str}', 'YYYY-MM-DD')
+                        ELSE FALSE
+                    END
+                """)
+            
+            # Combine conditions with AND
+            if date_conditions:
+                combined_condition = " AND ".join(date_conditions)
+                query = query.filter(text(combined_condition))
+            
+            return query
+            
+        except Exception as e:
+            logger.error(f"Error building tanggal_rating date filter: {str(e)}")
+            # Return unfiltered query if there's an error
+            return query
     
     def create_upload_tracker(
         self, 
@@ -95,16 +257,47 @@ class CustomerSatisfactionRepository:
         self, 
         records_data: List[Dict[str, Any]],
         upload_batch_id: str,
-        created_by: str = None
-    ) -> tuple[int, int]:
-        """Bulk create customer satisfaction records"""
+        created_by: str = None,
+        override_existing: bool = False
+    ) -> tuple[int, int, int, int]:
+        """Bulk create customer satisfaction records with override support
+        
+        Returns: (successful_count, failed_count, replaced_count, skipped_count)
+        """
         successful_count = 0
         failed_count = 0
+        replaced_count = 0
+        skipped_count = 0
         
         try:
             for record_data in records_data:
                 try:
-                    # Create satisfaction record
+                    no_tiket = record_data.get('No Tiket')
+                    
+                    # Skip records without no_tiket (cannot check for duplicates)
+                    if not no_tiket or str(no_tiket).strip() == '':
+                        logger.warning("Skipping record without No Tiket")
+                        failed_count += 1
+                        continue
+                    
+                    # Check if record with same no_tiket already exists
+                    existing_record = self.db.query(CustomerSatisfactionRaw).filter_by(no_tiket=str(no_tiket).strip()).first()
+                    
+                    if existing_record:
+                        if override_existing:
+                            # Delete existing record and create new one
+                            logger.info(f"Overriding existing record with no_tiket: {no_tiket}")
+                            self.db.delete(existing_record)
+                            self.db.flush()  # Ensure deletion is processed before insert
+                            replaced_count += 1
+                        else:
+                            # Skip duplicate record
+                            logger.info(f"Skipping duplicate record with no_tiket: {no_tiket}")
+                            failed_count += 1
+                            skipped_count += 1
+                            continue
+                    
+                    # Create new satisfaction record
                     satisfaction_record = CustomerSatisfactionRaw(
                         no_tiket=record_data.get('No Tiket'),
                         no_booking_no_order_pemesanan=record_data.get('No Booking/No order pemesanan'),
@@ -143,20 +336,20 @@ class CustomerSatisfactionRepository:
                     successful_count += 1
                     
                 except Exception as e:
-                    logger.error(f"Error creating satisfaction record: {str(e)}")
+                    logger.error(f"Error processing satisfaction record with no_tiket {record_data.get('No Tiket', 'N/A')}: {str(e)}")
                     failed_count += 1
                     continue
             
             # Commit all successful records
             self.db.commit()
-            logger.info(f"Bulk created {successful_count} satisfaction records, {failed_count} failed")
+            logger.info(f"Bulk processed satisfaction records: {successful_count} successful, {failed_count} failed, {replaced_count} replaced, {skipped_count} skipped")
             
-            return successful_count, failed_count
+            return successful_count, failed_count, replaced_count, skipped_count
             
         except SQLAlchemyError as e:
             logger.error(f"Error in bulk create satisfaction records: {str(e)}")
             self.db.rollback()
-            return 0, len(records_data)
+            return 0, len(records_data), 0, 0
     
     def get_satisfaction_records_paginated(
         self,
@@ -183,11 +376,8 @@ class CustomerSatisfactionRepository:
             if no_ahass:
                 query = query.filter(CustomerSatisfactionRaw.no_ahass == no_ahass)
             
-            if date_from:
-                query = query.filter(CustomerSatisfactionRaw.created_date >= date_from)
-            
-            if date_to:
-                query = query.filter(CustomerSatisfactionRaw.created_date <= date_to)
+            # Apply tanggal_rating date filtering using Indonesian date parsing
+            query = self._build_tanggal_rating_date_filter(query, date_from, date_to)
             
             # Order by created_date descending
             query = query.order_by(desc(CustomerSatisfactionRaw.created_date))
@@ -253,11 +443,8 @@ class CustomerSatisfactionRepository:
             if no_ahass:
                 query = query.filter(CustomerSatisfactionRaw.no_ahass == no_ahass)
             
-            if date_from:
-                query = query.filter(CustomerSatisfactionRaw.created_date >= date_from)
-            
-            if date_to:
-                query = query.filter(CustomerSatisfactionRaw.created_date <= date_to)
+            # Apply tanggal_rating date filtering using Indonesian date parsing
+            query = self._build_tanggal_rating_date_filter(query, date_from, date_to)
             
             # Get basic statistics
             total_records = query.count()
@@ -365,3 +552,297 @@ class CustomerSatisfactionRepository:
         except (SQLAlchemyError, ValueError) as e:
             logger.error(f"Error getting upload tracker {tracker_id}: {str(e)}")
             return None
+    
+    def get_latest_upload_info(self) -> Optional[Dict[str, Any]]:
+        """Get the latest upload information for quick display"""
+        try:
+            # Get the most recent upload tracker
+            latest_tracker = self.db.query(CustomerSatisfactionUploadTracker).order_by(
+                desc(CustomerSatisfactionUploadTracker.upload_date)
+            ).first()
+            
+            if not latest_tracker:
+                return None
+            
+            # Calculate processing time if completed
+            processing_time = None
+            if latest_tracker.completed_date and latest_tracker.upload_date:
+                processing_time = (latest_tracker.completed_date - latest_tracker.upload_date).total_seconds()
+            
+            return {
+                "upload_date": latest_tracker.upload_date.isoformat() if latest_tracker.upload_date else None,
+                "uploaded_by": latest_tracker.uploaded_by,
+                "file_name": latest_tracker.file_name,
+                "file_size": latest_tracker.file_size,
+                "total_records": latest_tracker.total_records or 0,
+                "successful_records": latest_tracker.successful_records or 0,
+                "failed_records": latest_tracker.failed_records or 0,
+                "upload_status": latest_tracker.upload_status,
+                "error_message": latest_tracker.error_message,
+                "processing_time_seconds": int(processing_time) if processing_time else None,
+                "completed_date": latest_tracker.completed_date.isoformat() if latest_tracker.completed_date else None
+            }
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting latest upload info: {str(e)}")
+            return None
+    
+    def get_latest_upload_info_simple(self) -> Optional[Dict[str, Any]]:
+        """Get the latest upload information by created_date from records (simplified version)"""
+        try:
+            # Get the most recent record by created_date
+            latest_record = self.db.query(CustomerSatisfactionRaw).order_by(
+                desc(CustomerSatisfactionRaw.created_date)
+            ).first()
+            
+            if not latest_record:
+                return None
+            
+            return {
+                "latest_upload_date": latest_record.created_date.isoformat() if latest_record.created_date else None
+            }
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting latest upload info simple: {str(e)}")
+            return None
+    
+    def get_top_indikasi_keluhan(
+        self,
+        periode_utk_suspend: str = None,
+        submit_review_date: str = None,
+        no_ahass: str = None,
+        date_from: datetime = None,
+        date_to: datetime = None,
+        limit: int = 3
+    ) -> List[Dict[str, Any]]:
+        """Get top indikasi keluhan with filtering"""
+        try:
+            # Build base query
+            query = self.db.query(CustomerSatisfactionRaw)
+            
+            # Apply same filters as other methods
+            if periode_utk_suspend:
+                query = query.filter(CustomerSatisfactionRaw.periode_utk_suspend == periode_utk_suspend)
+            
+            if submit_review_date:
+                query = query.filter(CustomerSatisfactionRaw.submit_review_date_first_fu_cs.like(f"%{submit_review_date}%"))
+            
+            if no_ahass:
+                query = query.filter(CustomerSatisfactionRaw.no_ahass == no_ahass)
+            
+            # Apply tanggal_rating date filtering using Indonesian date parsing
+            query = self._build_tanggal_rating_date_filter(query, date_from, date_to)
+            
+            # Get total count for percentage calculation
+            total_records = query.count()
+            
+            if total_records == 0:
+                return []
+            
+            # Get top indikasi keluhan with counts
+            complaint_stats = self.db.query(
+                CustomerSatisfactionRaw.indikasi_keluhan,
+                func.count(CustomerSatisfactionRaw.indikasi_keluhan).label('count')
+            ).filter(
+                query.whereclause if query.whereclause is not None else True
+            ).filter(
+                CustomerSatisfactionRaw.indikasi_keluhan.isnot(None),
+                CustomerSatisfactionRaw.indikasi_keluhan != ''
+            ).group_by(
+                CustomerSatisfactionRaw.indikasi_keluhan
+            ).order_by(
+                func.count(CustomerSatisfactionRaw.indikasi_keluhan).desc()
+            ).limit(limit).all()
+            
+            # Calculate percentages and format results
+            results = []
+            for indikasi_keluhan, count in complaint_stats:
+                percentage = round((count / total_records) * 100, 1)
+                results.append({
+                    "indikasi_keluhan": indikasi_keluhan,
+                    "count": count,
+                    "percentage": percentage
+                })
+            
+            return results
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting top indikasi keluhan: {str(e)}")
+            return []
+    
+    def get_overall_rating_with_comparison(
+        self,
+        periode_utk_suspend: str = None,
+        submit_review_date: str = None,
+        no_ahass: str = None,
+        date_from: datetime = None,
+        date_to: datetime = None,
+        tanggal_rating_from: datetime = None,
+        tanggal_rating_to: datetime = None,
+        compare_previous_period: bool = True
+    ) -> Dict[str, Any]:
+        """Get overall rating with optional comparison to previous period"""
+        try:
+            # Helper function to build base query with filters
+            def build_query():
+                query = self.db.query(CustomerSatisfactionRaw)
+                
+                # Apply filters
+                if periode_utk_suspend:
+                    query = query.filter(CustomerSatisfactionRaw.periode_utk_suspend == periode_utk_suspend)
+                
+                if submit_review_date:
+                    query = query.filter(CustomerSatisfactionRaw.submit_review_date_first_fu_cs.like(f"%{submit_review_date}%"))
+                
+                if no_ahass:
+                    query = query.filter(CustomerSatisfactionRaw.no_ahass == no_ahass)
+                
+                return query
+            
+            # Helper function to calculate average rating from query with date filters
+            def calculate_rating_for_period(query, date_from_param=None, date_to_param=None, tanggal_rating_from_param=None, tanggal_rating_to_param=None):
+                period_query = query
+                
+                # Apply date filters - always use tanggal_rating Indonesian date filtering
+                if tanggal_rating_from_param or tanggal_rating_to_param:
+                    # Use Indonesian date filtering for tanggal_rating field
+                    period_query = self._build_tanggal_rating_date_filter(period_query, tanggal_rating_from_param, tanggal_rating_to_param)
+                elif date_from_param or date_to_param:
+                    # Also use tanggal_rating filtering for date_from/date_to parameters
+                    period_query = self._build_tanggal_rating_date_filter(period_query, date_from_param, date_to_param)
+                
+                # Get all ratings for the period, excluding empty/null ratings
+                ratings_data = period_query.filter(
+                    CustomerSatisfactionRaw.rating.isnot(None),
+                    CustomerSatisfactionRaw.rating != ''
+                ).all()
+                
+                if not ratings_data:
+                    return None, 0
+                
+                # Calculate average rating
+                valid_ratings = []
+                for record in ratings_data:
+                    try:
+                        rating_value = float(record.rating)
+                        if 0 <= rating_value <= 5:  # Validate rating is in expected range
+                            valid_ratings.append(rating_value)
+                    except (ValueError, TypeError):
+                        continue
+                
+                if not valid_ratings:
+                    return None, 0
+                
+                avg_rating = sum(valid_ratings) / len(valid_ratings)
+                return round(avg_rating, 2), len(valid_ratings)
+            
+            # Build base query
+            base_query = build_query()
+            
+            # Calculate current period rating
+            current_rating, current_count = calculate_rating_for_period(
+                base_query, 
+                date_from, 
+                date_to, 
+                tanggal_rating_from, 
+                tanggal_rating_to
+            )
+            
+            result = {
+                "current_rating": current_rating,
+                "total_ratings": current_count,
+                "previous_rating": None,
+                "change": None,
+                "change_direction": None,
+                "period_label": "selected period"
+            }
+            
+            # Calculate previous period for comparison if requested and current period has data
+            if compare_previous_period and current_rating is not None:
+                try:
+                    # Calculate previous period dates
+                    if tanggal_rating_from and tanggal_rating_to:
+                        # Calculate period length for tanggal_rating
+                        period_length = (tanggal_rating_to - tanggal_rating_from).days
+                        prev_to = tanggal_rating_from - timedelta(days=1)
+                        prev_from = prev_to - timedelta(days=period_length)
+                        
+                        prev_rating, prev_count = calculate_rating_for_period(
+                            base_query,
+                            tanggal_rating_from_param=prev_from,
+                            tanggal_rating_to_param=prev_to
+                        )
+                        
+                        result["period_label"] = "selected tanggal rating period"
+                        
+                    elif date_from and date_to:
+                        # Calculate period length for created_date
+                        period_length = (date_to - date_from).days
+                        prev_to = date_from - timedelta(days=1)
+                        prev_from = prev_to - timedelta(days=period_length)
+                        
+                        prev_rating, prev_count = calculate_rating_for_period(
+                            base_query,
+                            date_from_param=prev_from,
+                            date_to_param=prev_to
+                        )
+                        
+                        result["period_label"] = "selected date period"
+                    
+                    else:
+                        # Default to current month vs previous month if no specific dates provided
+                        now = datetime.now()
+                        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                        
+                        # Previous month calculation
+                        if current_month_start.month == 1:
+                            prev_month_start = current_month_start.replace(year=current_month_start.year - 1, month=12)
+                        else:
+                            prev_month_start = current_month_start.replace(month=current_month_start.month - 1)
+                        
+                        # Get last day of previous month
+                        if prev_month_start.month == 12:
+                            next_month = prev_month_start.replace(year=prev_month_start.year + 1, month=1)
+                        else:
+                            next_month = prev_month_start.replace(month=prev_month_start.month + 1)
+                        
+                        prev_month_end = next_month - timedelta(days=1)
+                        prev_month_end = prev_month_end.replace(hour=23, minute=59, second=59)
+                        
+                        prev_rating, prev_count = calculate_rating_for_period(
+                            base_query,
+                            date_from_param=prev_month_start,
+                            date_to_param=prev_month_end
+                        )
+                        
+                        result["period_label"] = "current period"
+                    
+                    # Calculate change
+                    if prev_rating is not None:
+                        result["previous_rating"] = prev_rating
+                        change = current_rating - prev_rating
+                        result["change"] = round(change, 2)
+                        
+                        if change > 0:
+                            result["change_direction"] = "increase"
+                        elif change < 0:
+                            result["change_direction"] = "decrease"
+                        else:
+                            result["change_direction"] = "no_change"
+                            
+                except Exception as e:
+                    logger.warning(f"Error calculating previous period rating: {str(e)}")
+                    # Continue without comparison data
+            
+            return result
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting overall rating with comparison: {str(e)}")
+            return {
+                "current_rating": None,
+                "total_ratings": 0,
+                "previous_rating": None,
+                "change": None,
+                "change_direction": None,
+                "period_label": "error"
+            }

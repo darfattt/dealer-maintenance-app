@@ -4,7 +4,7 @@ Customer satisfaction API routes
 
 import logging
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Query
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Query, Form
 from sqlalchemy.orm import Session
 
 from app.controllers.customer_satisfaction_controller import CustomerSatisfactionController
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/customer-satisfaction", tags=["Customer Satisfaction
 )
 async def upload_satisfaction_file(
     file: UploadFile = File(..., description="Excel or CSV file with customer satisfaction data"),
+    override_existing: bool = Form(False, description="Override existing records with same No Tiket"),
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> CustomerSatisfactionUploadResponse:
@@ -41,14 +42,19 @@ async def upload_satisfaction_file(
     1. Validates the uploaded file (format, size)
     2. Creates an upload tracker for logging
     3. Processes the Excel/CSV data
-    4. Stores records in customer_satisfaction_raw table
-    5. Updates upload tracker with results
-    6. Returns upload summary
+    4. Handles duplicate records based on override_existing flag
+    5. Stores records in customer_satisfaction_raw table
+    6. Updates upload tracker with results
+    7. Returns upload summary with override statistics
     
     Authentication: Requires Authorization: Bearer <token> header with valid JWT token
     
     Supported formats: .xlsx, .xls, .csv
     Maximum file size: 10MB
+    
+    Override behavior:
+    - If override_existing=true: Replace existing records with same No Tiket
+    - If override_existing=false: Skip duplicate records and mark as failed
     """
     try:
         # Validate file type
@@ -73,7 +79,8 @@ async def upload_satisfaction_file(
         result = await controller.upload_customer_satisfaction_file(
             file_content=file_content,
             filename=file.filename,
-            uploaded_by=current_user.email
+            uploaded_by=current_user.email,
+            override_existing=override_existing
         )
         
         logger.info(f"File upload processed for user {current_user.email}, file: {file.filename}")
@@ -286,4 +293,187 @@ async def get_upload_tracker(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error while retrieving upload tracker"
+        )
+
+
+@router.get(
+    "/uploads/latest",
+    summary="Get latest upload information",
+    description="Get the most recent upload information for quick display including upload date, status, and statistics"
+)
+async def get_latest_upload_info(
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get latest upload information
+    
+    Returns the most recent upload information including:
+    - Upload date and uploaded by user
+    - File name and size
+    - Processing statistics
+    - Upload status and completion time
+    
+    Authentication: Requires Authorization: Bearer <token> header with valid JWT token
+    """
+    try:
+        controller = CustomerSatisfactionController(db)
+        result = controller.get_latest_upload_info()
+        
+        logger.info(f"Retrieved latest upload info for user {current_user.email}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error getting latest upload info: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error while retrieving latest upload information"
+        )
+
+
+@router.get(
+    "/latest-upload-simple",
+    summary="Get latest upload information (simplified)",
+    description="Get the most recent upload date from customer satisfaction records (simplified version)"
+)
+async def get_latest_upload_info_simple(
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get latest upload information (simplified)
+    
+    Returns only the most recent created_date from customer satisfaction records.
+    This is a lightweight alternative to the full upload tracker information.
+    
+    Authentication: Requires Authorization: Bearer <token> header with valid JWT token
+    """
+    try:
+        controller = CustomerSatisfactionController(db)
+        result = controller.get_latest_upload_info_simple()
+        
+        logger.info(f"Retrieved latest upload info simple for user {current_user.email}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error getting latest upload info simple: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error while retrieving latest upload date"
+        )
+
+
+@router.get(
+    "/top-complaints",
+    summary="Get top indikasi keluhan (complaint indicators)",
+    description="Get the top complaint indicators with counts and percentages based on filtering"
+)
+async def get_top_indikasi_keluhan(
+    periode_utk_suspend: str = Query(None, description="Filter by periode untuk suspend"),
+    submit_review_date: str = Query(None, description="Filter by submit review date (partial match)"),
+    no_ahass: str = Query(None, description="Filter by No AHASS"),
+    date_from: str = Query(None, description="Filter by created date from (YYYY-MM-DD format)"),
+    date_to: str = Query(None, description="Filter by created date to (YYYY-MM-DD format)"),
+    limit: int = Query(3, ge=1, le=10, description="Number of top complaints to return"),
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get top indikasi keluhan (complaint indicators)
+    
+    Returns the top complaint indicators with:
+    - Complaint text (indikasi_keluhan)
+    - Count of occurrences
+    - Percentage of total records
+    
+    Supports the same filtering options as other endpoints.
+    
+    Authentication: Requires Authorization: Bearer <token> header with valid JWT token
+    """
+    try:
+        # Create filters object (same as other endpoints)
+        filters = CustomerSatisfactionFilters(
+            periode_utk_suspend=periode_utk_suspend,
+            submit_review_date=submit_review_date,
+            no_ahass=no_ahass,
+            date_from=date_from,
+            date_to=date_to,
+            page=1,
+            page_size=10  # Not used for this endpoint
+        )
+        
+        # Get top complaints
+        controller = CustomerSatisfactionController(db)
+        result = controller.get_top_indikasi_keluhan(filters, limit)
+        
+        logger.info(f"Retrieved top {limit} indikasi keluhan for user {current_user.email}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error retrieving top indikasi keluhan: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error while retrieving top indikasi keluhan"
+        )
+
+
+@router.get(
+    "/overall-rating",
+    summary="Get overall rating with period comparison",
+    description="Get overall customer satisfaction rating with optional comparison to previous period"
+)
+async def get_overall_rating(
+    periode_utk_suspend: str = Query(None, description="Filter by periode untuk suspend"),
+    submit_review_date: str = Query(None, description="Filter by submit review date (partial match)"),
+    no_ahass: str = Query(None, description="Filter by No AHASS"),
+    date_from: str = Query(None, description="Filter by date from (YYYY-MM-DD format) - will use tanggal_rating field"),
+    date_to: str = Query(None, description="Filter by date to (YYYY-MM-DD format) - will use tanggal_rating field"),
+    compare_previous_period: bool = Query(True, description="Whether to compare with previous period"),
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get overall rating with period comparison
+    
+    Returns overall rating information including:
+    - Current period average rating
+    - Total number of ratings
+    - Previous period average rating (if comparison enabled)
+    - Change amount and direction compared to previous period
+    
+    When date_from/date_to are provided, they filter by tanggal_rating field.
+    When no dates provided, defaults to current month comparison.
+    
+    Supports the same filtering options as other endpoints.
+    
+    Authentication: Requires Authorization: Bearer <token> header with valid JWT token
+    """
+    try:
+        # Create filters object (same as other endpoints)
+        filters = CustomerSatisfactionFilters(
+            periode_utk_suspend=periode_utk_suspend,
+            submit_review_date=submit_review_date,
+            no_ahass=no_ahass,
+            date_from=date_from,
+            date_to=date_to,
+            page=1,
+            page_size=10  # Not used for this endpoint
+        )
+        
+        # Get overall rating
+        controller = CustomerSatisfactionController(db)
+        result = controller.get_overall_rating(filters, compare_previous_period)
+        
+        logger.info(f"Retrieved overall rating for user {current_user.email}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error retrieving overall rating: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error while retrieving overall rating"
         )

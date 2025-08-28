@@ -176,8 +176,8 @@ class CustomerSatisfactionFilters(BaseModel):
     periode_utk_suspend: Optional[str] = Field(None, description="Filter by periode untuk suspend")
     submit_review_date: Optional[str] = Field(None, description="Filter by submit review date (partial match)")
     no_ahass: Optional[str] = Field(None, description="Filter by No AHASS")
-    date_from: Optional[str] = Field(None, description="Filter by created date from (YYYY-MM-DD format)")
-    date_to: Optional[str] = Field(None, description="Filter by created date to (YYYY-MM-DD format)")
+    date_from: Optional[str] = Field(None, description="Filter by date from (YYYY-MM-DD format)")
+    date_to: Optional[str] = Field(None, description="Filter by date to (YYYY-MM-DD format)")
     page: int = Field(1, ge=1, description="Page number")
     page_size: int = Field(10, ge=1, le=100, description="Number of records per page")
 

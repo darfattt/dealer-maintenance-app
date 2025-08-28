@@ -105,7 +105,8 @@ class CustomerSatisfactionController:
         self, 
         file_content: bytes, 
         filename: str,
-        uploaded_by: str = None
+        uploaded_by: str = None,
+        override_existing: bool = False
     ) -> CustomerSatisfactionUploadResponse:
         """Upload and process customer satisfaction file"""
         try:
@@ -147,12 +148,14 @@ class CustomerSatisfactionController:
             
             logger.info(f"Processing {total_records} records from file: {filename}")
             
-            # Step 5: Bulk insert records
-            successful_count, failed_count = self.repository.bulk_create_satisfaction_records(
+            # Step 5: Bulk insert records with override handling
+            result_counts = self.repository.bulk_create_satisfaction_records(
                 records_data=records_data,
                 upload_batch_id=str(tracker.id),
-                created_by=uploaded_by
+                created_by=uploaded_by,
+                override_existing=override_existing
             )
+            successful_count, failed_count, replaced_count, skipped_count = result_counts
             
             # Step 6: Update tracker with results
             final_status = 'COMPLETED' if failed_count == 0 else ('FAILED' if successful_count == 0 else 'COMPLETED')
@@ -170,9 +173,15 @@ class CustomerSatisfactionController:
             # Step 7: Return response
             success_rate = (successful_count / total_records * 100) if total_records > 0 else 0
             
+            # Build message based on override mode
+            if override_existing:
+                message = f"File uploaded successfully. {successful_count} records processed, {failed_count} failed, {replaced_count} replaced."
+            else:
+                message = f"File uploaded successfully. {successful_count} records processed, {failed_count} failed, {skipped_count} skipped (duplicates)."
+            
             return CustomerSatisfactionUploadResponse(
                 success=True,
-                message=f"File uploaded successfully. {successful_count} records processed, {failed_count} failed.",
+                message=message,
                 data={
                     "upload_tracker_id": str(tracker.id),
                     "file_name": filename,
@@ -180,8 +189,11 @@ class CustomerSatisfactionController:
                     "total_records": total_records,
                     "successful_records": successful_count,
                     "failed_records": failed_count,
+                    "replaced_records": replaced_count,
+                    "skipped_records": skipped_count,
                     "success_rate": round(success_rate, 2),
-                    "upload_status": final_status
+                    "upload_status": final_status,
+                    "override_enabled": override_existing
                 }
             )
             
@@ -199,7 +211,7 @@ class CustomerSatisfactionController:
     ) -> CustomerSatisfactionListResponse:
         """Get customer satisfaction records with filtering and pagination"""
         try:
-            # Parse date filters
+            # Parse date filters - always use tanggal_rating filtering
             date_from = None
             date_to = None
             
@@ -225,7 +237,7 @@ class CustomerSatisfactionController:
                         data={}
                     )
             
-            # Get paginated records
+            # Get paginated records with tanggal_rating filtering
             result = self.repository.get_satisfaction_records_paginated(
                 page=filters.page,
                 page_size=filters.page_size,
@@ -243,10 +255,10 @@ class CustomerSatisfactionController:
             )
             
         except Exception as e:
-            logger.error(f"Error getting customer satisfaction records: {str(e)}")
+            logger.error(f"Error getting customer satisfaction records: {str(e)}", exc_info=True)
             return CustomerSatisfactionListResponse(
                 success=False,
-                message="Internal server error while retrieving records",
+                message=f"Internal server error while retrieving records: {str(e)}",
                 data={}
             )
     
@@ -256,7 +268,7 @@ class CustomerSatisfactionController:
     ) -> CustomerSatisfactionStatisticsResponse:
         """Get customer satisfaction statistics"""
         try:
-            # Parse date filters (same logic as get_records)
+            # Parse date filters - always use tanggal_rating filtering
             date_from = None
             date_to = None
             
@@ -267,7 +279,7 @@ class CustomerSatisfactionController:
                 date_to = datetime.strptime(filters.date_to, '%Y-%m-%d')
                 date_to = date_to.replace(hour=23, minute=59, second=59)
             
-            # Get statistics
+            # Get statistics with tanggal_rating filtering
             stats = self.repository.get_satisfaction_statistics(
                 periode_utk_suspend=filters.periode_utk_suspend,
                 submit_review_date=filters.submit_review_date,
@@ -283,10 +295,10 @@ class CustomerSatisfactionController:
             )
             
         except Exception as e:
-            logger.error(f"Error getting customer satisfaction statistics: {str(e)}")
+            logger.error(f"Error getting customer satisfaction statistics: {str(e)}", exc_info=True)
             return CustomerSatisfactionStatisticsResponse(
                 success=False,
-                message="Internal server error while retrieving statistics",
+                message=f"Internal server error while retrieving statistics: {str(e)}",
                 data=None
             )
     
@@ -341,5 +353,181 @@ class CustomerSatisfactionController:
             return {
                 "success": False,
                 "message": "Internal server error while retrieving upload tracker",
+                "data": None
+            }
+    
+    def get_latest_upload_info(self) -> Dict[str, Any]:
+        """Get latest upload information for quick display"""
+        try:
+            latest_info = self.repository.get_latest_upload_info()
+            
+            if not latest_info:
+                return {
+                    "success": True,
+                    "message": "No uploads found",
+                    "data": None
+                }
+            
+            # Calculate success rate
+            total_records = latest_info.get('total_records', 0)
+            successful_records = latest_info.get('successful_records', 0)
+            success_rate = (successful_records / total_records * 100) if total_records > 0 else 0
+            
+            # Add calculated fields
+            latest_info['success_rate'] = round(success_rate, 2)
+            
+            return {
+                "success": True,
+                "message": "Latest upload information retrieved successfully",
+                "data": latest_info
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting latest upload info: {str(e)}")
+            return {
+                "success": False,
+                "message": "Internal server error while retrieving latest upload information",
+                "data": None
+            }
+    
+    def get_latest_upload_info_simple(self) -> Dict[str, Any]:
+        """Get latest upload information by created_date (simplified)"""
+        try:
+            latest_info = self.repository.get_latest_upload_info_simple()
+            
+            if not latest_info:
+                return {
+                    "success": True,
+                    "message": "No uploads found",
+                    "data": None
+                }
+            
+            return {
+                "success": True,
+                "message": "Latest upload date retrieved successfully",
+                "data": latest_info
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting latest upload info simple: {str(e)}")
+            return {
+                "success": False,
+                "message": "Internal server error while retrieving latest upload date",
+                "data": None
+            }
+    
+    def get_top_indikasi_keluhan(
+        self,
+        filters: CustomerSatisfactionFilters,
+        limit: int = 3
+    ) -> Dict[str, Any]:
+        """Get top indikasi keluhan with filtering"""
+        try:
+            # Parse date filters - always use tanggal_rating filtering
+            date_from = None
+            date_to = None
+            
+            if filters.date_from:
+                try:
+                    date_from = datetime.strptime(filters.date_from, '%Y-%m-%d')
+                except ValueError:
+                    return {
+                        "success": False,
+                        "message": "Invalid date_from format. Use YYYY-MM-DD.",
+                        "data": None
+                    }
+            
+            if filters.date_to:
+                try:
+                    date_to = datetime.strptime(filters.date_to, '%Y-%m-%d')
+                    # Add time to include the entire day
+                    date_to = date_to.replace(hour=23, minute=59, second=59)
+                except ValueError:
+                    return {
+                        "success": False,
+                        "message": "Invalid date_to format. Use YYYY-MM-DD.",
+                        "data": None
+                    }
+            
+            # Get top indikasi keluhan with tanggal_rating filtering
+            top_complaints = self.repository.get_top_indikasi_keluhan(
+                periode_utk_suspend=filters.periode_utk_suspend,
+                submit_review_date=filters.submit_review_date,
+                no_ahass=filters.no_ahass,
+                date_from=date_from,
+                date_to=date_to,
+                limit=limit
+            )
+            
+            return {
+                "success": True,
+                "message": f"Top {limit} indikasi keluhan retrieved successfully",
+                "data": top_complaints
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting top indikasi keluhan: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"Internal server error while retrieving top indikasi keluhan: {str(e)}",
+                "data": None
+            }
+    
+    def get_overall_rating(
+        self,
+        filters: CustomerSatisfactionFilters,
+        compare_previous_period: bool = True
+    ) -> Dict[str, Any]:
+        """Get overall rating with optional comparison to previous period"""
+        try:
+            # Parse date filters - always use tanggal_rating filtering
+            tanggal_rating_from = None
+            tanggal_rating_to = None
+            
+            if filters.date_from:
+                try:
+                    tanggal_rating_from = datetime.strptime(filters.date_from, '%Y-%m-%d')
+                except ValueError:
+                    return {
+                        "success": False,
+                        "message": "Invalid date_from format. Use YYYY-MM-DD.",
+                        "data": None
+                    }
+            
+            if filters.date_to:
+                try:
+                    tanggal_rating_to = datetime.strptime(filters.date_to, '%Y-%m-%d')
+                    # Add time to include the entire day
+                    tanggal_rating_to = tanggal_rating_to.replace(hour=23, minute=59, second=59)
+                except ValueError:
+                    return {
+                        "success": False,
+                        "message": "Invalid date_to format. Use YYYY-MM-DD.",
+                        "data": None
+                    }
+            
+            # Get overall rating with comparison using tanggal_rating filtering
+            rating_data = self.repository.get_overall_rating_with_comparison(
+                periode_utk_suspend=filters.periode_utk_suspend,
+                submit_review_date=filters.submit_review_date,
+                no_ahass=filters.no_ahass,
+                date_from=None,  # Always use tanggal_rating fields for this method
+                date_to=None,
+                tanggal_rating_from=tanggal_rating_from,
+                tanggal_rating_to=tanggal_rating_to,
+                compare_previous_period=compare_previous_period
+            )
+            
+            return {
+                "success": True,
+                "message": "Overall rating retrieved successfully",
+                "data": rating_data
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting overall rating: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"Internal server error while retrieving overall rating: {str(e)}",
                 "data": None
             }
