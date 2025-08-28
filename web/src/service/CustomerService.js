@@ -219,6 +219,157 @@ export class CustomerService {
             throw error
         }
     }
+
+    // ===== CUSTOMER SATISFACTION METHODS =====
+
+    /**
+     * Get customer satisfaction records with filtering and pagination
+     * @param {Object} options - Query options
+     * @param {string} options.periode_utk_suspend - Filter by periode untuk suspend
+     * @param {string} options.submit_review_date - Filter by submit review date
+     * @param {string} options.no_ahass - Filter by No AHASS
+     * @param {string} options.date_from - Start date in YYYY-MM-DD format
+     * @param {string} options.date_to - End date in YYYY-MM-DD format
+     * @param {number} options.page - Page number (1-based)
+     * @param {number} options.page_size - Number of items per page
+     * @returns {Promise<Object>} Paginated satisfaction records
+     */
+    async getCustomerSatisfactionRecords(options = {}) {
+        try {
+            const {
+                periode_utk_suspend = null,
+                submit_review_date = null,
+                no_ahass = null,
+                date_from = null,
+                date_to = null,
+                page = 1,
+                page_size = 10
+            } = options
+
+            const params = new URLSearchParams()
+            params.append('page', page.toString())
+            params.append('page_size', page_size.toString())
+            if (periode_utk_suspend) params.append('periode_utk_suspend', periode_utk_suspend)
+            if (submit_review_date) params.append('submit_review_date', submit_review_date)
+            if (no_ahass) params.append('no_ahass', no_ahass)
+            if (date_from) params.append('date_from', date_from)
+            if (date_to) params.append('date_to', date_to)
+            
+            const url = `/v1/customer-satisfaction/records?${params.toString()}`
+            
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching customer satisfaction records:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Get customer satisfaction statistics
+     * @param {Object} options - Filter options
+     * @param {string} options.periode_utk_suspend - Filter by periode untuk suspend
+     * @param {string} options.submit_review_date - Filter by submit review date
+     * @param {string} options.no_ahass - Filter by No AHASS
+     * @param {string} options.date_from - Start date in YYYY-MM-DD format
+     * @param {string} options.date_to - End date in YYYY-MM-DD format
+     * @returns {Promise<Object>} Statistics data
+     */
+    async getCustomerSatisfactionStatistics(options = {}) {
+        try {
+            const {
+                periode_utk_suspend = null,
+                submit_review_date = null,
+                no_ahass = null,
+                date_from = null,
+                date_to = null
+            } = options
+
+            const params = new URLSearchParams()
+            if (periode_utk_suspend) params.append('periode_utk_suspend', periode_utk_suspend)
+            if (submit_review_date) params.append('submit_review_date', submit_review_date)
+            if (no_ahass) params.append('no_ahass', no_ahass)
+            if (date_from) params.append('date_from', date_from)
+            if (date_to) params.append('date_to', date_to)
+            
+            const queryString = params.toString()
+            const url = `/v1/customer-satisfaction/statistics${queryString ? `?${queryString}` : ''}`
+            
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching customer satisfaction statistics:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Upload customer satisfaction file (Excel or CSV)
+     * @param {File} file - The file to upload
+     * @returns {Promise<Object>} Upload result
+     */
+    async uploadCustomerSatisfactionFile(file) {
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            
+            const response = await api.post('/v1/customer-satisfaction/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+            return response.data
+        } catch (error) {
+            console.error('Error uploading customer satisfaction file:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Get customer satisfaction upload trackers
+     * @param {Object} options - Query options
+     * @param {number} options.page - Page number (1-based)
+     * @param {number} options.page_size - Number of items per page
+     * @param {string} options.status - Filter by upload status
+     * @returns {Promise<Object>} Paginated upload trackers
+     */
+    async getCustomerSatisfactionUploadTrackers(options = {}) {
+        try {
+            const {
+                page = 1,
+                page_size = 10,
+                status = null
+            } = options
+
+            const params = new URLSearchParams()
+            params.append('page', page.toString())
+            params.append('page_size', page_size.toString())
+            if (status) params.append('status', status)
+            
+            const url = `/v1/customer-satisfaction/uploads?${params.toString()}`
+            
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching upload trackers:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Get upload tracker by ID
+     * @param {string} trackerId - Upload tracker ID
+     * @returns {Promise<Object>} Upload tracker details
+     */
+    async getCustomerSatisfactionUploadTracker(trackerId) {
+        try {
+            const response = await api.get(`/v1/customer-satisfaction/uploads/${trackerId}`)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching upload tracker:', error)
+            throw error
+        }
+    }
 }
 
 export default new CustomerService()

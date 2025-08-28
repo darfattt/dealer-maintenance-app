@@ -23,7 +23,8 @@ const model = ref([
         label: 'Customer',
         items: [
             { label: 'Customer Validation Request', icon: 'pi pi-fw pi-users', to: '/customer-validation' },
-            { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' }
+            { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' },
+            { label: 'Customer Satisfaction', icon: 'pi pi-fw pi-star', to: '/customer-satisfaction' }
         ]
     },
     {
