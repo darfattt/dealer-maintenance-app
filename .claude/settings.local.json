@@ -14,7 +14,8 @@
       "Bash(sed:*)",
       "Bash(cp:*)",
       "Bash(docker-compose build:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }
