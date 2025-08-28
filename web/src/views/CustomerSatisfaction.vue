@@ -1,145 +1,163 @@
 <template>
-    <div class="grid">
-        <div class="col-12">
-            <div class="card">
-                <div class="flex justify-content-between align-items-center mb-3">
-                    <h5>Customer Satisfaction Data</h5>
-                    <Button 
-                        @click="showUploadSidebar = true"
-                        label="Upload File"
-                        icon="pi pi-upload"
-                        severity="success"
-                        class="p-button-sm"
-                    />
-                </div>
+    <div class="space-y-6">
+        <!-- Filter Controls -->
+        <div class="flex justify-end items-center space-x-4 mb-6">
+            <!-- No AHASS Filter (Only for SUPER_ADMIN) -->
+            <div v-if="showAhassFilter" class="flex items-center space-x-2">
+                <label for="ahass-filter" class="text-sm font-medium">No AHASS:</label>
+                <InputText 
+                    id="ahass-filter"
+                    v-model="filters.no_ahass"
+                    placeholder="Enter No AHASS"
+                    class="w-36"
+                />
+            </div>
 
-                <!-- Filters Section -->
-                <Card class="mb-4">
-                    <template #content>
-                        <div class="grid">
-                            <!-- Dealer Filter (No AHASS) -->
-                            <div class="col-12 md:col-4">
-                                <label for="dealerFilter" class="block text-sm font-medium text-900 mb-2">
-                                    No AHASS
-                                </label>
-                                <InputText 
-                                    id="dealerFilter"
-                                    v-model="filters.no_ahass"
-                                    placeholder="Enter No AHASS"
-                                    class="w-full"
-                                    @input="debouncedSearch"
-                                />
-                            </div>
-                            
-                            <!-- Date Type Selector -->
-                            <div class="col-12 md:col-4">
-                                <label for="dateType" class="block text-sm font-medium text-900 mb-2">
-                                    Filter by Date
-                                </label>
-                                <Dropdown 
-                                    id="dateType"
-                                    v-model="selectedDateType"
-                                    :options="dateTypeOptions"
-                                    optionLabel="label"
-                                    optionValue="value"
-                                    placeholder="Select date type"
-                                    class="w-full"
-                                    @change="loadData"
-                                />
-                            </div>
-                            
-                            <!-- Date Range -->
-                            <div class="col-12 md:col-4">
-                                <label class="block text-sm font-medium text-900 mb-2">
-                                    Date Range
-                                </label>
-                                <div class="flex gap-2">
-                                    <Calendar 
-                                        v-model="selectedDateFrom"
-                                        placeholder="From"
-                                        dateFormat="yy-mm-dd"
-                                        class="flex-1"
-                                        @date-select="loadData"
-                                        showIcon
-                                    />
-                                    <Calendar 
-                                        v-model="selectedDateTo"
-                                        placeholder="To"
-                                        dateFormat="yy-mm-dd"
-                                        class="flex-1"
-                                        @date-select="loadData"
-                                        showIcon
-                                    />
-                                </div>
-                            </div>
-                            
-                            
-                            
-                            <!-- Filter Actions -->
-                            <div class="col-12">
-                                <div class="flex gap-2 justify-content-end">
-                                    <Button 
-                                        @click="clearFilters"
-                                        label="Clear"
-                                        icon="pi pi-times"
-                                        severity="secondary"
-                                        outlined
-                                        size="small"
-                                    />
-                                    <Button 
-                                        @click="loadData"
-                                        label="Search"
-                                        icon="pi pi-search"
-                                        size="small"
-                                    />
-                                </div>
-                            </div>
+            <!-- Date Type Selector -->
+            <div class="flex items-center space-x-2">
+                <label for="date-type" class="text-sm font-medium">Date Type:</label>
+                <Dropdown 
+                    id="date-type"
+                    v-model="selectedDateType"
+                    :options="dateTypeOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select date type"
+                    class="w-40"
+                />
+            </div>
+
+            <!-- Date Range Filters -->
+            <div class="flex items-center space-x-2">
+                <Calendar
+                    v-model="selectedDateFrom"
+                    dateFormat="dd-mm-yy"
+                    placeholder="From Date"
+                    class="w-36"
+                    showIcon
+                />
+                <span class="text-sm text-muted-color">to</span>
+                <Calendar
+                    v-model="selectedDateTo"
+                    dateFormat="dd-mm-yy"
+                    placeholder="To Date"
+                    class="w-36"
+                    showIcon
+                />
+            </div>
+
+            <!-- Search and Clear Buttons -->
+            <div class="flex items-center space-x-2">
+                <Button 
+                    @click="handleSearch"
+                    icon="pi pi-search"
+                    severity="primary"
+                    size="small"
+                    title="Search"
+                />
+                <Button 
+                    @click="clearFilters"
+                    icon="pi pi-times"
+                    severity="secondary"
+                    size="small"
+                    title="Clear Filters"
+                />
+            </div>
+
+            <!-- Upload Button (Only for SUPER_ADMIN) -->
+            <Button 
+                v-if="canUpload"
+                @click="showUploadSidebar = true"
+                label="Upload File"
+                icon="pi pi-upload"
+                severity="success"
+                size="small"
+            />
+        </div>
+
+        <!-- Overview Section -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Total Records Card -->
+            <Card class="text-center">
+                <template #content>
+                    <div v-if="loading" class="flex justify-center">
+                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                    </div>
+                    <div v-else>
+                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Total Records</h3>
+                        <div class="text-3xl font-bold text-blue-600 mb-1">
+                            {{ statistics?.total_records || 0 }}
                         </div>
-                    </template>
-                </Card>
+                        <p class="text-sm text-surface-500">Customer Satisfaction</p>
+                    </div>
+                </template>
+            </Card>
 
-                <!-- Statistics Summary -->
-                <Card v-if="statistics" class="mb-4">
-                    <template #content>
-                        <div class="grid">
-                            <div class="col-6 md:col-3">
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-primary">{{ statistics.total_records || 0 }}</div>
-                                    <div class="text-sm text-600">Total Records</div>
-                                </div>
-                            </div>
-                            <div class="col-6 md:col-3">
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-green-500">{{ getAverageRating() }}</div>
-                                    <div class="text-sm text-600">Avg Rating</div>
-                                </div>
-                            </div>
-                            <div class="col-6 md:col-3">
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-orange-500">{{ getTopRating() }}</div>
-                                    <div class="text-sm text-600">Top Rating</div>
-                                </div>
-                            </div>
-                            <div class="col-6 md:col-3">
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-blue-500">{{ statistics.top_ahass?.length || 0 }}</div>
-                                    <div class="text-sm text-600">AHASS Count</div>
-                                </div>
-                            </div>
+            <!-- Average Rating Card -->
+            <Card class="text-center">
+                <template #content>
+                    <div v-if="loading" class="flex justify-center">
+                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                    </div>
+                    <div v-else>
+                        <div class="flex items-center justify-center space-x-2 mb-2">
+                            <!-- <i class="pi pi-star-fill text-yellow-400 text-lg"></i> -->
+                            <h3 class="text-lg font-semibold text-surface-900">Average Rating</h3>
                         </div>
-                    </template>
-                </Card>
+                        <div class="text-3xl font-bold text-green-600 mb-1">
+                            {{ getAverageRating() }}
+                        </div>
+                        <p class="text-sm text-surface-500">Overall Score</p>
+                    </div>
+                </template>
+            </Card>
 
-                <!-- Data Table -->
+            <!-- Top Rating Card -->
+            <Card class="text-center">
+                <template #content>
+                    <div v-if="loading" class="flex justify-center">
+                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                    </div>
+                    <div v-else>
+                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Most Common</h3>
+                        <div class="text-3xl font-bold text-orange-600 mb-1">
+                            {{ getTopRating() }}
+                        </div>
+                        <p class="text-sm text-surface-500">Rating Score</p>
+                    </div>
+                </template>
+            </Card>
+
+            <!-- AHASS Count Card -->
+            <Card class="text-center">
+                <template #content>
+                    <div v-if="loading" class="flex justify-center">
+                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                    </div>
+                    <div v-else>
+                        <h3 class="text-lg font-semibold text-surface-900 mb-2">AHASS Count</h3>
+                        <div class="text-3xl font-bold text-primary-600 mb-1">
+                            {{ statistics?.top_ahass?.length || 0 }}
+                        </div>
+                        <p class="text-sm text-surface-500">Unique Dealers</p>
+                    </div>
+                </template>
+            </Card>
+        </div>
+
+        <!-- Details Table -->
+        <Card>
+            <template #title>
+                <h2 class="text-xl font-bold text-surface-900">Customer Satisfaction Data</h2>
+            </template>
+            <template #content>
                 <DataTable 
                     :value="satisfactionData"
                     :loading="loading"
                     responsiveLayout="scroll"
                     :paginator="false"
                     dataKey="id"
-                    class="p-datatable-sm"
-                    :scrollable="true"
-                    scrollHeight="500px"
+                    class="p-datatable-customers"
                 >
                     <Column field="no_tiket" header="No Tiket" style="min-width: 120px">
                         <template #body="{ data }">
@@ -215,26 +233,40 @@
                 </DataTable>
 
                 <!-- Pagination -->
-                <div class="flex justify-content-between align-items-center mt-3">
-                    <div class="text-sm text-600">
-                        Showing {{ ((pagination.page - 1) * pagination.page_size) + 1 }} 
-                        to {{ Math.min(pagination.page * pagination.page_size, pagination.total_count) }} 
-                        of {{ pagination.total_count }} entries
+                <Paginator
+                    v-if="pagination.total_count > pagination.page_size"
+                    :rows="pagination.page_size"
+                    :totalRecords="pagination.total_count"
+                    :rowsPerPageOptions="[10, 20, 50]"
+                    @page="onPageChange"
+                    class="mt-4"
+                />
+
+                <!-- Last Upload Info -->
+                <div v-if="lastUploadInfo" class="mt-4 p-3 bg-surface-50 rounded-lg border">
+                    <div class="flex items-center justify-between text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="pi pi-upload text-primary-500"></i>
+                            <span class="font-medium">Last Upload:</span>
+                            <span>{{ formatDate(lastUploadInfo.created_at) }}</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-1">
+                                <span class="text-surface-600">Records:</span>
+                                <Tag :value="lastUploadInfo.total_records || 0" severity="info" />
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-surface-600">Status:</span>
+                                <Tag 
+                                    :value="lastUploadInfo.status || 'Unknown'"
+                                    :severity="getUploadStatusSeverity(lastUploadInfo.status)"
+                                />
+                            </div>
+                        </div>
                     </div>
-                    <Paginator
-                        v-model:first="paginatorFirst"
-                        :rows="pagination.page_size"
-                        :totalRecords="pagination.total_count"
-                        @page="onPageChange"
-                        :template="{
-                            '640px': 'PrevPageLink CurrentPageReport NextPageLink',
-                            default: 'FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink'
-                        }"
-                        class="justify-content-end"
-                    />
                 </div>
-            </div>
-        </div>
+            </template>
+        </Card>
 
         <!-- Upload Sidebar -->
         <CustomerSatisfactionUploadSidebar 
@@ -257,6 +289,7 @@ import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
+import ProgressSpinner from 'primevue/progressspinner';
 import CustomerSatisfactionUploadSidebar from '@/components/CustomerSatisfactionUploadSidebar.vue';
 import CustomerService from '@/service/CustomerService';
 
@@ -268,6 +301,7 @@ const satisfactionData = ref([]);
 const statistics = ref(null);
 const loading = ref(false);
 const showUploadSidebar = ref(false);
+const lastUploadInfo = ref(null);
 
 // Filter state
 const filters = reactive({
@@ -299,6 +333,11 @@ const pagination = reactive({
     has_prev: false
 });
 
+// Role-based computed properties
+const showAhassFilter = computed(() => authStore.userRole === 'SUPER_ADMIN');
+const canUpload = computed(() => authStore.userRole === 'SUPER_ADMIN');
+const isDealerUser = computed(() => authStore.userRole === 'DEALER_USER');
+
 const paginatorFirst = computed({
     get: () => (pagination.page - 1) * pagination.page_size,
     set: (value) => {
@@ -323,6 +362,11 @@ const loadData = async () => {
         if (selectedDateType.value === 'created') {
             apiFilters.date_from = selectedDateFrom.value ? formatDateForAPI(selectedDateFrom.value) : null;
             apiFilters.date_to = selectedDateTo.value ? formatDateForAPI(selectedDateTo.value) : null;
+        }
+
+        // Auto-apply dealer filter for DEALER_USER
+        if (isDealerUser.value && authStore.userDealerId) {
+            apiFilters.no_ahass = authStore.userDealerId;
         }
 
         // Load records
@@ -361,14 +405,10 @@ const loadData = async () => {
     }
 };
 
-// Search debouncing
-let searchTimeout = null;
-const debouncedSearch = () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        pagination.page = 1; // Reset to first page when searching
-        loadData();
-    }, 500);
+// Manual search handler
+const handleSearch = () => {
+    pagination.page = 1; // Reset to first page when searching
+    loadData();
 };
 
 // Pagination handler
@@ -379,7 +419,10 @@ const onPageChange = (event) => {
 
 // Filter actions
 const clearFilters = () => {
-    filters.no_ahass = '';
+    // Only clear AHASS filter for SUPER_ADMIN
+    if (showAhassFilter.value) {
+        filters.no_ahass = '';
+    }
     filters.periode_utk_suspend = '';
     filters.submit_review_date = '';
     selectedDateFrom.value = null;
@@ -398,6 +441,7 @@ const onUploadSuccess = () => {
         life: 5000
     });
     loadData(); // Refresh data after upload
+    loadLastUploadInfo(); // Refresh upload info
 };
 
 // Utilities
@@ -442,18 +486,102 @@ const getTopRating = () => {
     return maxItem.rating;
 };
 
+// Load last upload info
+const loadLastUploadInfo = async () => {
+    try {
+        const result = await CustomerService.getCustomerSatisfactionUploadTrackers({
+            page: 1,
+            page_size: 1
+        });
+        if (result.success && result.data?.records?.length > 0) {
+            lastUploadInfo.value = result.data.records[0];
+        }
+    } catch (error) {
+        console.error('Error loading upload info:', error);
+    }
+};
+
+// Utility functions
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
+const getUploadStatusSeverity = (status) => {
+    switch (status?.toLowerCase()) {
+        case 'completed':
+        case 'success':
+            return 'success';
+        case 'processing':
+        case 'pending':
+            return 'warning';
+        case 'failed':
+        case 'error':
+            return 'danger';
+        default:
+            return 'secondary';
+    }
+};
+
 // Initialize
 onMounted(() => {
     loadData();
+    loadLastUploadInfo();
 });
 </script>
 
 <style scoped>
-.p-datatable .p-column-header {
-    background-color: var(--p-primary-50);
+/* Custom styles for the customer satisfaction page */
+
+/* Section spacing */
+.space-y-6 > * + * {
+    margin-top: 1.5rem;
 }
 
-.text-primary {
-    color: var(--p-primary-500);
+/* Card hover effects */
+:deep(.p-card) {
+    transition: box-shadow 0.2s ease;
+}
+
+:deep(.p-card:hover) {
+    box-shadow: 0 4px 25px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 768px) {
+    .grid.md\:grid-cols-4 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+}
+
+/* Table responsive styling */
+:deep(.p-datatable-customers .p-datatable-tbody > tr > td) {
+    padding: 0.75rem 1rem;
+}
+
+:deep(.p-datatable-customers .p-datatable-thead > tr > th) {
+    background-color: var(--surface-50);
+    font-weight: 600;
+}
+
+/* Status tag styling */
+:deep(.p-tag) {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Filter controls responsive */
+@media (max-width: 1024px) {
+    .flex.justify-end {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
 }
 </style>
