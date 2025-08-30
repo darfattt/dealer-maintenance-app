@@ -72,9 +72,9 @@
                         <ProgressSpinner style="width: 30px; height: 30px;" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">SENTIMENT RECORD</h3>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-2">SENTIMENT RECORD</h3>
                        
-                        <p class="text-sm text-surface-500"><i>Work in progress</i></p>
+                        <p class="text-sm text-surface-500 dark:text-surface-400"><i>Work in progress</i></p>
                     </div>
                 </template>
             </Card>
@@ -88,25 +88,25 @@
                         <ProgressSpinner style="width: 30px; height: 30px;" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-3">TOP 3 INDIKASI KELUHAN</h3>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-3">TOP 3 INDIKASI KELUHAN</h3>
                         <div v-if="topComplaints && topComplaints.length > 0" class="space-y-2">
                             <div 
                                 v-for="(complaint, index) in topComplaints" 
                                 :key="index"
-                                class="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                                class="flex items-start gap-3 p-2 bg-surface-50 dark:bg-surface-800 rounded-lg"
                             >
-                                <div class="flex-1 text-left">
-                                    <div class="text-xs font-medium text-gray-800 truncate" :title="complaint.indikasi_keluhan">
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-xs font-medium text-surface-800 dark:text-surface-200 break-words" :title="complaint.indikasi_keluhan">
                                         {{ complaint.indikasi_keluhan || 'N/A' }}
                                     </div>
-                                    <div class="text-xs text-gray-500">{{ complaint.count }} cases</div>
+                                    <div class="text-xs text-surface-500 dark:text-surface-400 mt-1">{{ complaint.count }} cases</div>
                                 </div>
-                                <div class="text-sm font-bold" :class="getComplaintSeverityColor(complaint.percentage)">
+                                <div class="text-sm font-bold text-surface-900 dark:text-surface-0 flex-shrink-0">
                                     {{ complaint.percentage }}%
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="text-sm text-gray-500">
+                        <div v-else class="text-sm text-surface-500 dark:text-surface-400">
                             No complaint data
                         </div>
                     </div>
@@ -121,12 +121,12 @@
                         <ProgressSpinner style="width: 30px; height: 30px;" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-3">OVERALL RATING</h3>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-3">OVERALL RATING</h3>
                         
                         <div class="mb-4">
                             <!-- Main Rating Display -->
                             <div class="flex items-center justify-center space-x-3 mb-3">
-                                <span class="text-6xl font-bold text-surface-900">
+                                <span class="text-6xl font-bold text-surface-900 dark:text-surface-0">
                                     {{ overallRating?.current_rating || '-' }}
                                 </span>
                                 <div class="flex items-center">
@@ -139,7 +139,7 @@
                                             :class="getStarColor(star, overallRating?.current_rating)"
                                         ></i>
                                     </div>
-                                    <span class="text-base text-gray-600 font-medium">/ 5.0</span>
+                                    <span class="text-base text-surface-600 dark:text-surface-400 font-medium">/ 5.0</span>
                                 </div>
                             </div>
                         </div>
@@ -153,7 +153,7 @@
                                 {{ formatChangeText(overallRating?.change, overallRating?.change_direction) }}
                             </span>
                         </div>
-                        <div v-else class="text-base text-gray-500">
+                        <div v-else class="text-base text-surface-500 dark:text-surface-400">
                             No comparison data
                         </div>
                     </div>
@@ -167,7 +167,7 @@
                         <ProgressSpinner style="width: 30px; height: 30px;" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-3">Total Review</h3>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-3">Total Review</h3>
                         <div class="text-6xl font-bold text-blue-600 mb-2">
                             {{ statistics?.total_records || 0 }}
                         </div>
@@ -181,7 +181,7 @@
         <!-- Details Table -->
         <Card>
             <template #title>
-                <h2 class="text-xl font-bold text-surface-900">Customer Satisfaction Data</h2>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0">Customer Satisfaction Data</h2>
             </template>
             <template #content>
             <DataTable 
@@ -205,6 +205,13 @@
                     <Column field="no_tiket" header="No Tiket" style="min-width: 120px">
                         <template #body="{ data }">
                             <span class="font-medium text-sm">{{ data.no_tiket || '-' }}</span>
+                        </template>
+                    </Column>
+                    
+                    <!-- No AHASS Column (Only for SUPER_ADMIN) -->
+                    <Column v-if="showAhassFilter" field="no_ahass" header="No AHASS" style="min-width: 100px">
+                        <template #body="{ data }">
+                            <span class="font-medium text-sm">{{ data.no_ahass || '-' }}</span>
                         </template>
                     </Column>
                     
@@ -246,7 +253,10 @@
                     <!-- Inbox Column -->
                     <Column field="inbox" header="Inbox" style="min-width: 200px">
                         <template #body="{ data }">
-                            <span class="text-sm" :title="data.inbox">
+                            <span 
+                                class="text-sm cursor-help" 
+                                v-tooltip.left="data.inbox || 'No inbox data'"
+                            >
                                 {{ data.inbox ? (data.inbox.length > 50 ? data.inbox.substring(0, 50) + '...' : data.inbox) : '-' }}
                             </span>
                         </template>
@@ -293,14 +303,14 @@
                 />
 
                 <!-- Simplified Latest Upload Info -->
-                <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+                <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-surface-700 dark:to-surface-800 rounded-xl border border-blue-200 dark:border-surface-600 shadow-sm">
                     <div class="flex items-center space-x-3">
-                        <div class="flex items-center justify-center w-10 h-10 bg-blue-500 text-white rounded-full">
+                        <div class="flex items-center justify-center w-10 h-10 bg-blue-500 dark:bg-blue-600 text-white rounded-full">
                             <i class="pi pi-calendar text-lg"></i>
                         </div>
                         <div>
-                            <h4 class="text-lg font-semibold text-gray-800 mb-1">Latest Upload</h4>
-                            <div class="text-sm text-gray-600">
+                            <h4 class="text-lg font-semibold text-surface-800 dark:text-surface-200 mb-1">Latest Upload</h4>
+                            <div class="text-sm text-surface-600 dark:text-surface-400">
                                 <span>{{ formatUploadDate(lastUploadInfo.latest_upload_date) }}</span>
                             </div>
                         </div>
@@ -308,11 +318,11 @@
                 </div>
                 
                 <!-- No Upload Info State -->
-                <div v-else-if="!loadingUploadInfo" class="mt-6 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+                <div v-else-if="!loadingUploadInfo" class="mt-6 p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-dashed border-surface-300 dark:border-surface-600 text-center">
                     <div class="flex flex-col items-center space-y-2">
-                        <i class="pi pi-info-circle text-3xl text-gray-400"></i>
-                        <p class="text-sm text-gray-500">No upload information available</p>
-                        <p class="text-xs text-gray-400">Upload a file to see the latest upload details here</p>
+                        <i class="pi pi-info-circle text-3xl text-surface-400 dark:text-surface-500"></i>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">No upload information available</p>
+                        <p class="text-xs text-surface-400 dark:text-surface-500">Upload a file to see the latest upload details here</p>
                     </div>
                 </div>
             </template>
