@@ -32,6 +32,7 @@ router = APIRouter(prefix="/customer-satisfaction", tags=["Customer Satisfaction
 async def upload_satisfaction_file(
     file: UploadFile = File(..., description="Excel or CSV file with customer satisfaction data"),
     override_existing: bool = Form(False, description="Override existing records with same No Tiket"),
+    reformat_tanggal_rating: bool = Form(False, description="Reformat tanggal_rating to Indonesian format before validation"),
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> CustomerSatisfactionUploadResponse:
@@ -55,6 +56,10 @@ async def upload_satisfaction_file(
     Override behavior:
     - If override_existing=true: Replace existing records with same No Tiket
     - If override_existing=false: Skip duplicate records and mark as failed
+    
+    Reformat behavior:
+    - If reformat_tanggal_rating=true: Convert various date formats to Indonesian format before validation
+    - If reformat_tanggal_rating=false: Use tanggal_rating values as-is for strict validation
     """
     try:
         # Validate file type
@@ -80,7 +85,8 @@ async def upload_satisfaction_file(
             file_content=file_content,
             filename=file.filename,
             uploaded_by=current_user.email,
-            override_existing=override_existing
+            override_existing=override_existing,
+            reformat_tanggal_rating=reformat_tanggal_rating
         )
         
         logger.info(f"File upload processed for user {current_user.email}, file: {file.filename}")

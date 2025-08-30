@@ -58,6 +58,23 @@
                             </div>
                         </div>
                         
+                        <!-- Reformat Dates Option -->
+                        <!-- <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <Checkbox 
+                                v-model="reformatDates" 
+                                inputId="reformat-checkbox" 
+                                :binary="true"
+                            />
+                            <div class="flex-1">
+                                <label for="reformat-checkbox" class="text-sm font-medium text-blue-800 cursor-pointer">
+                                    Reformat tanggal_rating to Indonesian format
+                                </label>
+                                <p class="text-xs text-blue-600 mt-1">
+                                    Convert dates like "24-12-2024" or "2024-12-24" to "24 Desember 2024". Invalid formats will still be rejected.
+                                </p>
+                            </div>
+                        </div> -->
+                        
                         <!-- Upload Instructions -->
                         <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
                             <div class="text-xs text-blue-800">
@@ -218,6 +235,7 @@ const selectedFile = ref(null);
 const uploading = ref(false);
 const uploadResult = ref(null);
 const overrideExisting = ref(false);
+const reformatDates = ref(false);
 
 // History state
 const showHistory = ref(true);
@@ -250,7 +268,8 @@ const uploadFile = async () => {
     try {
         const result = await CustomerService.uploadCustomerSatisfactionFile(
             selectedFile.value, 
-            overrideExisting.value
+            overrideExisting.value,
+            reformatDates.value
         );
         
         if (result.success) {

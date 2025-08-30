@@ -307,13 +307,15 @@ export class CustomerService {
      * Upload customer satisfaction file (Excel or CSV)
      * @param {File} file - The file to upload
      * @param {boolean} overrideExisting - Whether to override existing records with same no_tiket
+     * @param {boolean} reformatDates - Whether to reformat tanggal_rating to Indonesian format
      * @returns {Promise<Object>} Upload result
      */
-    async uploadCustomerSatisfactionFile(file, overrideExisting = false) {
+    async uploadCustomerSatisfactionFile(file, overrideExisting = false, reformatDates = false) {
         try {
             const formData = new FormData()
             formData.append('file', file)
             formData.append('override_existing', overrideExisting.toString())
+            formData.append('reformat_tanggal_rating', reformatDates.toString())
             
             const response = await api.post('/v1/customer-satisfaction/upload', formData, {
                 headers: {
