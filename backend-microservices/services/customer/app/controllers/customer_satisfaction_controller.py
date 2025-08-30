@@ -5,7 +5,8 @@ Customer satisfaction controller with business logic for file uploads and data r
 import logging
 import os
 import pandas as pd
-from typing import Dict, Any, Optional, BinaryIO
+import re
+from typing import Dict, Any, Optional, BinaryIO, List, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
 
@@ -34,6 +35,13 @@ class CustomerSatisfactionController:
         
         # Maximum file size (10MB)
         self.max_file_size = 10 * 1024 * 1024
+        
+        # Indonesian month names mapping (same as repository)
+        self.INDONESIAN_MONTHS = {
+            'januari': 1, 'februari': 2, 'maret': 3, 'april': 4,
+            'mei': 5, 'juni': 6, 'juli': 7, 'agustus': 8,
+            'september': 9, 'oktober': 10, 'november': 11, 'desember': 12
+        }
     
     def _validate_file(self, filename: str, file_content: bytes) -> tuple[bool, str]:
         """Validate uploaded file"""
@@ -51,6 +59,354 @@ class CustomerSatisfactionController:
             return False, "File is empty."
         
         return True, "File validation passed"
+    
+    def _validate_indonesian_date(self, date_str: str) -> Tuple[bool, str]:
+        """
+        Strictly validate Indonesian date string format: EXACTLY 'DD Month YYYY' or 'D Month YYYY'
+        
+        Rejects all numeric formats (24-12-2025, 24/12/2025, etc.) and time components.
+        Only accepts Indonesian month names with exactly one space between components.
+        
+        Args:
+            date_str: Indonesian date string to validate
+            
+        Returns:
+            (is_valid, error_message): Validation result and error message if invalid
+        """
+        if not date_str or not isinstance(date_str, str):
+            return True, ""  # Allow empty dates
+        
+        # Clean and normalize the string
+        clean_date = date_str.strip()
+        if not clean_date:
+            return True, ""  # Allow empty dates after stripping
+        
+        try:
+            # Explicit rejection of common invalid formats BEFORE regex
+            
+            # Reject any format with dashes (DD-MM-YYYY or YYYY-MM-DD)
+            if re.search(r'\d{1,2}-\d{1,2}-\d{4}', clean_date):
+                return False, f"Numeric date format with dashes not allowed. Expected: 'DD Month YYYY' (e.g., '24 Desember 2024'), got '{date_str}'"
+            
+            if re.search(r'\d{4}-\d{1,2}-\d{1,2}', clean_date):
+                return False, f"ISO date format (YYYY-MM-DD) not allowed. Expected: 'DD Month YYYY' (e.g., '24 Desember 2024'), got '{date_str}'"
+            
+            # Reject any format with slashes (DD/MM/YYYY or YYYY/MM/DD)
+            if re.search(r'\d{1,2}/\d{1,2}/\d{4}', clean_date):
+                return False, f"Numeric date format with slashes not allowed. Expected: 'DD Month YYYY' (e.g., '24 Desember 2024'), got '{date_str}'"
+            
+            if re.search(r'\d{4}/\d{1,2}/\d{1,2}', clean_date):
+                return False, f"ISO date format with slashes not allowed. Expected: 'DD Month YYYY' (e.g., '24 Desember 2024'), got '{date_str}'"
+            
+            # Reject any format with dots (DD.MM.YYYY)
+            if re.search(r'\d{1,2}\.\d{1,2}\.\d{4}', clean_date):
+                return False, f"Numeric date format with dots not allowed. Expected: 'DD Month YYYY' (e.g., '24 Desember 2024'), got '{date_str}'"
+            
+            # Reject any format with time components (containing colon)
+            if ':' in clean_date:
+                return False, f"Time components not allowed. Expected: 'DD Month YYYY' (e.g., '24 Desember 2024'), got '{date_str}'"
+            
+            # Reject any format that contains only numbers and separators (no letters)
+            if re.match(r'^[\d\s\-/\.]+$', clean_date):
+                return False, f"Numeric-only date format not allowed. Expected: 'DD Month YYYY' with Indonesian month name (e.g., '24 Desember 2024'), got '{date_str}'"
+            
+            # STRICT Pattern: DD Month YYYY or D Month YYYY (exactly ONE space between components)
+            pattern = r'^(\d{1,2})\s([a-zA-Z]+)\s(\d{4})$'
+            match = re.match(pattern, clean_date)
+            
+            if not match:
+                return False, f"Invalid date format. Expected exactly 'DD Month YYYY' with single spaces (e.g., '24 Desember 2024'), got '{date_str}'"
+            
+            day_str, month_str, year_str = match.groups()
+            
+            # Convert to lowercase for lookup
+            month_lower = month_str.lower()
+            
+            if month_lower not in self.INDONESIAN_MONTHS:
+                valid_months = ', '.join(self.INDONESIAN_MONTHS.keys())
+                return False, f"Invalid Indonesian month '{month_str}'. Must use Indonesian month name. Valid months: {valid_months}"
+            
+            try:
+                day = int(day_str)
+                month = self.INDONESIAN_MONTHS[month_lower]
+                year = int(year_str)
+                
+                # Validate date logic
+                test_date = datetime(year, month, day)
+                
+                # Additional validation for reasonable ranges
+                if year < 1900 or year > 2100:
+                    return False, f"Year {year} is out of reasonable range (1900-2100). Expected: 'DD Month YYYY' format"
+                
+                if day < 1 or day > 31:
+                    return False, f"Day {day} is invalid. Expected: 'DD Month YYYY' format"
+                
+                return True, ""
+                
+            except ValueError as e:
+                return False, f"Invalid date values in '{date_str}': {str(e)}. Expected: 'DD Month YYYY' format (e.g., '24 Desember 2024')"
+            
+        except Exception as e:
+            return False, f"Error validating date '{date_str}': {str(e)}. Expected: 'DD Month YYYY' format (e.g., '24 Desember 2024')"
+    
+    def _validate_data_records(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Validate data records for critical fields before bulk insert
+        
+        Args:
+            df: DataFrame containing records to validate
+            
+        Returns:
+            Dict containing validation results and statistics
+        """
+        validation_results = {
+            "total_records": len(df),
+            "valid_records": 0,
+            "invalid_records": 0,
+            "validation_errors": [],
+            "invalid_tanggal_rating_count": 0,
+            "invalid_rating_count": 0,
+            "missing_no_tiket_count": 0,
+            "error_summary": {}
+        }
+        
+        error_types = {
+            "tanggal_rating_format": 0,
+            "rating_format": 0, 
+            "missing_no_tiket": 0
+        }
+        
+        for index, row in df.iterrows():
+            record_errors = []
+            row_number = index + 2  # +2 because pandas is 0-indexed and Excel has header row
+            
+            # Validate no_tiket (required for duplicate checking)
+            no_tiket = row.get('No Tiket', '')
+            if not no_tiket or str(no_tiket).strip() == '' or str(no_tiket).lower() == 'nan':
+                record_errors.append(f"Row {row_number}: Missing or empty 'No Tiket' field (required)")
+                validation_results["missing_no_tiket_count"] += 1
+                error_types["missing_no_tiket"] += 1
+            
+            # Validate tanggal_rating format
+            tanggal_rating = row.get('tanggal Rating', '') or row.get('tanggal_rating', '')
+            if tanggal_rating and str(tanggal_rating).strip() and str(tanggal_rating).lower() != 'nan':
+                is_valid_date, date_error = self._validate_indonesian_date(str(tanggal_rating))
+                if not is_valid_date:
+                    record_errors.append(f"Row {row_number}: tanggal_rating - {date_error}")
+                    validation_results["invalid_tanggal_rating_count"] += 1
+                    error_types["tanggal_rating_format"] += 1
+            
+            # Validate rating format (if present)
+            rating = row.get('Rating', '')
+            if rating and str(rating).strip() and str(rating).lower() != 'nan':
+                try:
+                    rating_value = float(str(rating).strip())
+                    if not (0 <= rating_value <= 5):
+                        record_errors.append(f"Row {row_number}: Rating must be between 0 and 5, got {rating_value}")
+                        validation_results["invalid_rating_count"] += 1
+                        error_types["rating_format"] += 1
+                except (ValueError, TypeError):
+                    record_errors.append(f"Row {row_number}: Rating must be numeric, got '{rating}'")
+                    validation_results["invalid_rating_count"] += 1
+                    error_types["rating_format"] += 1
+            
+            # Track record validity
+            if record_errors:
+                validation_results["invalid_records"] += 1
+                validation_results["validation_errors"].extend(record_errors)
+            else:
+                validation_results["valid_records"] += 1
+        
+        # Create error summary
+        validation_results["error_summary"] = {
+            "tanggal_rating_format_errors": error_types["tanggal_rating_format"],
+            "rating_format_errors": error_types["rating_format"], 
+            "missing_no_tiket_errors": error_types["missing_no_tiket"]
+        }
+        
+        # Limit validation_errors to prevent overwhelming response
+        if len(validation_results["validation_errors"]) > 50:
+            validation_results["validation_errors"] = validation_results["validation_errors"][:50]
+            validation_results["validation_errors"].append("... (showing first 50 errors only)")
+        
+        logger.info(f"Data validation completed: {validation_results['valid_records']} valid, {validation_results['invalid_records']} invalid records")
+        
+        return validation_results
+    
+    def _has_validation_errors(self, record_dict: Dict[str, Any], row_number: int) -> Tuple[bool, List[str]]:
+        """
+        Check if an individual record has validation errors
+        
+        Args:
+            record_dict: Dictionary containing record data
+            row_number: Row number in the file (for error reporting)
+            
+        Returns:
+            (has_errors, error_list): Boolean indicating if errors exist and list of error messages
+        """
+        record_errors = []
+        
+        # Check no_tiket (required for duplicate checking)
+        no_tiket = record_dict.get('No Tiket', '')
+        if not no_tiket or str(no_tiket).strip() == '' or str(no_tiket).lower() == 'nan':
+            record_errors.append(f"Row {row_number}: Missing or empty 'No Tiket' field (required)")
+        
+        # Check tanggal_rating format
+        tanggal_rating = record_dict.get('tanggal Rating', '') or record_dict.get('tanggal_rating', '')
+        if tanggal_rating and str(tanggal_rating).strip() and str(tanggal_rating).lower() != 'nan':
+            is_valid_date, date_error = self._validate_indonesian_date(str(tanggal_rating))
+            if not is_valid_date:
+                record_errors.append(f"Row {row_number}: tanggal_rating - {date_error}")
+        
+        # Check rating format (if present)
+        rating = record_dict.get('Rating', '')
+        if rating and str(rating).strip() and str(rating).lower() != 'nan':
+            try:
+                rating_value = float(str(rating).strip())
+                if not (0 <= rating_value <= 5):
+                    record_errors.append(f"Row {row_number}: Rating must be between 0 and 5, got {rating_value}")
+            except (ValueError, TypeError):
+                record_errors.append(f"Row {row_number}: Rating must be numeric, got '{rating}'")
+        
+        return len(record_errors) > 0, record_errors
+    
+    def _reformat_tanggal_rating(self, date_str: str) -> Tuple[str, bool]:
+        """
+        Attempt to reformat various date formats to Indonesian format: 'DD Month YYYY'
+        
+        Handles common formats:
+        - DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY → DD Month YYYY
+        - YYYY-MM-DD, YYYY/MM/DD → DD Month YYYY  
+        - D-M-YYYY, D/M/YYYY → D Month YYYY
+        - English month names → Indonesian month names
+        - Removes time components
+        - Handles 2-digit years (assumes 20xx)
+        
+        Args:
+            date_str: Original date string to reformat
+            
+        Returns:
+            (reformatted_date, was_reformatted): Tuple of reformatted string and boolean indicating if changes were made
+        """
+        if not date_str or not isinstance(date_str, str):
+            return date_str, False
+        
+        original_date = date_str
+        clean_date = date_str.strip()
+        
+        if not clean_date:
+            return date_str, False
+        
+        try:
+            # Remove time components (anything after space followed by time pattern)
+            # Patterns: "10:30", "10:30:45", "T10:30:00"
+            clean_date = re.sub(r'\s+\d{1,2}:\d{2}(:\d{2})?$', '', clean_date)
+            clean_date = re.sub(r'T\d{1,2}:\d{2}(:\d{2})?.*$', '', clean_date)
+            
+            # English to Indonesian month mapping
+            english_to_indonesian = {
+                'january': 'januari', 'jan': 'januari',
+                'february': 'februari', 'feb': 'februari', 
+                'march': 'maret', 'mar': 'maret',
+                'april': 'april', 'apr': 'april',
+                'may': 'mei',
+                'june': 'juni', 'jun': 'juni',
+                'july': 'juli', 'jul': 'juli',
+                'august': 'agustus', 'aug': 'agustus',
+                'september': 'september', 'sep': 'september',
+                'october': 'oktober', 'oct': 'oktober',
+                'november': 'november', 'nov': 'november',
+                'december': 'desember', 'dec': 'desember'
+            }
+            
+            # Month number to Indonesian name
+            month_num_to_indonesian = {
+                1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+                5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+                9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+            }
+            
+            reformatted_date = clean_date
+            was_reformatted = False
+            
+            # Pattern 1: DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY
+            pattern1 = r'^(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{2,4})$'
+            match1 = re.match(pattern1, clean_date)
+            if match1:
+                day, month, year = match1.groups()
+                
+                # Handle 2-digit years (assume 20xx)
+                if len(year) == 2:
+                    year = '20' + year
+                
+                try:
+                    month_num = int(month)
+                    if 1 <= month_num <= 12:
+                        indonesian_month = month_num_to_indonesian[month_num]
+                        reformatted_date = f"{int(day)} {indonesian_month} {year}"
+                        was_reformatted = True
+                except (ValueError, KeyError):
+                    pass
+            
+            # Pattern 2: YYYY-MM-DD, YYYY/MM/DD (ISO format)  
+            if not was_reformatted:
+                pattern2 = r'^(\d{4})[-/\.](\d{1,2})[-/\.](\d{1,2})$'
+                match2 = re.match(pattern2, clean_date)
+                if match2:
+                    year, month, day = match2.groups()
+                    
+                    try:
+                        month_num = int(month)
+                        if 1 <= month_num <= 12:
+                            indonesian_month = month_num_to_indonesian[month_num]
+                            reformatted_date = f"{int(day)} {indonesian_month} {year}"
+                            was_reformatted = True
+                    except (ValueError, KeyError):
+                        pass
+            
+            # Pattern 3: DD Month YYYY with English month names
+            if not was_reformatted:
+                pattern3 = r'^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{2,4})$'
+                match3 = re.match(pattern3, clean_date)
+                if match3:
+                    day, month_str, year = match3.groups()
+                    
+                    # Handle 2-digit years
+                    if len(year) == 2:
+                        year = '20' + year
+                    
+                    month_lower = month_str.lower()
+                    if month_lower in english_to_indonesian:
+                        indonesian_month = english_to_indonesian[month_lower].capitalize()
+                        reformatted_date = f"{int(day)} {indonesian_month} {year}"
+                        was_reformatted = True
+            
+            # Pattern 4: Already in Indonesian format but may need time removal or case fixing
+            if not was_reformatted:
+                pattern4 = r'^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})$'
+                match4 = re.match(pattern4, clean_date)
+                if match4:
+                    day, month_str, year = match4.groups()
+                    month_lower = month_str.lower()
+                    
+                    # Check if it's already Indonesian month
+                    if month_lower in self.INDONESIAN_MONTHS:
+                        # Fix capitalization 
+                        proper_month = month_str.capitalize()
+                        reformatted_date = f"{int(day)} {proper_month} {year}"
+                        # Only mark as reformatted if we actually changed something
+                        was_reformatted = (reformatted_date != original_date)
+            
+            # If we removed time components but didn't reformat the date part
+            if not was_reformatted and reformatted_date != original_date:
+                was_reformatted = True
+            
+            return reformatted_date, was_reformatted
+            
+        except Exception as e:
+            # If reformatting fails, return original
+            logger.warning(f"Error reformatting date '{date_str}': {str(e)}")
+            return original_date, False
     
     def _process_excel_file(self, file_content: bytes, filename: str) -> tuple[bool, Any, str]:
         """Process Excel/CSV file and return DataFrame"""
@@ -106,7 +462,8 @@ class CustomerSatisfactionController:
         file_content: bytes, 
         filename: str,
         uploaded_by: str = None,
-        override_existing: bool = False
+        override_existing: bool = False,
+        reformat_tanggal_rating: bool = False
     ) -> CustomerSatisfactionUploadResponse:
         """Upload and process customer satisfaction file"""
         try:
@@ -142,58 +499,174 @@ class CustomerSatisfactionController:
                     data={"upload_tracker_id": str(tracker.id)}
                 )
             
-            # Step 4: Convert DataFrame to records
-            records_data = df.to_dict('records')
-            total_records = len(records_data)
+            # Step 3.5: Apply reformatting if enabled
+            reformatted_count = 0
+            if reformat_tanggal_rating and 'tanggal_rating' in df.columns:
+                logger.info("Applying tanggal_rating reformatting before validation")
+                for index in df.index:
+                    original_value = df.at[index, 'tanggal_rating']
+                    if original_value and str(original_value).strip():
+                        reformatted_value, was_reformatted = self._reformat_tanggal_rating(str(original_value).strip())
+                        if was_reformatted:
+                            df.at[index, 'tanggal_rating'] = reformatted_value
+                            reformatted_count += 1
+                logger.info(f"Reformatted {reformatted_count} tanggal_rating values")
+            
+            # Step 4: Validate data records
+            validation_results = self._validate_data_records(df)
+            
+            # Step 5: Convert DataFrame to records and filter valid vs invalid
+            all_records_data = df.to_dict('records')
+            total_records = len(all_records_data)
+            
+            # Separate valid and invalid records
+            valid_records = []
+            invalid_records = []
+            invalid_record_errors = []
+            
+            for index, record_dict in enumerate(all_records_data):
+                row_number = index + 2  # +2 because pandas is 0-indexed and Excel has header row
+                has_errors, error_list = self._has_validation_errors(record_dict, row_number)
+                
+                if has_errors:
+                    invalid_records.append(record_dict)
+                    invalid_record_errors.extend(error_list)
+                else:
+                    valid_records.append(record_dict)
+            
+            validation_failed_count = len(invalid_records)
+            valid_count = len(valid_records)
             
             logger.info(f"Processing {total_records} records from file: {filename}")
+            logger.info(f"Validation filtering: {valid_count} valid, {validation_failed_count} invalid (excluded from database)")
             
-            # Step 5: Bulk insert records with override handling
-            result_counts = self.repository.bulk_create_satisfaction_records(
-                records_data=records_data,
-                upload_batch_id=str(tracker.id),
-                created_by=uploaded_by,
-                override_existing=override_existing
-            )
-            successful_count, failed_count, replaced_count, skipped_count = result_counts
+            # Step 6: Only process valid records through database
+            if valid_records:
+                result_counts = self.repository.bulk_create_satisfaction_records(
+                    records_data=valid_records,  # Only send valid records
+                    upload_batch_id=str(tracker.id),
+                    created_by=uploaded_by,
+                    override_existing=override_existing
+                )
+                successful_count, db_failed_count, replaced_count, skipped_count = result_counts
+            else:
+                # No valid records to process
+                successful_count, db_failed_count, replaced_count, skipped_count = 0, 0, 0, 0
+                logger.warning("No valid records to process after validation filtering")
             
-            # Step 6: Update tracker with results
-            final_status = 'COMPLETED' if failed_count == 0 else ('FAILED' if successful_count == 0 else 'COMPLETED')
-            error_msg = f"Partial success: {failed_count} records failed" if 0 < failed_count < total_records else None
+            # Calculate total failures (validation + database)
+            total_failed_count = validation_failed_count + db_failed_count
+            
+            # Step 7: Update tracker with comprehensive results
+            final_status = 'COMPLETED' if total_failed_count == 0 else ('FAILED' if successful_count == 0 else 'COMPLETED')
+            
+            # Build comprehensive error message
+            error_msg_parts = []
+            if validation_failed_count > 0:
+                error_msg_parts.append(f"Validation failures: {validation_failed_count}")
+            if db_failed_count > 0:
+                error_msg_parts.append(f"Database failures: {db_failed_count}")
+            
+            error_msg = "; ".join(error_msg_parts) if error_msg_parts else None
+            
+            if total_failed_count > 0 and successful_count > 0:
+                error_msg = f"Partial success: {error_msg}"
             
             self.repository.update_upload_tracker_status(
                 tracker_id=str(tracker.id),
                 status=final_status,
                 total_records=total_records,
                 successful_records=successful_count,
-                failed_records=failed_count,
+                failed_records=total_failed_count,  # Total failures (validation + database)
                 error_message=error_msg
             )
             
-            # Step 7: Return response
+            # Step 8: Return response
             success_rate = (successful_count / total_records * 100) if total_records > 0 else 0
             
-            # Build message based on override mode
-            if override_existing:
-                message = f"File uploaded successfully. {successful_count} records processed, {failed_count} failed, {replaced_count} replaced."
-            else:
-                message = f"File uploaded successfully. {successful_count} records processed, {failed_count} failed, {skipped_count} skipped (duplicates)."
+            # Build comprehensive message
+            base_message = f"File uploaded successfully. {successful_count} records processed, {total_failed_count} failed"
+            
+            # Add reformatting details
+            if reformatted_count > 0:
+                base_message += f", {reformatted_count} dates reformatted"
+            
+            # Add database operation details if any valid records were processed
+            if valid_count > 0:
+                if override_existing:
+                    base_message += f", {replaced_count} replaced"
+                else:
+                    base_message += f", {skipped_count} skipped (duplicates)"
+            
+            base_message += "."
+            
+            # Add validation failure details
+            if validation_failed_count > 0:
+                base_message += f" Validation excluded {validation_failed_count} invalid records from database."
+                
+                # Count specific validation issues from filtered records
+                tanggal_rating_issues = sum(1 for error in invalid_record_errors if 'tanggal_rating' in error)
+                rating_issues = sum(1 for error in invalid_record_errors if 'Rating must be' in error)
+                no_tiket_issues = sum(1 for error in invalid_record_errors if 'No Tiket' in error)
+                
+                issue_details = []
+                if tanggal_rating_issues > 0:
+                    issue_details.append(f"{tanggal_rating_issues} tanggal_rating format errors")
+                if rating_issues > 0:
+                    issue_details.append(f"{rating_issues} rating format errors")
+                if no_tiket_issues > 0:
+                    issue_details.append(f"{no_tiket_issues} missing no_tiket errors")
+                
+                if issue_details:
+                    base_message += f" Issues: {', '.join(issue_details)}."
             
             return CustomerSatisfactionUploadResponse(
                 success=True,
-                message=message,
+                message=base_message,
                 data={
                     "upload_tracker_id": str(tracker.id),
                     "file_name": filename,
                     "file_size": len(file_content),
                     "total_records": total_records,
                     "successful_records": successful_count,
-                    "failed_records": failed_count,
+                    "failed_records": total_failed_count,
                     "replaced_records": replaced_count,
                     "skipped_records": skipped_count,
                     "success_rate": round(success_rate, 2),
                     "upload_status": final_status,
-                    "override_enabled": override_existing
+                    "override_enabled": override_existing,
+                    "reformat_enabled": reformat_tanggal_rating,
+                    "reformatted_records": reformatted_count,
+                    # Enhanced failure breakdown
+                    "failure_breakdown": {
+                        "validation_failures": validation_failed_count,
+                        "database_failures": db_failed_count,
+                        "duplicate_skipped": skipped_count
+                    },
+                    "validation_details": {
+                        "total_validated": total_records,
+                        "valid_sent_to_database": valid_count,
+                        "invalid_excluded": validation_failed_count,
+                        "tanggal_rating_format_failures": tanggal_rating_issues,
+                        "rating_format_failures": rating_issues,
+                        "missing_no_tiket_failures": no_tiket_issues
+                    },
+                    "validation_errors": invalid_record_errors[:50],  # Limit to first 50 errors
+                    "format_requirements": {
+                        "tanggal_rating_format": "Indonesian date format: 'DD Month YYYY' (e.g., '24 Desember 2024')",
+                        "valid_months": list(self.INDONESIAN_MONTHS.keys()),
+                        "rating_format": "Numeric value between 0 and 5",
+                        "required_fields": ["No Tiket"]
+                    },
+                    "processing_summary": {
+                        "records_received": total_records,
+                        "records_validated": total_records,
+                        "records_passed_validation": valid_count,
+                        "records_sent_to_database": valid_count,
+                        "records_successfully_stored": successful_count,
+                        "records_failed_validation": validation_failed_count,
+                        "records_failed_database": db_failed_count
+                    }
                 }
             )
             
