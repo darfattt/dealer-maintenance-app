@@ -272,6 +272,31 @@ class CustomerReminderRequestRepository:
         
         return {reminder_type: count for reminder_type, count in reminder_stats}
     
+    def get_reminder_target_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
+        """Get reminder target statistics for a dealer"""
+        from sqlalchemy import func
+        
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
+        
+        # Count by reminder target
+        reminder_target_stats = query.with_entities(
+            CustomerReminderRequest.reminder_target,
+            func.count(CustomerReminderRequest.id).label('count')
+        ).group_by(CustomerReminderRequest.reminder_target).all()
+        
+        return {target or 'Unknown': count for target, count in reminder_target_stats}
+    
     def get_paginated_requests_by_dealer(
         self, 
         dealer_id: str, 

@@ -230,11 +230,11 @@ onMounted(() => {
                         <ProgressSpinner style="width: 30px; height: 30px;" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Terkirim</h3>
-                        <div class="text-3xl font-bold text-green-600 mb-1">
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Terkirim</h3>
+                        <div class="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">
                             {{ stats.delivered_count }}/{{ stats.total_requests }}
                         </div>
-                        <p class="text-sm text-surface-500">WhatsApp Messages</p>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">WhatsApp Messages</p>
                     </div>
                 </template>
             </Card>
@@ -246,11 +246,11 @@ onMounted(() => {
                         <ProgressSpinner style="width: 30px; height: 30px;" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Tidak Terkirim</h3>
-                        <div class="text-3xl font-bold text-red-600 mb-1">
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Tidak Terkirim</h3>
+                        <div class="text-3xl font-bold text-red-600 dark:text-red-400 mb-1">
                             {{ stats.failed_count }}/{{ stats.total_requests }}
                         </div>
-                        <p class="text-sm text-surface-500">WhatsApp Messages</p>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">WhatsApp Messages</p>
                     </div>
                 </template>
             </Card>
@@ -262,11 +262,11 @@ onMounted(() => {
                         <ProgressSpinner style="width: 30px; height: 30px;" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Summary Data terkirim</h3>
-                        <div class="text-3xl font-bold text-primary-600 mb-1">
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Summary Data terkirim</h3>
+                        <div class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-1">
                             {{ stats.delivery_percentage }}%
                         </div>
-                        <p class="text-sm text-surface-500">Success Rate</p>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">Success Rate</p>
                     </div>
                 </template>
             </Card>
@@ -275,7 +275,7 @@ onMounted(() => {
         <!-- Details Table -->
         <Card>
             <template #title>
-                <h2 class="text-xl font-bold text-surface-900">Customer Validation Requests</h2>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Customer Validation Requests</h2>
             </template>
             <template #content>
                 <DataTable

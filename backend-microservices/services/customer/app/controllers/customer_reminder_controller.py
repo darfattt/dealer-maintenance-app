@@ -445,10 +445,19 @@ Salam,
                 reminder_target=reminder_target
             )
             
+            # Get reminder target statistics
+            reminder_target_stats = self.reminder_repo.get_reminder_target_stats(
+                dealer_id=dealer_id,
+                date_from=parsed_date_from,
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
+            )
+            
             # Combine all stats
             combined_stats = {
                 **whatsapp_stats,
-                "reminder_type_breakdown": reminder_type_stats
+                "reminder_type_breakdown": reminder_type_stats,
+                "reminder_target_breakdown": reminder_target_stats
             }
             
             return {
