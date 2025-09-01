@@ -98,6 +98,28 @@ const initChart = () => {
                     usePointStyle: true,
                     font: {
                         size: 12
+                    },
+                    generateLabels: function(chart) {
+                        const data = chart.data;
+                        if (data.labels.length && data.datasets.length) {
+                            return data.labels.map((label, i) => {
+                                const meta = chart.getDatasetMeta(0);
+                                const style = meta.controller.getStyle(i);
+                                const value = data.datasets[0].data[i];
+                                const percentage = totalCount > 0 ? ((value / totalCount) * 100).toFixed(1) : 0;
+                                
+                                return {
+                                    text: `${label} (${percentage}%)`,
+                                    fillStyle: style.backgroundColor,
+                                    strokeStyle: style.borderColor,
+                                    lineWidth: style.borderWidth,
+                                    pointStyle: 'circle',
+                                    hidden: isNaN(data.datasets[0].data[i]) || meta.data[i].hidden,
+                                    index: i
+                                };
+                            });
+                        }
+                        return [];
                     }
                 }
             },
@@ -113,7 +135,18 @@ const initChart = () => {
         },
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '40%'
+        cutout: '40%',
+        elements: {
+            arc: {
+                borderWidth: 2
+            }
+        },
+        layout: {
+            padding: {
+                top: 10,
+                bottom: 10
+            }
+        }
     };
 };
 
@@ -196,7 +229,7 @@ onMounted(() => {
             </div>
 
             <!-- Summary Stats -->
-            <div v-if="hasData && !loading" class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <!-- <div v-if="hasData && !loading" class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div 
                     v-for="item in stats.sentiment_distribution" 
                     :key="item.sentiment"
@@ -207,15 +240,15 @@ onMounted(() => {
                     <div class="text-sm" :class="getSentimentSubTextClass(item.sentiment)">{{ item.sentiment }}</div>
                     <div class="text-xs opacity-75" :class="getSentimentSubTextClass(item.sentiment)">{{ item.percentage }}%</div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Average Score -->
-            <div v-if="hasData && !loading && stats.average_sentiment_score !== null" class="mt-4 text-center">
+            <!-- <div v-if="hasData && !loading && stats.average_sentiment_score !== null" class="mt-4 text-center">
                 <div class="text-sm text-surface-500 dark:text-surface-400">Average Sentiment Score</div>
                 <div class="text-xl font-bold text-surface-900 dark:text-surface-100">
                     {{ parseFloat(stats.average_sentiment_score || 0).toFixed(2) }}
                 </div>
-            </div>
+            </div> -->
         </template>
     </Card>
 </template>

@@ -10,12 +10,16 @@ import Paginator from 'primevue/paginator';
 import Tag from 'primevue/tag';
 import ProgressSpinner from 'primevue/progressspinner';
 import CustomerService from '@/service/CustomerService';
+import { formatIndonesiaDate, formatIndonesiaTime, formatDateForAPI, getCurrentMonthIndonesia } from '@/utils/dateFormatter';
 
 const authStore = useAuthStore();
 
 // Filter controls
 const selectedDealer = ref('12284');
-const selectedDateFrom = ref(new Date(new Date().getFullYear(), 0, 1));
+// Use Indonesia timezone for date initialization
+const { firstDay: currentYearFirstDay } = getCurrentMonthIndonesia();
+const currentYearStart = new Date(currentYearFirstDay.getFullYear(), 0, 1);
+const selectedDateFrom = ref(currentYearStart);
 const selectedDateTo = ref(new Date());
 
 // Dealer options
@@ -34,15 +38,13 @@ const showDealerDropdown = computed(() => {
     return !isDealerUser.value;
 });
 
-// Computed properties for formatted dates
+// Computed properties for formatted dates (using Indonesia timezone)
 const formattedDateFrom = computed(() => {
-    if (!selectedDateFrom.value) return '';
-    return selectedDateFrom.value.toISOString().split('T')[0];
+    return formatDateForAPI(selectedDateFrom.value);
 });
 
 const formattedDateTo = computed(() => {
-    if (!selectedDateTo.value) return '';
-    return selectedDateTo.value.toISOString().split('T')[0];
+    return formatDateForAPI(selectedDateTo.value);
 });
 
 // Data states
@@ -158,16 +160,14 @@ const getStatusLabel = (status) => {
     }
 };
 
-// Format date for display
+// Format date for display (using Indonesia timezone)
 const formatDate = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('id-ID');
+    return formatIndonesiaDate(date);
 };
 
-// Format time for display
+// Format time for display (using Indonesia timezone)
 const formatTime = (time) => {
-    if (!time) return '';
-    return time;
+    return formatIndonesiaTime(time);
 };
 
 // Watch for filter changes

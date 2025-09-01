@@ -589,7 +589,7 @@ class CustomerSatisfactionRepository:
             return None
     
     def get_latest_upload_info_simple(self) -> Optional[Dict[str, Any]]:
-        """Get the latest upload information by created_date from records (simplified version)"""
+        """Get the latest upload information by created_date from records (simplified version) with sentiment processing status"""
         try:
             # Get the most recent record by created_date
             latest_record = self.db.query(CustomerSatisfactionRaw).order_by(
@@ -609,9 +609,70 @@ class CustomerSatisfactionRepository:
             else:
                 latest_upload_date = None
             
-            return {
+            # Check sentiment analysis processing status
+            # Only check for records uploaded in the last 24 hours to avoid unnecessary processing
+            twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+            
+            # Count total records from recent uploads
+            total_recent_records = self.db.query(CustomerSatisfactionRaw).filter(
+                CustomerSatisfactionRaw.created_date >= twenty_four_hours_ago
+            ).count()
+            
+            # Count processed records (those with sentiment analysis)
+            processed_records = self.db.query(CustomerSatisfactionRaw).filter(
+                and_(
+                    CustomerSatisfactionRaw.created_date >= twenty_four_hours_ago,
+                    CustomerSatisfactionRaw.sentiment.isnot(None)
+                )
+            ).count()
+            
+            # Count pending records (those without sentiment analysis)
+            pending_records = total_recent_records - processed_records
+            
+            # Get last processed timestamp
+            last_processed_record = self.db.query(CustomerSatisfactionRaw).filter(
+                and_(
+                    CustomerSatisfactionRaw.created_date >= twenty_four_hours_ago,
+                    CustomerSatisfactionRaw.sentiment_analyzed_at.isnot(None)
+                )
+            ).order_by(desc(CustomerSatisfactionRaw.sentiment_analyzed_at)).first()
+            
+            last_processed_at = None
+            if last_processed_record and last_processed_record.sentiment_analyzed_at:
+                utc_processed_dt = last_processed_record.sentiment_analyzed_at.replace(tzinfo=pytz.UTC) if last_processed_record.sentiment_analyzed_at.tzinfo is None else last_processed_record.sentiment_analyzed_at
+                indonesia_processed_dt = utc_processed_dt.astimezone(indonesia_tz)
+                last_processed_at = indonesia_processed_dt.isoformat()
+            
+            # Calculate processing progress
+            processing_progress = 0.0
+            is_processing = False
+            
+            if total_recent_records > 0:
+                processing_progress = round((processed_records / total_recent_records) * 100, 1)
+                # Consider processing active if there are pending records and some progress has been made
+                is_processing = pending_records > 0 and (processed_records > 0 or total_recent_records > processed_records)
+            
+            # Prepare sentiment analysis status
+            sentiment_analysis = None
+            if total_recent_records > 0:  # Only include if there are recent records
+                sentiment_analysis = {
+                    "is_processing": is_processing,
+                    "total_records": total_recent_records,
+                    "processed_records": processed_records,
+                    "pending_records": pending_records,
+                    "processing_progress": processing_progress,
+                    "last_processed_at": last_processed_at
+                }
+            
+            result = {
                 "latest_upload_date": latest_upload_date
             }
+            
+            # Only include sentiment_analysis if there's relevant data
+            if sentiment_analysis:
+                result["sentiment_analysis"] = sentiment_analysis
+            
+            return result
             
         except SQLAlchemyError as e:
             logger.error(f"Error getting latest upload info simple: {str(e)}")

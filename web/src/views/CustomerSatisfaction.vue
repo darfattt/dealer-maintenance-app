@@ -317,10 +317,35 @@
                         <div class="flex items-center justify-center w-10 h-10 bg-blue-500 dark:bg-blue-600 text-white rounded-full">
                             <i class="pi pi-calendar text-lg"></i>
                         </div>
-                        <div>
+                        <div class="flex-1">
                             <h4 class="text-lg font-semibold text-surface-800 dark:text-surface-200 mb-1">Latest Upload</h4>
                             <div class="text-sm text-surface-600 dark:text-surface-400">
                                 <span>{{ formatUploadDate(lastUploadInfo.latest_upload_date) }}</span>
+                            </div>
+                            
+                            <!-- Sentiment Analysis Processing Indicator -->
+                            <div v-if="lastUploadInfo.sentiment_analysis && lastUploadInfo.sentiment_analysis.is_processing" class="mt-3 space-y-2">
+                                <div class="flex items-center space-x-2">
+                                    <ProgressSpinner size="small" style="width: 16px; height: 16px;" />
+                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                                        Sentiment Analysis in Progress
+                                    </span>
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-xs text-surface-600 dark:text-surface-400">
+                                        <span>{{ lastUploadInfo.sentiment_analysis.processed_records }} / {{ lastUploadInfo.sentiment_analysis.total_records }} processed</span>
+                                        <span>{{ lastUploadInfo.sentiment_analysis.processing_progress }}%</span>
+                                    </div>
+                                    <ProgressBar 
+                                        :value="lastUploadInfo.sentiment_analysis.processing_progress" 
+                                        :showValue="false"
+                                        style="height: 6px"
+                                        class="w-full"
+                                    />
+                                </div>
+                                <div v-if="lastUploadInfo.sentiment_analysis.last_processed_at" class="text-xs text-surface-500 dark:text-surface-400">
+                                    Last processed: {{ formatDate(lastUploadInfo.sentiment_analysis.last_processed_at) }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -538,23 +563,25 @@ import Calendar from 'primevue/calendar';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
 import ProgressSpinner from 'primevue/progressspinner';
+import ProgressBar from 'primevue/progressbar';
 import Dialog from 'primevue/dialog';
 import CustomerSatisfactionUploadSidebar from '@/components/CustomerSatisfactionUploadSidebar.vue';
 import SentimentAnalysisChart from '@/components/dashboard/SentimentAnalysisChart.vue';
 import CustomerService from '@/service/CustomerService';
+import { formatIndonesiaDateTime, formatRelativeTime, formatDateForAPI, getCurrentMonthIndonesia } from '@/utils/dateFormatter';
 
 const authStore = useAuthStore();
 const toast = useToast();
 
-// Date utility functions for current month defaults
+// Date utility functions for current month defaults (using Indonesia timezone)
 const getCurrentMonthFirstDay = () => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    const { firstDay } = getCurrentMonthIndonesia();
+    return firstDay;
 };
 
 const getCurrentMonthLastDay = () => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const { lastDay } = getCurrentMonthIndonesia();
+    return lastDay;
 };
 
 // Data state
@@ -743,14 +770,7 @@ const onUploadSuccess = () => {
     loadLastUploadInfo(); // Refresh upload info
 };
 
-// Utilities
-const formatDateForAPI = (date) => {
-    if (!date) return null;
-    const d = new Date(date);
-    return d.getFullYear() + '-' + 
-           String(d.getMonth() + 1).padStart(2, '0') + '-' + 
-           String(d.getDate()).padStart(2, '0');
-};
+// Utilities (using Indonesia timezone-aware formatDateForAPI from utils)
 
 // Masking utilities
 const maskPhoneNumber = (phoneNumber) => {
@@ -884,44 +904,13 @@ const loadLastUploadInfo = async () => {
     }
 };
 
-// Utility functions
+// Date formatting utilities (using Indonesia timezone)
 const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    return formatIndonesiaDateTime(dateString);
 };
 
 const formatUploadDate = (dateString) => {
-    if (!dateString) return 'Unknown date';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-    
-    if (diffHours < 1) {
-        return 'Just now';
-    } else if (diffHours < 24) {
-        return `${diffHours} hours ago`;
-    } else if (diffDays === 1) {
-        return 'Yesterday';
-    } else if (diffDays < 7) {
-        return `${diffDays} days ago`;
-    } else {
-        return date.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
+    return formatRelativeTime(dateString);
 };
 
 // Show details dialog
