@@ -15,7 +15,10 @@
       "Bash(cp:*)",
       "Bash(docker-compose build:*)",
       "Bash(curl:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(find:*)",
+      "Bash(npm run lint:*)",
+      "Bash(docker-compose:*)"
     ],
     "deny": []
   }

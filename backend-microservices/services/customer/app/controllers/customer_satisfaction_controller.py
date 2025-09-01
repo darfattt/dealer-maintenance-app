@@ -6,17 +6,22 @@ import logging
 import os
 import pandas as pd
 import re
+import asyncio
+import uuid
 from typing import Dict, Any, Optional, BinaryIO, List, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.repositories.customer_satisfaction_repository import CustomerSatisfactionRepository
+from app.services.sentiment_analysis_service import SentimentAnalysisService
 from app.schemas.customer_satisfaction import (
     CustomerSatisfactionUploadResponse,
     CustomerSatisfactionListResponse,
     CustomerSatisfactionStatisticsResponse,
     UploadTrackersListResponse,
     CustomerSatisfactionFilters,
+    SentimentAnalysisResponse,
+    BulkSentimentAnalysisResponse,
     ErrorResponse
 )
 
@@ -29,6 +34,7 @@ class CustomerSatisfactionController:
     def __init__(self, db: Session):
         self.db = db
         self.repository = CustomerSatisfactionRepository(db)
+        self.sentiment_service = SentimentAnalysisService()
         
         # Supported file extensions
         self.supported_extensions = ['.xlsx', '.xls', '.csv']
@@ -600,6 +606,11 @@ class CustomerSatisfactionController:
             
             base_message += "."
             
+            # Initialize validation issue counters (always define these variables)
+            tanggal_rating_issues = 0
+            rating_issues = 0
+            no_tiket_issues = 0
+            
             # Add validation failure details
             if validation_failed_count > 0:
                 base_message += f" Validation excluded {validation_failed_count} invalid records from database."
@@ -620,7 +631,7 @@ class CustomerSatisfactionController:
                 if issue_details:
                     base_message += f" Issues: {', '.join(issue_details)}."
             
-            return CustomerSatisfactionUploadResponse(
+            response = CustomerSatisfactionUploadResponse(
                 success=True,
                 message=base_message,
                 data={
@@ -669,6 +680,18 @@ class CustomerSatisfactionController:
                     }
                 }
             )
+            
+            # Trigger background sentiment analysis for successful uploads
+            if successful_count > 0:
+                try:
+                    asyncio.create_task(
+                        self._background_sentiment_analysis(str(tracker.id))
+                    )
+                    logger.info(f"Started background sentiment analysis for upload batch {tracker.id}")
+                except Exception as bg_error:
+                    logger.warning(f"Failed to start background sentiment analysis: {str(bg_error)}")
+            
+            return response
             
         except Exception as e:
             logger.error(f"Unexpected error in upload_customer_satisfaction_file: {str(e)}")
@@ -1002,5 +1025,300 @@ class CustomerSatisfactionController:
             return {
                 "success": False,
                 "message": f"Internal server error while retrieving overall rating: {str(e)}",
+                "data": None
+            }
+    
+    # Sentiment Analysis Methods
+    
+    async def _background_sentiment_analysis(self, upload_batch_id: str) -> None:
+        """
+        Background task to perform sentiment analysis on uploaded records
+        
+        Args:
+            upload_batch_id: UUID of the upload batch to analyze
+        """
+        try:
+            logger.info(f"Starting background sentiment analysis for batch {upload_batch_id}")
+            
+            # Get unanalyzed records from this upload batch
+            unanalyzed_records = self.repository.get_unanalyzed_records(
+                limit=100,  # Process in batches
+                upload_batch_id=upload_batch_id
+            )
+            
+            if not unanalyzed_records:
+                logger.info(f"No unanalyzed records found for batch {upload_batch_id}")
+                return
+            
+            # Process records in smaller batches to avoid overwhelming the API
+            batch_size = 10
+            batch_id = str(uuid.uuid4())
+            total_processed = 0
+            total_successful = 0
+            total_failed = 0
+            
+            for i in range(0, len(unanalyzed_records), batch_size):
+                batch = unanalyzed_records[i:i + batch_size]
+                
+                logger.info(f"Processing sentiment analysis batch {i//batch_size + 1} with {len(batch)} records")
+                
+                # Analyze sentiments for this batch
+                sentiment_results, errors = await self.sentiment_service.analyze_sentiments(batch)
+                
+                if sentiment_results:
+                    # Update database with results
+                    update_stats = self.repository.bulk_update_sentiment_analysis(
+                        sentiment_results, 
+                        batch_id=batch_id
+                    )
+                    
+                    total_successful += update_stats["updated_count"]
+                    total_failed += update_stats["failed_count"]
+                else:
+                    logger.warning(f"No sentiment results for batch {i//batch_size + 1}")
+                    total_failed += len(batch)
+                
+                total_processed += len(batch)
+                
+                # Small delay between batches to be respectful to the API
+                if i + batch_size < len(unanalyzed_records):
+                    await asyncio.sleep(1)
+            
+            logger.info(f"Background sentiment analysis completed for batch {upload_batch_id}: "
+                       f"{total_successful} successful, {total_failed} failed, {total_processed} total")
+            
+        except Exception as e:
+            logger.error(f"Error in background sentiment analysis for batch {upload_batch_id}: {str(e)}", exc_info=True)
+    
+    async def analyze_record_sentiment(self, record_id: str) -> SentimentAnalysisResponse:
+        """
+        Analyze sentiment for a single record
+        
+        Args:
+            record_id: UUID of the record to analyze
+            
+        Returns:
+            SentimentAnalysisResponse with analysis results
+        """
+        try:
+            # Get the record
+            records = self.repository.get_unanalyzed_records(limit=1)
+            record = None
+            
+            # Find the specific record 
+            from app.models.customer_satisfaction_raw import CustomerSatisfactionRaw
+            
+            all_records = self.db.query(CustomerSatisfactionRaw).filter(
+                CustomerSatisfactionRaw.id == record_id
+            ).first()
+            
+            if not all_records:
+                return SentimentAnalysisResponse(
+                    success=False,
+                    message=f"Record with ID {record_id} not found",
+                    data=None
+                )
+            
+            # Check if record has review content
+            if not all_records.inbox or not all_records.inbox.strip():
+                return SentimentAnalysisResponse(
+                    success=False,
+                    message="Record does not have review content for sentiment analysis",
+                    data=None
+                )
+            
+            # Format record for analysis
+            record_data = {
+                "id": str(all_records.id),
+                "no_tiket": all_records.no_tiket or "",
+                "review": all_records.inbox
+            }
+            
+            # Analyze sentiment
+            result, error = await self.sentiment_service.analyze_single_record(record_data)
+            
+            if error:
+                return SentimentAnalysisResponse(
+                    success=False,
+                    message=f"Sentiment analysis failed: {error}",
+                    data=None
+                )
+            
+            if result:
+                # Update database
+                success = self.repository.update_sentiment_analysis(record_id, result)
+                
+                if success:
+                    return SentimentAnalysisResponse(
+                        success=True,
+                        message="Sentiment analysis completed successfully",
+                        data={
+                            "record_id": record_id,
+                            "sentiment": result["sentiment"],
+                            "sentiment_score": result["sentiment_score"],
+                            "sentiment_reasons": result["sentiment_reasons"],
+                            "sentiment_suggestion": result["sentiment_suggestion"],
+                            "sentiment_themes": result["sentiment_themes"],
+                            "analyzed_at": result["sentiment_analyzed_at"].isoformat() if result.get("sentiment_analyzed_at") else None
+                        }
+                    )
+                else:
+                    return SentimentAnalysisResponse(
+                        success=False,
+                        message="Failed to update sentiment analysis in database",
+                        data=None
+                    )
+            
+            return SentimentAnalysisResponse(
+                success=False,
+                message="No sentiment analysis result received",
+                data=None
+            )
+            
+        except Exception as e:
+            logger.error(f"Error analyzing sentiment for record {record_id}: {str(e)}", exc_info=True)
+            return SentimentAnalysisResponse(
+                success=False,
+                message=f"Internal server error during sentiment analysis: {str(e)}",
+                data=None
+            )
+    
+    async def bulk_analyze_sentiment(
+        self, 
+        limit: int = 50, 
+        upload_batch_id: Optional[str] = None
+    ) -> BulkSentimentAnalysisResponse:
+        """
+        Perform bulk sentiment analysis on unanalyzed records
+        
+        Args:
+            limit: Maximum number of records to analyze
+            upload_batch_id: Optional filter by specific upload batch
+            
+        Returns:
+            BulkSentimentAnalysisResponse with analysis results
+        """
+        try:
+            started_at = datetime.utcnow()
+            
+            # Get unanalyzed records
+            unanalyzed_records = self.repository.get_unanalyzed_records(
+                limit=limit,
+                upload_batch_id=upload_batch_id
+            )
+            
+            if not unanalyzed_records:
+                return BulkSentimentAnalysisResponse(
+                    success=True,
+                    message="No unanalyzed records found",
+                    data={
+                        "batch_id": None,
+                        "total_records": 0,
+                        "analyzed_records": 0,
+                        "failed_records": 0,
+                        "started_at": started_at.isoformat(),
+                        "completed_at": datetime.utcnow().isoformat()
+                    }
+                )
+            
+            batch_id = str(uuid.uuid4())
+            logger.info(f"Starting bulk sentiment analysis for {len(unanalyzed_records)} records (batch {batch_id})")
+            
+            # Analyze sentiments
+            sentiment_results, errors = await self.sentiment_service.analyze_sentiments(unanalyzed_records)
+            
+            # Update database
+            analyzed_count = 0
+            failed_count = len(unanalyzed_records)
+            
+            if sentiment_results:
+                update_stats = self.repository.bulk_update_sentiment_analysis(
+                    sentiment_results, 
+                    batch_id=batch_id
+                )
+                
+                analyzed_count = update_stats["updated_count"]
+                failed_count = update_stats["failed_count"] + len(errors)
+            
+            completed_at = datetime.utcnow()
+            
+            return BulkSentimentAnalysisResponse(
+                success=True,
+                message=f"Bulk sentiment analysis completed: {analyzed_count} analyzed, {failed_count} failed",
+                data={
+                    "batch_id": batch_id,
+                    "total_records": len(unanalyzed_records),
+                    "analyzed_records": analyzed_count,
+                    "failed_records": failed_count,
+                    "started_at": started_at.isoformat(),
+                    "completed_at": completed_at.isoformat(),
+                    "errors": errors[:10] if errors else []  # Include first 10 errors
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in bulk sentiment analysis: {str(e)}", exc_info=True)
+            return BulkSentimentAnalysisResponse(
+                success=False,
+                message=f"Internal server error during bulk sentiment analysis: {str(e)}",
+                data=None
+            )
+    
+    def get_sentiment_analysis_statistics(self, filters: CustomerSatisfactionFilters) -> Dict[str, Any]:
+        """
+        Get sentiment analysis statistics with filtering
+        
+        Args:
+            filters: Filter parameters
+            
+        Returns:
+            Dictionary containing sentiment statistics
+        """
+        try:
+            # Parse date filters
+            date_from = None
+            date_to = None
+            
+            if filters.date_from:
+                try:
+                    date_from = datetime.strptime(filters.date_from, '%Y-%m-%d')
+                except ValueError:
+                    return {
+                        "success": False,
+                        "message": "Invalid date_from format. Use YYYY-MM-DD.",
+                        "data": None
+                    }
+            
+            if filters.date_to:
+                try:
+                    date_to = datetime.strptime(filters.date_to, '%Y-%m-%d')
+                    date_to = date_to.replace(hour=23, minute=59, second=59)
+                except ValueError:
+                    return {
+                        "success": False,
+                        "message": "Invalid date_to format. Use YYYY-MM-DD.",
+                        "data": None
+                    }
+            
+            # Get sentiment statistics
+            stats = self.repository.get_sentiment_statistics(
+                periode_utk_suspend=filters.periode_utk_suspend,
+                submit_review_date=filters.submit_review_date,
+                no_ahass=filters.no_ahass,
+                date_from=date_from,
+                date_to=date_to
+            )
+            
+            return {
+                "success": True,
+                "message": "Sentiment analysis statistics retrieved successfully",
+                "data": stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting sentiment statistics: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"Internal server error while retrieving sentiment statistics: {str(e)}",
                 "data": None
             }

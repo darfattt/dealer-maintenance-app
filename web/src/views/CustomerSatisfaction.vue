@@ -65,19 +65,11 @@
         <!-- Overview Section -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             
-            <!-- AHASS Count Card -->
-            <Card class="text-center">
-                <template #content>
-                    <div v-if="loading" class="flex justify-center">
-                        <ProgressSpinner style="width: 30px; height: 30px;" />
-                    </div>
-                    <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-2">SENTIMENT RECORD</h3>
-                       
-                        <p class="text-sm text-surface-500 dark:text-surface-400"><i>Work in progress</i></p>
-                    </div>
-                </template>
-            </Card>
+            <!-- Sentiment Analysis Chart -->
+            <SentimentAnalysisChart 
+                :stats="sentimentStatistics" 
+                :loading="loading"
+            />
 
             
 
@@ -269,6 +261,8 @@
                         </template>
                     </Column>
                     
+                    
+                    
                     <!-- Rating Column -->
                     <Column field="rating" header="Rating" style="min-width: 100px">
                         <template #body="{ data }">
@@ -288,6 +282,21 @@
                                 </div>
                             </div>
                             <span v-else class="text-gray-400">-</span>
+                        </template>
+                    </Column>
+
+                    <!-- Action Column -->
+                    <Column header="Action" style="min-width: 80px">
+                        <template #body="{ data }">
+                            <Button 
+                                @click="showDetails(data)"
+                                icon="pi pi-eye"
+                                severity="info"
+                                size="small"
+                                outlined
+                                title="View Details"
+                                class="p-button-sm"
+                            />
                         </template>
                     </Column>
                 </DataTable>
@@ -328,6 +337,186 @@
             </template>
         </Card>
 
+        <!-- Details Dialog -->
+        <Dialog 
+            v-model:visible="showDetailsDialog"
+            :header="`Customer Satisfaction Details - ${selectedRecord?.no_tiket || 'N/A'}`"
+            :modal="true"
+            :style="{ width: '80vw', maxWidth: '800px' }"
+            class="customer-details-dialog"
+        >
+            <div v-if="selectedRecord" class="space-y-4">
+                <!-- Customer Info Section -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-0 border-b border-surface-200 dark:border-surface-700 pb-2">Customer Information</h4>
+                        
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-start">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">No Tiket:</span>
+                                <span class="text-surface-900 dark:text-surface-100 text-right">{{ selectedRecord.no_tiket || '-' }}</span>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Nama Konsumen:</span>
+                                <span class="text-surface-900 dark:text-surface-100 text-right">{{ selectedRecord.nama_konsumen || '-' }}</span>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">No HP:</span>
+                                <span class="text-surface-900 dark:text-surface-100 text-right font-mono">{{ maskPhoneNumber(selectedRecord.no_hp) || '-' }}</span>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Alamat Email:</span>
+                                <span class="text-surface-900 dark:text-surface-100 text-right font-mono break-all">{{ maskEmail(selectedRecord.alamat_email) || '-' }}</span>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Kota:</span>
+                                <span class="text-surface-900 dark:text-surface-100 text-right">{{ selectedRecord.kota || '-' }}</span>
+                            </div>
+                            <div v-if="showAhassFilter" class="flex justify-between items-start">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">No AHASS:</span>
+                                <span class="text-surface-900 dark:text-surface-100 text-right">{{ selectedRecord.no_ahass || '-' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-0 border-b border-surface-200 dark:border-surface-700 pb-2">Rating & Review</h4>
+                        
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-start">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Tanggal Rating:</span>
+                                <span class="text-surface-900 dark:text-surface-100 text-right">{{ selectedRecord.tanggal_rating || '-' }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Rating:</span>
+                                <div class="flex items-center gap-2">
+                                    <Tag 
+                                        v-if="selectedRecord.rating"
+                                        :value="selectedRecord.rating"
+                                        :severity="getRatingSeverity(selectedRecord.rating)"
+                                        class="text-xs"
+                                    />
+                                    <div v-if="selectedRecord.rating" class="flex">
+                                        <i 
+                                            v-for="star in 5" 
+                                            :key="star"
+                                            class="pi pi-star-fill text-sm"
+                                            :class="star <= parseInt(selectedRecord.rating) ? 'text-yellow-400' : 'text-gray-300'"
+                                        ></i>
+                                    </div>
+                                    <span v-if="!selectedRecord.rating" class="text-surface-500 dark:text-surface-400">-</span>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Indikasi Keluhan:</span>
+                                <p class="text-surface-900 dark:text-surface-100 text-sm bg-surface-50 dark:bg-surface-800 p-3 rounded-lg border border-surface-200 dark:border-surface-600">
+                                    {{ selectedRecord.indikasi_keluhan || 'No complaint indication' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sentiment Analysis Section -->
+                <div v-if="selectedRecord && (selectedRecord.sentiment || selectedRecord.sentiment_score || selectedRecord.sentiment_reasons)" class="space-y-3">
+                    <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-0 border-b border-surface-200 dark:border-surface-700 pb-2">Sentiment Analysis</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Sentiment & Score -->
+                        <div class="space-y-3">
+                            <div v-if="selectedRecord.sentiment" class="flex justify-between items-center">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Sentiment:</span>
+                                <Tag 
+                                    :value="selectedRecord.sentiment"
+                                    :severity="getSentimentSeverity(selectedRecord.sentiment)"
+                                    class="text-sm font-medium"
+                                />
+                            </div>
+                            <div v-if="selectedRecord.sentiment_score !== null && selectedRecord.sentiment_score !== undefined" class="flex justify-between items-center">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Sentiment Score:</span>
+                                <span class="text-surface-900 dark:text-surface-100 font-mono text-lg">
+                                    {{ parseFloat(selectedRecord.sentiment_score).toFixed(2) }}
+                                </span>
+                            </div>
+                            <div v-if="selectedRecord.sentiment_analyzed_at" class="flex justify-between items-start">
+                                <span class="font-medium text-surface-600 dark:text-surface-400">Analyzed At:</span>
+                                <span class="text-surface-900 dark:text-surface-100 text-right text-sm">
+                                    {{ formatDate(selectedRecord.sentiment_analyzed_at) }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Themes -->
+                        <div v-if="selectedRecord.sentiment_themes" class="space-y-2">
+                            <span class="font-medium text-surface-600 dark:text-surface-400">Themes:</span>
+                            <div class="flex flex-wrap gap-1">
+                                <Tag 
+                                    v-for="theme in parseSentimentThemes(selectedRecord.sentiment_themes)" 
+                                    :key="theme"
+                                    :value="theme"
+                                    severity="secondary"
+                                    class="text-xs"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reasons -->
+                    <div v-if="selectedRecord.sentiment_reasons" class="space-y-2">
+                        <span class="font-medium text-surface-600 dark:text-surface-400">Analysis Reasons:</span>
+                        <p class="text-surface-900 dark:text-surface-100 text-sm bg-surface-50 dark:bg-surface-800 p-3 rounded-lg border border-surface-200 dark:border-surface-600 leading-relaxed">
+                            {{ selectedRecord.sentiment_reasons }}
+                        </p>
+                    </div>
+                    
+                    <!-- Suggestions -->
+                    <div v-if="selectedRecord.sentiment_suggestion" class="space-y-2">
+                        <span class="font-medium text-surface-600 dark:text-surface-400">AI Suggestions:</span>
+                        <p class="text-surface-900 dark:text-surface-100 text-sm bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 leading-relaxed">
+                            {{ selectedRecord.sentiment_suggestion }}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Full Inbox/Review Section -->
+                <div class="space-y-3">
+                    <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-0 border-b border-surface-200 dark:border-surface-700 pb-2">Full Review</h4>
+                    <div class="bg-surface-50 dark:bg-surface-800 p-4 rounded-lg border border-surface-200 dark:border-surface-600 max-h-64 overflow-y-auto">
+                        <p class="text-sm text-surface-900 dark:text-surface-100 leading-relaxed whitespace-pre-wrap">
+                            {{ selectedRecord.inbox || 'No review content available' }}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Additional Data Section (if any) -->
+                <div v-if="selectedRecord.created_date || selectedRecord.updated_date" class="space-y-3">
+                    <h4 class="text-lg font-semibold text-surface-900 dark:text-surface-0 border-b border-surface-200 dark:border-surface-700 pb-2">System Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div v-if="selectedRecord.created_date" class="flex justify-between">
+                            <span class="font-medium text-surface-600 dark:text-surface-400">Created:</span>
+                            <span class="text-surface-900 dark:text-surface-100">{{ formatDate(selectedRecord.created_date) }}</span>
+                        </div>
+                        <div v-if="selectedRecord.updated_date" class="flex justify-between">
+                            <span class="font-medium text-surface-600 dark:text-surface-400">Updated:</span>
+                            <span class="text-surface-900 dark:text-surface-100">{{ formatDate(selectedRecord.updated_date) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <template #footer>
+                <div class="flex justify-end">
+                    <Button 
+                        @click="showDetailsDialog = false"
+                        label="Close"
+                        icon="pi pi-times"
+                        severity="secondary"
+                        autofocus
+                    />
+                </div>
+            </template>
+        </Dialog>
+
         <!-- Upload Sidebar -->
         <CustomerSatisfactionUploadSidebar 
             v-model:visible="showUploadSidebar"
@@ -349,7 +538,9 @@ import Calendar from 'primevue/calendar';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
 import ProgressSpinner from 'primevue/progressspinner';
+import Dialog from 'primevue/dialog';
 import CustomerSatisfactionUploadSidebar from '@/components/CustomerSatisfactionUploadSidebar.vue';
+import SentimentAnalysisChart from '@/components/dashboard/SentimentAnalysisChart.vue';
 import CustomerService from '@/service/CustomerService';
 
 const authStore = useAuthStore();
@@ -375,6 +566,11 @@ const lastUploadInfo = ref(null);
 const loadingUploadInfo = ref(false);
 const topComplaints = ref([]);
 const overallRating = ref(null);
+const sentimentStatistics = ref(null);
+
+// Dialog state for details popup
+const showDetailsDialog = ref(false);
+const selectedRecord = ref(null);
 
 // Filter state
 const filters = reactive({
@@ -435,8 +631,8 @@ const loadData = async () => {
             apiFilters.no_ahass = authStore.userDealerId;
         }
 
-        // Load records, statistics, top complaints, and overall rating
-        const [recordsResult, statsResult, complaintsResult, ratingResult] = await Promise.all([
+        // Load records, statistics, top complaints, overall rating, and sentiment statistics
+        const [recordsResult, statsResult, complaintsResult, ratingResult, sentimentResult] = await Promise.all([
             CustomerService.getCustomerSatisfactionRecords(apiFilters),
             CustomerService.getCustomerSatisfactionStatistics(apiFilters),
             CustomerService.getTopIndikasiKeluhan({
@@ -454,6 +650,13 @@ const loadData = async () => {
                 date_from: apiFilters.date_from,
                 date_to: apiFilters.date_to,
                 compare_previous_period: true
+            }),
+            CustomerService.getSentimentStatistics({
+                periode_utk_suspend: apiFilters.periode_utk_suspend,
+                submit_review_date: apiFilters.submit_review_date,
+                no_ahass: apiFilters.no_ahass,
+                date_from: apiFilters.date_from,
+                date_to: apiFilters.date_to
             })
         ]);
 
@@ -480,6 +683,10 @@ const loadData = async () => {
 
         if (ratingResult.success) {
             overallRating.value = ratingResult.data || null;
+        }
+
+        if (sentimentResult.success) {
+            sentimentStatistics.value = sentimentResult.data || null;
         }
 
     } catch (error) {
@@ -717,6 +924,40 @@ const formatUploadDate = (dateString) => {
     }
 };
 
+// Show details dialog
+const showDetails = (record) => {
+    selectedRecord.value = record;
+    showDetailsDialog.value = true;
+};
+
+// Sentiment utilities
+const getSentimentSeverity = (sentiment) => {
+    if (!sentiment) return 'secondary';
+    switch (sentiment.toLowerCase()) {
+        case 'positive':
+            return 'success';
+        case 'negative':
+            return 'danger';
+        case 'neutral':
+            return 'warning';
+        default:
+            return 'secondary';
+    }
+};
+
+const parseSentimentThemes = (themesString) => {
+    if (!themesString) return [];
+    try {
+        // Try to parse as JSON array
+        const themes = JSON.parse(themesString);
+        return Array.isArray(themes) ? themes : [];
+    } catch {
+        // If not JSON, split by comma or return as single item
+        return themesString.includes(',') ? 
+            themesString.split(',').map(theme => theme.trim()) : 
+            [themesString.trim()];
+    }
+};
 
 // Initialize
 onMounted(() => {

@@ -39,6 +39,15 @@ class CustomerSatisfactionRecordResponse(BaseModel):
     status_duplicate: Optional[str] = None
     nama_ahass_duplicate: Optional[str] = None
     upload_batch_id: Optional[str] = None
+    # Sentiment analysis fields
+    sentiment: Optional[str] = None
+    sentiment_score: Optional[float] = None
+    sentiment_reasons: Optional[str] = None
+    sentiment_suggestion: Optional[str] = None
+    sentiment_themes: Optional[str] = None
+    sentiment_analyzed_at: Optional[str] = None
+    sentiment_batch_id: Optional[str] = None
+    # Audit fields
     created_by: Optional[str] = None
     created_date: Optional[str] = None
     last_modified_by: Optional[str] = None
@@ -206,3 +215,135 @@ class ErrorResponse(BaseModel):
                 "data": None
             }
         }
+
+
+class SentimentAnalysisRecord(BaseModel):
+    """Individual sentiment analysis record for API requests"""
+    id: str
+    no_tiket: str
+    review: str
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": "123e4567-e89b-12d3-a456-426614174000",
+                "no_tiket": "#421491",
+                "review": "Tidak dapat potongan Voucher"
+            }
+        }
+
+
+class SentimentAnalysisRequest(BaseModel):
+    """Request schema for sentiment analysis"""
+    question: str  # JSON string of sentiment analysis records
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "question": "[{'id': '26947de5-41d8-4b7c-8708-d20330ed07d6','no_tiket': '#421491','review': 'Tidak dapat potongan Voucher'},{'id': '36947de5-41d8-4b7c-8708-d20330ed07d6','no_tiket': '#421492','review': 'staff nya ramah'}]"
+            }
+        }
+
+
+class SentimentAnalysisResult(BaseModel):
+    """Individual sentiment analysis result"""
+    id: str
+    no_tiket: str
+    review: str
+    sentiment: str
+    score: float
+    reasons: str
+    themes: List[str]
+    suggestion: Optional[str] = None
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": "26947de5-41d8-4b7c-8708-d20330ed07d6",
+                "no_tiket": "#421491",
+                "review": "Tidak dapat potongan Voucher",
+                "sentiment": "Negative",
+                "score": -1.5,
+                "reasons": "Tidak mendapatkan manfaat dari promosi yang diharapkan",
+                "themes": ["Promosi"],
+                "suggestion": "Memastikan informasi promosi diberikan secara jelas"
+            }
+        }
+
+
+class SentimentAnalysisResponse(BaseModel):
+    """Response for single record sentiment analysis"""
+    success: bool
+    message: str
+    data: Optional[Dict[str, Any]] = None
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "message": "Sentiment analysis completed successfully",
+                "data": {
+                    "record_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "sentiment": "Positive",
+                    "sentiment_score": 1.5,
+                    "analyzed_at": "2025-08-31T10:30:00.000Z"
+                }
+            }
+        }
+
+
+class BulkSentimentAnalysisResponse(BaseModel):
+    """Response for bulk sentiment analysis"""
+    success: bool
+    message: str
+    data: Optional[Dict[str, Any]] = None
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "message": "Bulk sentiment analysis completed",
+                "data": {
+                    "batch_id": "456e7890-e89b-12d3-a456-426614174000",
+                    "total_records": 100,
+                    "analyzed_records": 95,
+                    "failed_records": 5,
+                    "started_at": "2025-08-31T10:00:00.000Z",
+                    "completed_at": "2025-08-31T10:30:00.000Z"
+                }
+            }
+        }
+
+
+class SentimentAnalysisFilters(BaseModel):
+    """Filters for sentiment analysis queries"""
+    sentiment: Optional[str] = Field(None, description="Filter by sentiment (Positive/Negative/Neutral)")
+    min_score: Optional[float] = Field(None, description="Minimum sentiment score")
+    max_score: Optional[float] = Field(None, description="Maximum sentiment score")
+    analyzed_from: Optional[str] = Field(None, description="Filter by analysis date from (YYYY-MM-DD)")
+    analyzed_to: Optional[str] = Field(None, description="Filter by analysis date to (YYYY-MM-DD)")
+    has_themes: Optional[str] = Field(None, description="Filter by specific theme")
+    page: int = Field(1, ge=1, description="Page number")
+    page_size: int = Field(10, ge=1, le=100, description="Number of records per page")
+
+    @validator('analyzed_from', 'analyzed_to')
+    def validate_date_format(cls, v):
+        if v is None:
+            return v
+        try:
+            datetime.strptime(v, '%Y-%m-%d')
+            return v
+        except ValueError:
+            raise ValueError('Date must be in YYYY-MM-DD format')
+
+    @validator('sentiment')
+    def validate_sentiment(cls, v):
+        if v is not None and v not in ['Positive', 'Negative', 'Neutral']:
+            raise ValueError('Sentiment must be Positive, Negative, or Neutral')
+        return v
+
+    @validator('min_score', 'max_score')
+    def validate_score_range(cls, v):
+        if v is not None and not (-5.0 <= v <= 5.0):
+            raise ValueError('Score must be between -5.0 and 5.0')
+        return v

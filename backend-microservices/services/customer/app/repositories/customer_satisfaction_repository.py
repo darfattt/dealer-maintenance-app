@@ -7,6 +7,7 @@ import uuid
 import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+import pytz
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, desc, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -598,8 +599,18 @@ class CustomerSatisfactionRepository:
             if not latest_record:
                 return None
             
+            # Convert UTC datetime to Indonesia timezone (UTC+7)
+            indonesia_tz = pytz.timezone('Asia/Jakarta')
+            if latest_record.created_date:
+                # Assume the stored datetime is in UTC
+                utc_dt = latest_record.created_date.replace(tzinfo=pytz.UTC) if latest_record.created_date.tzinfo is None else latest_record.created_date
+                indonesia_dt = utc_dt.astimezone(indonesia_tz)
+                latest_upload_date = indonesia_dt.isoformat()
+            else:
+                latest_upload_date = None
+            
             return {
-                "latest_upload_date": latest_record.created_date.isoformat() if latest_record.created_date else None
+                "latest_upload_date": latest_upload_date
             }
             
         except SQLAlchemyError as e:
@@ -845,4 +856,333 @@ class CustomerSatisfactionRepository:
                 "change": None,
                 "change_direction": None,
                 "period_label": "error"
+            }
+    
+    # Sentiment Analysis Methods
+    
+    def get_unanalyzed_records(self, limit: int = 50, upload_batch_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get customer satisfaction records that need sentiment analysis
+        
+        Args:
+            limit: Maximum number of records to return
+            upload_batch_id: Optional filter by specific upload batch
+            
+        Returns:
+            List of records with id, no_tiket, and review (from inbox) fields
+        """
+        try:
+            query = self.db.query(CustomerSatisfactionRaw).filter(
+                and_(
+                    CustomerSatisfactionRaw.sentiment.is_(None),  # Not analyzed yet
+                    CustomerSatisfactionRaw.inbox.isnot(None),   # Has review content
+                    func.trim(CustomerSatisfactionRaw.inbox) != ''  # Review is not empty
+                )
+            )
+            
+            if upload_batch_id:
+                query = query.filter(CustomerSatisfactionRaw.upload_batch_id == upload_batch_id)
+            
+            records = query.limit(limit).all()
+            
+            # Format records for sentiment analysis
+            formatted_records = []
+            for record in records:
+                formatted_records.append({
+                    "id": str(record.id),
+                    "no_tiket": record.no_tiket or "",
+                    "review": record.inbox or ""
+                })
+            
+            logger.info(f"Found {len(formatted_records)} unanalyzed records")
+            return formatted_records
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting unanalyzed records: {str(e)}")
+            return []
+    
+    def update_sentiment_analysis(self, record_id: str, sentiment_data: Dict[str, Any]) -> bool:
+        """
+        Update sentiment analysis results for a single record
+        
+        Args:
+            record_id: UUID of the record to update
+            sentiment_data: Dictionary containing sentiment analysis results
+            
+        Returns:
+            True if update successful, False otherwise
+        """
+        try:
+            record = self.db.query(CustomerSatisfactionRaw).filter(
+                CustomerSatisfactionRaw.id == record_id
+            ).first()
+            
+            if not record:
+                logger.warning(f"Record with ID {record_id} not found")
+                return False
+            
+            # Update sentiment fields
+            record.sentiment = sentiment_data.get('sentiment')
+            record.sentiment_score = sentiment_data.get('sentiment_score')
+            record.sentiment_reasons = sentiment_data.get('sentiment_reasons')
+            record.sentiment_suggestion = sentiment_data.get('sentiment_suggestion')
+            record.sentiment_themes = sentiment_data.get('sentiment_themes')
+            record.sentiment_analyzed_at = sentiment_data.get('sentiment_analyzed_at')
+            record.sentiment_batch_id = sentiment_data.get('sentiment_batch_id')
+            
+            # Update modification timestamp
+            record.last_modified_date = datetime.utcnow()
+            
+            self.db.commit()
+            
+            logger.info(f"Updated sentiment analysis for record {record_id}")
+            return True
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error updating sentiment analysis for record {record_id}: {str(e)}")
+            self.db.rollback()
+            return False
+    
+    def bulk_update_sentiment_analysis(self, sentiment_results: List[Dict[str, Any]], batch_id: Optional[str] = None) -> Dict[str, int]:
+        """
+        Bulk update sentiment analysis results for multiple records
+        
+        Args:
+            sentiment_results: List of sentiment analysis results
+            batch_id: Optional batch ID for tracking
+            
+        Returns:
+            Dictionary with update statistics
+        """
+        updated_count = 0
+        failed_count = 0
+        
+        try:
+            for result in sentiment_results:
+                try:
+                    record_id = result.get('id')
+                    if not record_id:
+                        failed_count += 1
+                        continue
+                    
+                    # Add batch_id if provided
+                    if batch_id:
+                        result['sentiment_batch_id'] = batch_id
+                    
+                    success = self.update_sentiment_analysis(record_id, result)
+                    if success:
+                        updated_count += 1
+                    else:
+                        failed_count += 1
+                        
+                except Exception as e:
+                    logger.error(f"Error processing sentiment result for ID {result.get('id', 'unknown')}: {str(e)}")
+                    failed_count += 1
+            
+            logger.info(f"Bulk sentiment update completed: {updated_count} updated, {failed_count} failed")
+            
+            return {
+                "updated_count": updated_count,
+                "failed_count": failed_count,
+                "total_processed": len(sentiment_results)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in bulk sentiment analysis update: {str(e)}")
+            return {
+                "updated_count": updated_count,
+                "failed_count": failed_count + len(sentiment_results) - updated_count,
+                "total_processed": len(sentiment_results)
+            }
+    
+    def get_sentiment_statistics(
+        self,
+        periode_utk_suspend: Optional[str] = None,
+        submit_review_date: Optional[str] = None,
+        no_ahass: Optional[str] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """
+        Get sentiment analysis statistics
+        
+        Args:
+            periode_utk_suspend: Filter by periode untuk suspend
+            submit_review_date: Filter by submit review date
+            no_ahass: Filter by No AHASS
+            date_from: Filter by date from
+            date_to: Filter by date to
+            
+        Returns:
+            Dictionary containing sentiment statistics
+        """
+        try:
+            # Build base query with sentiment analysis data
+            query = self.db.query(CustomerSatisfactionRaw).filter(
+                CustomerSatisfactionRaw.sentiment.isnot(None)
+            )
+            
+            # Apply filters (same logic as other methods)
+            if periode_utk_suspend:
+                query = query.filter(CustomerSatisfactionRaw.periode_utk_suspend.ilike(f"%{periode_utk_suspend}%"))
+            
+            if submit_review_date:
+                query = query.filter(CustomerSatisfactionRaw.submit_review_date_first_fu_cs.ilike(f"%{submit_review_date}%"))
+            
+            if no_ahass:
+                query = query.filter(CustomerSatisfactionRaw.no_ahass == no_ahass)
+            
+            # Apply tanggal_rating date filtering using Indonesian date parsing
+            query = self._build_tanggal_rating_date_filter(query, date_from, date_to)
+            
+            # Get sentiment distribution
+            sentiment_distribution = self.db.query(
+                CustomerSatisfactionRaw.sentiment,
+                func.count(CustomerSatisfactionRaw.id).label('count')
+            ).filter(
+                query.filter(CustomerSatisfactionRaw.sentiment.isnot(None))
+                .statement.whereclause
+            ).group_by(
+                CustomerSatisfactionRaw.sentiment
+            ).all()
+            
+            # Get average sentiment score
+            avg_score = self.db.query(
+                func.avg(CustomerSatisfactionRaw.sentiment_score).label('avg_score')
+            ).filter(
+                query.filter(CustomerSatisfactionRaw.sentiment_score.isnot(None))
+                .statement.whereclause
+            ).scalar()
+            
+            # Get total analyzed records
+            total_analyzed = query.count()
+            
+            # Get top themes (this would require parsing the JSON themes field)
+            # For now, we'll return a simple count
+            themes_count = self.db.query(
+                func.count(CustomerSatisfactionRaw.id).label('count')
+            ).filter(
+                and_(
+                    query.filter(CustomerSatisfactionRaw.sentiment_themes.isnot(None))
+                    .statement.whereclause,
+                    CustomerSatisfactionRaw.sentiment_themes != ''
+                )
+            ).scalar() or 0
+            
+            # Format results with percentage calculations
+            sentiment_dist = []
+            for item in sentiment_distribution:
+                count = item[1]
+                percentage = round((count / total_analyzed * 100), 1) if total_analyzed > 0 else 0.0
+                sentiment_dist.append({
+                    "sentiment": item[0],
+                    "count": count,
+                    "percentage": percentage
+                })
+            
+            return {
+                "total_analyzed_records": total_analyzed,
+                "average_sentiment_score": float(avg_score) if avg_score else None,
+                "sentiment_distribution": sentiment_dist,
+                "records_with_themes": themes_count,
+                "analysis_summary": {
+                    "positive_count": next((item["count"] for item in sentiment_dist if item["sentiment"] == "Positive"), 0),
+                    "negative_count": next((item["count"] for item in sentiment_dist if item["sentiment"] == "Negative"), 0),
+                    "neutral_count": next((item["count"] for item in sentiment_dist if item["sentiment"] == "Neutral"), 0)
+                }
+            }
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting sentiment statistics: {str(e)}")
+            return {
+                "total_analyzed_records": 0,
+                "average_sentiment_score": None,
+                "sentiment_distribution": [],
+                "records_with_themes": 0,
+                "analysis_summary": {
+                    "positive_count": 0,
+                    "negative_count": 0,
+                    "neutral_count": 0
+                }
+            }
+    
+    def get_records_by_sentiment(
+        self,
+        sentiment: str,
+        page: int = 1,
+        page_size: int = 10,
+        periode_utk_suspend: Optional[str] = None,
+        submit_review_date: Optional[str] = None,
+        no_ahass: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Get customer satisfaction records filtered by sentiment
+        
+        Args:
+            sentiment: Sentiment to filter by (Positive/Negative/Neutral)
+            page: Page number (1-based)
+            page_size: Number of records per page
+            periode_utk_suspend: Filter by periode untuk suspend
+            submit_review_date: Filter by submit review date
+            no_ahass: Filter by No AHASS
+            
+        Returns:
+            Dictionary containing paginated records and metadata
+        """
+        try:
+            # Build base query
+            query = self.db.query(CustomerSatisfactionRaw).filter(
+                CustomerSatisfactionRaw.sentiment == sentiment
+            )
+            
+            # Apply additional filters
+            if periode_utk_suspend:
+                query = query.filter(CustomerSatisfactionRaw.periode_utk_suspend.ilike(f"%{periode_utk_suspend}%"))
+            
+            if submit_review_date:
+                query = query.filter(CustomerSatisfactionRaw.submit_review_date_first_fu_cs.ilike(f"%{submit_review_date}%"))
+            
+            if no_ahass:
+                query = query.filter(CustomerSatisfactionRaw.no_ahass == no_ahass)
+            
+            # Get total count
+            total_count = query.count()
+            
+            # Calculate pagination
+            offset = (page - 1) * page_size
+            total_pages = (total_count + page_size - 1) // page_size
+            
+            # Get paginated records
+            records = query.order_by(desc(CustomerSatisfactionRaw.sentiment_analyzed_at))\
+                          .offset(offset)\
+                          .limit(page_size)\
+                          .all()
+            
+            # Convert to dictionaries
+            records_data = [record.to_dict() for record in records]
+            
+            return {
+                "records": records_data,
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total_count": total_count,
+                    "total_pages": total_pages,
+                    "has_next": page < total_pages,
+                    "has_prev": page > 1
+                }
+            }
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting records by sentiment '{sentiment}': {str(e)}")
+            return {
+                "records": [],
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total_count": 0,
+                    "total_pages": 0,
+                    "has_next": False,
+                    "has_prev": False
+                }
             }

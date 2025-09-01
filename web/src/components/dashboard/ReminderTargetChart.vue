@@ -156,7 +156,7 @@ onMounted(() => {
 <template>
     <Card class="reminder-target-chart">
         <template #title>
-            <h3 class="text-lg font-semibold text-surface-900 mb-2">{{ chartTitle }}</h3>
+            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-2">{{ chartTitle }}</h3>
         </template>
         <template #content>
             <div v-if="loading" class="flex justify-center items-center h-64">

@@ -4,7 +4,7 @@ Customer satisfaction raw data model for customer service
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Integer, Text
+from sqlalchemy import Column, String, DateTime, Integer, Text, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -53,6 +53,15 @@ class CustomerSatisfactionRaw(Base):
     # Upload tracking
     upload_batch_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     
+    # Sentiment analysis fields
+    sentiment = Column(String(20), nullable=True)  # Positive, Negative, Neutral
+    sentiment_score = Column(Numeric(4, 2), nullable=True)  # -5.00 to 5.00
+    sentiment_reasons = Column(Text, nullable=True)
+    sentiment_suggestion = Column(Text, nullable=True)
+    sentiment_themes = Column(Text, nullable=True)  # JSON array as string
+    sentiment_analyzed_at = Column(DateTime, nullable=True)
+    sentiment_batch_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    
     # Audit fields
     created_by = Column(String(100), nullable=True)
     created_date = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -95,6 +104,15 @@ class CustomerSatisfactionRaw(Base):
             "status_duplicate": self.status_duplicate,
             "nama_ahass_duplicate": self.nama_ahass_duplicate,
             "upload_batch_id": str(self.upload_batch_id) if self.upload_batch_id else None,
+            # Sentiment analysis fields
+            "sentiment": self.sentiment,
+            "sentiment_score": float(self.sentiment_score) if self.sentiment_score is not None else None,
+            "sentiment_reasons": self.sentiment_reasons,
+            "sentiment_suggestion": self.sentiment_suggestion,
+            "sentiment_themes": self.sentiment_themes,
+            "sentiment_analyzed_at": self.sentiment_analyzed_at.isoformat() if self.sentiment_analyzed_at else None,
+            "sentiment_batch_id": str(self.sentiment_batch_id) if self.sentiment_batch_id else None,
+            # Audit fields
             "created_by": self.created_by,
             "created_date": self.created_date.isoformat() if self.created_date else None,
             "last_modified_by": self.last_modified_by,

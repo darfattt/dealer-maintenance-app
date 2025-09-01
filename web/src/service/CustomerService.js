@@ -484,6 +484,44 @@ export class CustomerService {
             throw error
         }
     }
+
+    /**
+     * Get sentiment analysis statistics for customer satisfaction
+     * @param {Object} options - Filter options
+     * @param {string} options.periode_utk_suspend - Filter by periode untuk suspend
+     * @param {string} options.submit_review_date - Filter by submit review date
+     * @param {string} options.no_ahass - Filter by No AHASS
+     * @param {string} options.date_from - Start date in YYYY-MM-DD format
+     * @param {string} options.date_to - End date in YYYY-MM-DD format
+     * @returns {Promise<Object>} Sentiment analysis statistics with distribution data
+     */
+    async getSentimentStatistics(options = {}) {
+        try {
+            const {
+                periode_utk_suspend = null,
+                submit_review_date = null,
+                no_ahass = null,
+                date_from = null,
+                date_to = null
+            } = options
+
+            const params = new URLSearchParams()
+            if (periode_utk_suspend) params.append('periode_utk_suspend', periode_utk_suspend)
+            if (submit_review_date) params.append('submit_review_date', submit_review_date)
+            if (no_ahass) params.append('no_ahass', no_ahass)
+            if (date_from) params.append('date_from', date_from)
+            if (date_to) params.append('date_to', date_to)
+            
+            const queryString = params.toString()
+            const url = `/v1/customer-satisfaction/sentiment-analysis/statistics${queryString ? `?${queryString}` : ''}`
+            
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching sentiment statistics:', error)
+            throw error
+        }
+    }
 }
 
 export default new CustomerService()
