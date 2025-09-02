@@ -28,7 +28,7 @@ const model = ref([
         ]
     },
     {
-        label: 'AI',
+        label: 'AHASS',
         items: [
             { label: 'Sentiment Analysis', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' }
         ]

@@ -15,7 +15,7 @@ import Dialog from 'primevue/dialog';
 import CustomerService from '@/service/CustomerService';
 import DeliveryStatusChart from '@/components/dashboard/DeliveryStatusChart.vue';
 import ReminderTargetChart from '@/components/dashboard/ReminderTargetChart.vue';
-import { formatIndonesiaDate, formatDateForAPI, getCurrentMonthIndonesia } from '@/utils/dateFormatter';
+import { formatIndonesiaDate, formatDateForAPI, getCurrentMonthIndonesia,formatIndonesiaTime } from '@/utils/dateFormatter';
 
 const authStore = useAuthStore();
 
@@ -249,7 +249,7 @@ const formatDate = (date) => {
 // Format time for display
 const formatTime = (time) => {
     if (!time) return '';
-    return time;
+    return formatIndonesiaTime(time);
 };
 
 // Get most common reminder targets for display

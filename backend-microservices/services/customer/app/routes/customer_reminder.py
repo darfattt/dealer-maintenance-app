@@ -57,6 +57,14 @@ async def add_bulk_reminders(
                 detail="User is not associated with a dealer"
             )
         
+        # Validate that kode_ahass matches dealer_id
+        if request.kode_ahass != dealer_id:
+            logger.warning(f"kode_ahass mismatch for user {current_user.email}: request.kode_ahass='{request.kode_ahass}' != dealer_id='{dealer_id}'")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="kode_ahass must match the authenticated user's dealer ID"
+            )
+        
         logger.info(f"Processing bulk customer reminders for dealer {dealer_id}, user {current_user.email}, customers: {len(request.data)}")
         
         controller = CustomerReminderController(db)

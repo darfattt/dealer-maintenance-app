@@ -55,7 +55,7 @@ export const formatIndonesiaDateTime = (dateString) => {
 };
 
 /**
- * Format time only in Indonesia timezone (hh:mm)
+ * Format time only in Indonesia timezone (hh:mm:ss)
  * @param {string|Date} dateString - The date/time to format
  * @returns {string} Formatted time string or '-' if invalid
  */
@@ -63,17 +63,39 @@ export const formatIndonesiaTime = (dateString) => {
     if (!dateString) return '-';
     
     try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return '-';
+        let date;
+        
+        // Handle time-only strings with microseconds (e.g., "14:30:00.123456")
+        if (typeof dateString === 'string' && /^\d{1,2}:\d{2}:\d{2}\.\d{1,6}$/.test(dateString.trim())) {
+            // For microsecond precision timestamps already in Indonesian timezone, just strip microseconds
+            const [timePart] = dateString.trim().split('.');
+            return timePart; // Return the time part without microseconds (already formatted as hh:mm:ss)
+            
+        } else if (typeof dateString === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(dateString.trim())) {
+            // Handle simple time-only strings (e.g., "14:30:00", "14:30") - keep as is
+            const today = new Date();
+            const [hours, minutes, seconds = '0'] = dateString.trim().split(':');
+            date = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 
+                           parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds, 10));
+        } else {
+            // Handle full datetime strings or Date objects
+            date = new Date(dateString);
+        }
+        
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date provided to formatIndonesiaTime:', dateString);
+            return '-';
+        }
         
         return new Intl.DateTimeFormat('id-ID', {
             timeZone: 'Asia/Jakarta',
             hour: '2-digit',
             minute: '2-digit',
+            second: '2-digit',
             hour12: false
         }).format(date);
     } catch (error) {
-        console.warn('Error formatting time:', error);
+        console.warn('Error formatting time:', error, 'Input:', dateString);
         return '-';
     }
 };

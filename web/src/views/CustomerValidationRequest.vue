@@ -127,6 +127,10 @@ const loadRequests = async (page = 0) => {
 
 // Handle pagination
 const onPageChange = (event) => {
+    // Update page size if it changed
+    if (event.rows && event.rows !== pageSize.value) {
+        pageSize.value = event.rows;
+    }
     loadRequests(event.page);
 };
 
@@ -321,6 +325,7 @@ onMounted(() => {
                 <!-- Pagination -->
                 <Paginator
                     v-if="totalRecords > pageSize"
+                    :first="currentPage * pageSize"
                     :rows="pageSize"
                     :totalRecords="totalRecords"
                     :rowsPerPageOptions="[10, 20, 50]"
