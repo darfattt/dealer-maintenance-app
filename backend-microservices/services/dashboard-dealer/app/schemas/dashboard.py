@@ -700,3 +700,26 @@ class SPKDealingProcessDataResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ActiveDealerItem(BaseModel):
+    """Individual active dealer item for admin dashboard"""
+    dealer_id: str = Field(..., description="Dealer ID")
+    dealer_name: str = Field(..., description="Dealer name")
+    is_active: bool = Field(..., description="Whether the dealer is active")
+    created_at: Optional[str] = Field(None, description="Creation timestamp")
+    updated_at: Optional[str] = Field(None, description="Last update timestamp")
+
+    class Config:
+        from_attributes = True
+
+
+class ActiveDealersResponse(BaseModel):
+    """Response schema for active dealers list"""
+    success: bool = Field(True, description="Whether the request was successful")
+    message: str = Field("Data retrieved successfully", description="Response message")
+    data: List[ActiveDealerItem] = Field(..., description="List of active dealers")
+    total_records: int = Field(..., description="Total number of active dealers")
+
+    class Config:
+        from_attributes = True

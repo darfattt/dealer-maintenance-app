@@ -63,6 +63,7 @@ class Settings(BaseSettings):
             "/api/v1/reminder": self.customer_service_url,
             "/api/v1/dealers": self.dealer_dashboard_service_url,
             "/api/v1/dashboard": self.dashboard_dealer_service_url,
+            "/api/v1/admin": self.dashboard_dealer_service_url,
             "/api/v1/jobs": self.dealer_dashboard_service_url,
             # Fallback routes without /api prefix (for debugging/compatibility)
             "/v1/auth": self.account_service_url,
@@ -71,6 +72,7 @@ class Settings(BaseSettings):
             "/v1/reminder": self.customer_service_url,
             "/v1/dealers": self.dealer_dashboard_service_url,
             "/v1/dashboard": self.dashboard_dealer_service_url,
+            "/v1/admin": self.dashboard_dealer_service_url,
             "/v1/jobs": self.dealer_dashboard_service_url,
         }
 

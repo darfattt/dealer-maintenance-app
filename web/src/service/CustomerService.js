@@ -576,6 +576,20 @@ export class CustomerService {
             throw error
         }
     }
+
+    /**
+     * Get all active dealers for dropdown options
+     * @returns {Promise<Object>} Active dealers list with formatted labels
+     */
+    async getActiveDealers() {
+        try {
+            const response = await api.get('/v1/admin/dealers/active')
+            return response.data
+        } catch (error) {
+            console.error('Error fetching active dealers:', error)
+            throw error
+        }
+    }
 }
 
 export default new CustomerService()
