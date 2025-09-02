@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
@@ -82,9 +82,16 @@ const stats = ref({
 
 // Table data
 const reminders = ref([]);
-const totalRecords = ref(0);
-const currentPage = ref(0);
-const pageSize = ref(10);
+
+// Pagination state (matching CustomerSatisfaction.vue pattern)
+const pagination = reactive({
+    page: 1,
+    page_size: 10,
+    total_count: 0,
+    total_pages: 0,
+    has_next: false,
+    has_prev: false
+});
 
 // Dialog state
 const showDetailsDialog = ref(false);
@@ -131,12 +138,12 @@ const loadStats = async () => {
 };
 
 // Load reminders table data
-const loadReminders = async (page = 0) => {
+const loadReminders = async () => {
     loading.value = true;
     try {
         const response = await CustomerService.getReminderRequests({
-            page: page + 1, // Convert from 0-based to 1-based
-            pageSize: pageSize.value,
+            page: pagination.page,
+            pageSize: pagination.page_size,
             dateFrom: formattedDateFrom.value,
             dateTo: formattedDateTo.value,
             reminderTarget: selectedReminderTarget.value || null,
@@ -145,21 +152,27 @@ const loadReminders = async (page = 0) => {
         
         if (response.success && response.data) {
             reminders.value = response.data.items || [];
-            totalRecords.value = response.data.total || 0;
-            currentPage.value = page;
+            // Update pagination state with response data
+            const paginationData = response.data;
+            pagination.total_count = paginationData.total || 0;
+            pagination.total_pages = paginationData.total_pages || 0;
+            pagination.has_next = paginationData.has_next || false;
+            pagination.has_prev = paginationData.has_prev || false;
         }
     } catch (error) {
         console.error('Failed to load reminders:', error);
         reminders.value = [];
-        totalRecords.value = 0;
+        pagination.total_count = 0;
     } finally {
         loading.value = false;
     }
 };
 
-// Handle pagination
+// Handle pagination (both page and page size changes)
 const onPageChange = (event) => {
-    loadReminders(event.page);
+    pagination.page = event.page + 1; // Convert from 0-based to 1-based
+    pagination.page_size = event.rows;
+    loadReminders();
 };
 
 // Get reminder target severity for Tag component (based on reminder_target field)
@@ -281,14 +294,15 @@ const closeDetailsDialog = () => {
 
 // Watch for filter changes - includes selectedDealer for SUPER_ADMIN dealer switching
 watch([formattedDateFrom, formattedDateTo, selectedReminderTarget, selectedDealer], () => {
+    pagination.page = 1; // Reset to first page when filters change
     loadStats();
-    loadReminders(0);
+    loadReminders();
 }, { deep: true });
 
 // Initial load
 onMounted(() => {
     loadStats();
-    loadReminders(0);
+    loadReminders();
 });
 </script>
 
@@ -463,9 +477,10 @@ onMounted(() => {
 
                 <!-- Pagination -->
                 <Paginator
-                    v-if="totalRecords > pageSize"
-                    :rows="pageSize"
-                    :totalRecords="totalRecords"
+                    v-if="pagination.total_count > pagination.page_size"
+                    :rows="pagination.page_size"
+                    :totalRecords="pagination.total_count"
+                    :first="(pagination.page - 1) * pagination.page_size"
                     :rowsPerPageOptions="[10, 20, 50]"
                     @page="onPageChange"
                     class="mt-4"
