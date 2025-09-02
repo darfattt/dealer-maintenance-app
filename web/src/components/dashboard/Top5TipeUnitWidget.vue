@@ -204,7 +204,7 @@ onMounted(() => {
                             :src="unit.image"
                             :alt="unit.name"
                             class="w-12 h-12 object-cover rounded-lg border-2 border-surface-200"
-                            @error="$event.target.src = 'https://via.placeholder.com/48x48/64748B/FFFFFF?text=🏍️'"
+                            @error="$event.target.src = '/assets/images/no-profile-picture-icon.svg'"
                         />
                     </div>
 
