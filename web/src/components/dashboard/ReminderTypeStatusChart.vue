@@ -40,6 +40,14 @@ const chartError = ref('');
 const chartData = ref({});
 const chartOptions = ref({});
 
+// Dark mode detection
+const isDarkMode = computed(() => {
+    if (typeof window !== 'undefined') {
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+});
+
 // Chart type state
 const chartType = ref('bar');
 
@@ -116,17 +124,30 @@ const getStatusLabel = (status) => {
     }
 };
 
-// Get status color
+// Get status color with dark mode support
 const getStatusColor = (status) => {
+    // Use brighter colors for dark mode, standard colors for light mode
+    const colors = isDarkMode.value ? {
+        'SENT': '#10B981',     // Brighter green for dark mode
+        'FAILED': '#F87171',   // Brighter red for dark mode  
+        'NOT_SENT': '#9CA3AF', // Lighter gray for dark mode
+        'DEFAULT': '#6B7280'   // Default lighter gray for dark mode
+    } : {
+        'SENT': '#22C55E',     // Standard green for light mode
+        'FAILED': '#EF4444',   // Standard red for light mode
+        'NOT_SENT': '#94A3B8', // Standard gray for light mode
+        'DEFAULT': '#64748B'   // Default gray for light mode
+    };
+
     switch (status) {
         case 'SENT':
-            return '#22C55E'; // Green
+            return colors.SENT;
         case 'FAILED':
-            return '#EF4444'; // Red
+            return colors.FAILED;
         case 'NOT_SENT':
-            return '#94A3B8'; // Gray
+            return colors.NOT_SENT;
         default:
-            return '#64748B'; // Default gray
+            return colors.DEFAULT;
     }
 };
 
@@ -142,11 +163,16 @@ const getReminderTypeLabel = (type) => {
     return type;
 };
 
-// Setup chart options
+// Setup chart options with dark mode support
 const setupChartOptions = () => {
+    const textColor = isDarkMode.value ? '#ffffff' : '#374151';
+    const gridColor = isDarkMode.value ? '#374151' : '#e5e7eb';
+    const backgroundColor = isDarkMode.value ? '#1f2937' : '#ffffff';
+    
     chartOptions.value = {
         responsive: true,
         maintainAspectRatio: false,
+        backgroundColor: backgroundColor,
         plugins: {
             title: {
                 display: true,
@@ -155,6 +181,7 @@ const setupChartOptions = () => {
                     size: 16,
                     weight: 'bold'
                 },
+                color: textColor,
                 padding: 20
             },
             legend: {
@@ -162,12 +189,21 @@ const setupChartOptions = () => {
                 position: 'top',
                 labels: {
                     usePointStyle: true,
-                    padding: 20
+                    padding: 20,
+                    color: textColor,
+                    font: {
+                        size: 12
+                    }
                 }
             },
             tooltip: {
                 mode: 'index',
                 intersect: false,
+                backgroundColor: isDarkMode.value ? '#374151' : '#ffffff',
+                titleColor: textColor,
+                bodyColor: textColor,
+                borderColor: gridColor,
+                borderWidth: 1,
                 callbacks: {
                     label: function(context) {
                         return `${context.dataset.label}: ${context.parsed.y}`;
@@ -179,21 +215,46 @@ const setupChartOptions = () => {
             x: {
                 title: {
                     display: true,
-                    text: 'Reminder Type'
+                    text: 'Reminder Type',
+                    color: textColor,
+                    font: {
+                        size: 12,
+                        weight: 'bold'
+                    }
+                },
+                ticks: {
+                    color: textColor,
+                    font: {
+                        size: 11
+                    }
                 },
                 grid: {
-                    display: false
+                    display: false,
+                    color: gridColor
                 }
             },
             y: {
                 title: {
                     display: true,
-                    text: ''
+                    text: 'Jumlah',
+                    color: textColor,
+                    font: {
+                        size: 12,
+                        weight: 'bold'
+                    }
                 },
-                beginAtZero: true,
                 ticks: {
+                    color: textColor,
+                    font: {
+                        size: 11
+                    },
                     stepSize: 1
-                }
+                },
+                grid: {
+                    color: gridColor,
+                    borderColor: gridColor
+                },
+                beginAtZero: true
             }
         },
         interaction: {
@@ -204,10 +265,15 @@ const setupChartOptions = () => {
     };
 };
 
-// Watch for prop changes
+// Watch for prop changes and dark mode changes
 watch([() => props.dateFrom, () => props.dateTo, () => props.dealerId, () => props.reminderTarget], () => {
     loadChartData();
 }, { deep: true });
+
+// Watch for dark mode changes and update chart options
+watch(isDarkMode, () => {
+    setupChartOptions();
+}, { immediate: false });
 
 // Lifecycle
 onMounted(() => {
@@ -321,6 +387,37 @@ onMounted(() => {
     gap: 0.5rem;
 }
 
+/* Light mode base styles */
+.chart-container {
+    background-color: var(--surface-card);
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+}
+
+/* Chart styling */
+:deep(.p-chart) canvas {
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+}
+
+/* Text color consistency */
+h3.text-surface-900 {
+    color: var(--text-color) !important;
+}
+
+/* Message component base styling */
+:deep(.p-message) {
+    background-color: var(--surface-50);
+    border: 1px solid var(--surface-200);
+    transition: all 0.3s ease;
+}
+
+/* Loading states */
+.text-muted-color {
+    color: var(--text-color-secondary);
+    transition: color 0.3s ease;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .chart-container {
@@ -336,6 +433,36 @@ onMounted(() => {
 @media (prefers-color-scheme: dark) {
     .chart-container {
         background-color: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        border-radius: 8px;
+    }
+    
+    /* Ensure chart background matches card background */
+    :deep(.p-chart) canvas {
+        background-color: var(--surface-card) !important;
+        border-radius: 6px;
+    }
+    
+    /* Text color adjustments */
+    h3 {
+        color: var(--text-color) !important;
+    }
+    
+    /* Message component styling for dark mode */
+    :deep(.p-message) {
+        background-color: var(--surface-ground);
+        border: 1px solid var(--surface-border);
+        color: var(--text-color);
+    }
+    
+    /* Progress spinner colors */
+    :deep(.p-progress-spinner-circle) {
+        stroke: var(--primary-color);
+    }
+    
+    /* Loading and empty state text */
+    .text-muted-color {
+        color: var(--text-color-secondary) !important;
     }
 }
 </style>

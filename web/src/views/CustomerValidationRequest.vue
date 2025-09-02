@@ -14,8 +14,8 @@ import { formatIndonesiaDate, formatIndonesiaTime, formatDateForAPI, getCurrentM
 
 const authStore = useAuthStore();
 
-// Filter controls
-const selectedDealer = ref('12284');
+// Filter controls - Use dealer from auth for DEALER_USER
+const selectedDealer = ref(authStore.userRole === 'DEALER_USER' ? authStore.userDealerId : '12284');
 // Use Indonesia timezone for date initialization
 const { firstDay: currentYearFirstDay } = getCurrentMonthIndonesia();
 const currentYearStart = new Date(currentYearFirstDay.getFullYear(), 0, 1);

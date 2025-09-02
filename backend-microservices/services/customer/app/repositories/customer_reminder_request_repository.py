@@ -10,6 +10,7 @@ import logging
 
 from app.models.customer_reminder_request import CustomerReminderRequest
 from app.schemas.customer_reminder_request import CustomerReminderRequestCreate, BulkReminderCustomerData
+from app.utils.timezone_utils import get_indonesia_datetime, parse_datetime_indonesia_format
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +25,15 @@ class CustomerReminderRequestRepository:
         """Create a new customer reminder request"""
         try:
             # Parse the datetime strings or use current time as default
-            current_time = datetime.utcnow()
+            current_time = get_indonesia_datetime()
             
             if request_data.created_time:
-                created_datetime = datetime.strptime(request_data.created_time, '%d/%m/%Y %H:%M:%S')
+                created_datetime = parse_datetime_indonesia_format(request_data.created_time)
             else:
                 created_datetime = current_time
                 
             if request_data.modified_time:
-                modified_datetime = datetime.strptime(request_data.modified_time, '%d/%m/%Y %H:%M:%S')
+                modified_datetime = parse_datetime_indonesia_format(request_data.modified_time)
             else:
                 modified_datetime = current_time
             
@@ -74,7 +75,7 @@ class CustomerReminderRequestRepository:
     ) -> CustomerReminderRequest:
         """Create a new customer reminder request from bulk data"""
         try:
-            current_time = datetime.utcnow()
+            current_time = get_indonesia_datetime()
             
             # Parse date strings
             tanggal_beli = None
@@ -168,7 +169,7 @@ class CustomerReminderRequestRepository:
             if modified_by:
                 db_request.last_modified_by = modified_by
             
-            db_request.last_modified_date = datetime.utcnow()
+            db_request.last_modified_date = get_indonesia_datetime()
             
             self.db.commit()
             self.db.refresh(db_request)
