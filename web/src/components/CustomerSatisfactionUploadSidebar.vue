@@ -218,7 +218,7 @@ import Tag from 'primevue/tag';
 import ProgressSpinner from 'primevue/progressspinner';
 import Checkbox from 'primevue/checkbox';
 import CustomerService from '@/service/CustomerService';
-import { formatIndonesiaDate, formatDateForAPI, getCurrentMonthIndonesia,formatIndonesiaTime } from '@/utils/dateFormatter';
+import { formatIndonesiaDate,formatIndonesiaDateTime, formatDateForAPI, getCurrentMonthIndonesia,formatIndonesiaTime } from '@/utils/dateFormatter';
 
 const props = defineProps({
     visible: {
@@ -338,7 +338,7 @@ const formatFileSize = (bytes) => {
 };
 
 const formatDate = (dateString) => {
-    return formatIndonesiaDate(dateString);
+    return formatIndonesiaDateTime(dateString);
 };
 
 const getStatusSeverity = (status) => {
