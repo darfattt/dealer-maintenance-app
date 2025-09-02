@@ -15,6 +15,8 @@ import Dialog from 'primevue/dialog';
 import CustomerService from '@/service/CustomerService';
 import DeliveryStatusChart from '@/components/dashboard/DeliveryStatusChart.vue';
 import ReminderTargetChart from '@/components/dashboard/ReminderTargetChart.vue';
+import ReminderTypeStatusChart from '@/components/dashboard/ReminderTypeStatusChart.vue';
+import Top5TipeUnitWidget from '@/components/dashboard/Top5TipeUnitWidget.vue';
 import { formatIndonesiaDate, formatDateForAPI, getCurrentMonthIndonesia,formatIndonesiaTime } from '@/utils/dateFormatter';
 
 const authStore = useAuthStore();
@@ -345,15 +347,32 @@ onMounted(() => {
         <!-- Overview Section -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Delivery Status Chart -->
-            <DeliveryStatusChart 
+            <!-- <DeliveryStatusChart 
                 :stats="stats" 
+                :loading="statsLoading"
+            /> -->
+            
+            <!-- Reminder Target Chart -->
+            <!-- <ReminderTargetChart 
+                :stats="stats" 
+                :loading="statsLoading"
+            /> -->
+            
+            <!-- Reminder Type Status Chart -->
+            <ReminderTypeStatusChart 
+                :date-from="formattedDateFrom"
+                :date-to="formattedDateTo"
+                :dealer-id="selectedDealer"
+                :reminder-target="selectedReminderTarget"
                 :loading="statsLoading"
             />
             
-            <!-- Reminder Target Chart -->
-            <ReminderTargetChart 
-                :stats="stats" 
-                :loading="statsLoading"
+            <!-- Top 5 Vehicle Types Widget -->
+            <Top5TipeUnitWidget 
+                :date-from="formattedDateFrom"
+                :date-to="formattedDateTo"
+                :dealer-id="selectedDealer"
+                :reminder-target="selectedReminderTarget"
             />
         </div>
 
@@ -396,7 +415,7 @@ onMounted(() => {
                     </Column>
                     <Column field="nama_pelanggan" header="Nama" />
                     <Column field="nomor_telepon_pelanggan" header="No. Telepon" />
-                    <!-- <Column field="nomor_polisi" header="No. Polisi" /> -->
+                    <Column field="nomor_polisi" header="No. Polisi" />
                     <!-- <Column field="tipe_unit" header="Unit Type" /> -->
                     <Column field="whatsapp_status" header="Status WhatsApp">
                         <template #body="slotProps">

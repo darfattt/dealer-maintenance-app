@@ -359,6 +359,67 @@ class CustomerReminderRequestRepository:
             'transaction_id': transaction_id
         }
     
+    def get_reminder_type_whatsapp_status_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
+        """Get statistics grouped by reminder_type and whatsapp_status (cross-tabulation)"""
+        from sqlalchemy import func
+        
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
+        
+        # Get cross-tabulation of reminder_type and whatsapp_status
+        results = query.with_entities(
+            CustomerReminderRequest.reminder_type,
+            CustomerReminderRequest.whatsapp_status,
+            func.count(CustomerReminderRequest.id).label('count')
+        ).group_by(
+            CustomerReminderRequest.reminder_type,
+            CustomerReminderRequest.whatsapp_status
+        ).all()
+        
+        # Structure the results as nested dictionary
+        stats = {}
+        for reminder_type, whatsapp_status, count in results:
+            if reminder_type not in stats:
+                stats[reminder_type] = {}
+            stats[reminder_type][whatsapp_status] = count
+        
+        return stats
+    
+    def get_tipe_unit_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
+        """Get statistics grouped by tipe_unit (vehicle type)"""
+        from sqlalchemy import func
+        
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
+        
+        # Count by tipe_unit
+        tipe_unit_stats = query.with_entities(
+            CustomerReminderRequest.tipe_unit,
+            func.count(CustomerReminderRequest.id).label('count')
+        ).group_by(CustomerReminderRequest.tipe_unit).all()
+        
+        return {tipe_unit or 'Unknown': count for tipe_unit, count in tipe_unit_stats}
+    
     def delete(self, request_id: str) -> bool:
         """Delete customer reminder request"""
         try:

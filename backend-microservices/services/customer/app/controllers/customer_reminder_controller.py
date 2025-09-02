@@ -502,6 +502,106 @@ Salam,
                 "data": None
             }
     
+    def get_reminder_type_whatsapp_status_stats(
+        self, 
+        dealer_id: str,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        reminder_target: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get statistics grouped by reminder_type and whatsapp_status (cross-tabulation)"""
+        try:
+            # Validate dealer exists (bypass for now, similar to get_reminder_stats)
+            print("Bypassing dealer validation for reminder type whatsapp status stats...")
+            
+            # Parse date strings if provided
+            parsed_date_from = None
+            parsed_date_to = None
+            
+            if date_from:
+                try:
+                    parsed_date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+                except ValueError:
+                    logger.warning(f"Invalid date_from format: {date_from}")
+            
+            if date_to:
+                try:
+                    parsed_date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+                except ValueError:
+                    logger.warning(f"Invalid date_to format: {date_to}")
+            
+            # Get cross-tabulation statistics
+            stats = self.reminder_repo.get_reminder_type_whatsapp_status_stats(
+                dealer_id=dealer_id,
+                date_from=parsed_date_from,
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
+            )
+            
+            return {
+                "success": True,
+                "message": "Reminder type and WhatsApp status statistics retrieved",
+                "data": stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting reminder type whatsapp status stats for {dealer_id}: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}",
+                "data": None
+            }
+    
+    def get_tipe_unit_stats(
+        self, 
+        dealer_id: str,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        reminder_target: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get statistics grouped by tipe_unit (vehicle type)"""
+        try:
+            # Validate dealer exists (bypass for now, similar to get_reminder_stats)
+            print("Bypassing dealer validation for tipe unit stats...")
+            
+            # Parse date strings if provided
+            parsed_date_from = None
+            parsed_date_to = None
+            
+            if date_from:
+                try:
+                    parsed_date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+                except ValueError:
+                    logger.warning(f"Invalid date_from format: {date_from}")
+            
+            if date_to:
+                try:
+                    parsed_date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+                except ValueError:
+                    logger.warning(f"Invalid date_to format: {date_to}")
+            
+            # Get tipe_unit statistics
+            stats = self.reminder_repo.get_tipe_unit_stats(
+                dealer_id=dealer_id,
+                date_from=parsed_date_from,
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
+            )
+            
+            return {
+                "success": True,
+                "message": "Vehicle type statistics retrieved",
+                "data": stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting tipe unit stats for {dealer_id}: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}",
+                "data": None
+            }
+    
     async def test_reminder_whatsapp_config(self, dealer_id: str) -> Dict[str, Any]:
         """Test WhatsApp configuration for reminder sending"""
         try:

@@ -220,6 +220,60 @@ export class CustomerService {
         }
     }
 
+    /**
+     * Get reminder type and WhatsApp status cross-tabulation statistics
+     * @param {string} dateFrom - Start date in YYYY-MM-DD format
+     * @param {string} dateTo - End date in YYYY-MM-DD format
+     * @param {string} dealerId - Dealer ID (optional, SUPER_ADMIN can specify dealer)
+     * @param {string} reminderTarget - Reminder target filter (optional)
+     * @returns {Promise<Object>} Cross-tabulation statistics grouped by reminder_type and whatsapp_status
+     */
+    async getReminderTypeWhatsAppStatusStats(dateFrom = null, dateTo = null, dealerId = null, reminderTarget = null) {
+        try {
+            const params = new URLSearchParams()
+            if (dateFrom) params.append('date_from', dateFrom)
+            if (dateTo) params.append('date_to', dateTo)
+            if (dealerId) params.append('dealer_id', dealerId)
+            if (reminderTarget) params.append('reminder_target', reminderTarget)
+            
+            const queryString = params.toString()
+            const url = `/v1/reminder/reminder-type-whatsapp-status-stats${queryString ? `?${queryString}` : ''}`
+            
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching reminder type whatsapp status stats:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Get vehicle type statistics
+     * @param {string} dateFrom - Start date in YYYY-MM-DD format
+     * @param {string} dateTo - End date in YYYY-MM-DD format
+     * @param {string} dealerId - Dealer ID (optional, SUPER_ADMIN can specify dealer)
+     * @param {string} reminderTarget - Reminder target filter (optional)
+     * @returns {Promise<Object>} Statistics grouped by tipe_unit (vehicle type)
+     */
+    async getTipeUnitStats(dateFrom = null, dateTo = null, dealerId = null, reminderTarget = null) {
+        try {
+            const params = new URLSearchParams()
+            if (dateFrom) params.append('date_from', dateFrom)
+            if (dateTo) params.append('date_to', dateTo)
+            if (dealerId) params.append('dealer_id', dealerId)
+            if (reminderTarget) params.append('reminder_target', reminderTarget)
+            
+            const queryString = params.toString()
+            const url = `/v1/reminder/tipe-unit-stats${queryString ? `?${queryString}` : ''}`
+            
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching tipe unit stats:', error)
+            throw error
+        }
+    }
+
     // ===== CUSTOMER SATISFACTION METHODS =====
 
     /**
