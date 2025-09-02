@@ -13,6 +13,16 @@ from app.utils.phone_masking import mask_phone_number
 
 Base = declarative_base()
 
+# Import Indonesian timezone utility function
+def _get_indonesia_timezone_utc():
+    """Get current Indonesian time as UTC for database storage"""
+    try:
+        from app.utils.timezone_utils import get_indonesia_utc_now
+        return get_indonesia_utc_now()
+    except ImportError:
+        # Fallback to standard UTC if timezone utils not available
+        return datetime.utcnow()
+
 
 class CustomerReminderRequest(Base):
     """Customer reminder request model"""
@@ -63,11 +73,11 @@ class CustomerReminderRequest(Base):
     # Transaction tracking
     transaction_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     
-    # Audit fields
+    # Audit fields - using Indonesian timezone
     created_by = Column(String(100), nullable=True)
-    created_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_date = Column(DateTime, default=_get_indonesia_timezone_utc, nullable=False)
     last_modified_by = Column(String(100), nullable=True)
-    last_modified_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_modified_date = Column(DateTime, default=_get_indonesia_timezone_utc, onupdate=_get_indonesia_timezone_utc, nullable=False)
     
     def __repr__(self):
         return f"<CustomerReminderRequest(id={self.id}, dealer_id={self.dealer_id}, nama_pelanggan={self.nama_pelanggan})>"

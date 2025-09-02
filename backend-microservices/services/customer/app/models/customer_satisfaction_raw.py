@@ -10,6 +10,16 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+# Import Indonesian timezone utility function
+def _get_indonesia_timezone_utc():
+    """Get current Indonesian time as UTC for database storage"""
+    try:
+        from app.utils.timezone_utils import get_indonesia_utc_now
+        return get_indonesia_utc_now()
+    except ImportError:
+        # Fallback to standard UTC if timezone utils not available
+        return datetime.utcnow()
+
 
 class CustomerSatisfactionRaw(Base):
     """Customer satisfaction raw data model - stores CSV data as-is"""
@@ -62,11 +72,11 @@ class CustomerSatisfactionRaw(Base):
     sentiment_analyzed_at = Column(DateTime, nullable=True)
     sentiment_batch_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     
-    # Audit fields
+    # Audit fields - using Indonesian timezone
     created_by = Column(String(100), nullable=True)
-    created_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_date = Column(DateTime, default=_get_indonesia_timezone_utc, nullable=False)
     last_modified_by = Column(String(100), nullable=True)
-    last_modified_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_modified_date = Column(DateTime, default=_get_indonesia_timezone_utc, onupdate=_get_indonesia_timezone_utc, nullable=False)
     
     def __repr__(self):
         return f"<CustomerSatisfactionRaw(id={self.id}, no_tiket={self.no_tiket}, nama_konsumen={self.nama_konsumen})>"
@@ -144,9 +154,9 @@ class CustomerSatisfactionUploadTracker(Base):
     # Error details
     error_message = Column(Text, nullable=True)
     
-    # Audit fields
+    # Audit fields - using Indonesian timezone
     uploaded_by = Column(String(100), nullable=True)
-    upload_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    upload_date = Column(DateTime, default=_get_indonesia_timezone_utc, nullable=False)
     completed_date = Column(DateTime, nullable=True)
     
     def __repr__(self):

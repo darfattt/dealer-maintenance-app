@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.customer_satisfaction_repository import CustomerSatisfactionRepository
 from app.services.sentiment_analysis_service import SentimentAnalysisService
+from app.utils.timezone_utils import get_indonesia_utc_now
 from app.schemas.customer_satisfaction import (
     CustomerSatisfactionUploadResponse,
     CustomerSatisfactionListResponse,
@@ -1199,7 +1200,7 @@ class CustomerSatisfactionController:
             BulkSentimentAnalysisResponse with analysis results
         """
         try:
-            started_at = datetime.utcnow()
+            started_at = get_indonesia_utc_now()
             
             # Get unanalyzed records
             unanalyzed_records = self.repository.get_unanalyzed_records(
@@ -1217,7 +1218,7 @@ class CustomerSatisfactionController:
                         "analyzed_records": 0,
                         "failed_records": 0,
                         "started_at": started_at.isoformat(),
-                        "completed_at": datetime.utcnow().isoformat()
+                        "completed_at": get_indonesia_utc_now().isoformat()
                     }
                 )
             
@@ -1240,7 +1241,7 @@ class CustomerSatisfactionController:
                 analyzed_count = update_stats["updated_count"]
                 failed_count = update_stats["failed_count"] + len(errors)
             
-            completed_at = datetime.utcnow()
+            completed_at = get_indonesia_utc_now()
             
             return BulkSentimentAnalysisResponse(
                 success=True,

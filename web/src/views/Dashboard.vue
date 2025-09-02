@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { useDealers } from '@/composables/useDealers';
 import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
 import UnitInboundStatusWidget from '@/components/dashboard/UnitInboundStatusWidget.vue';
@@ -47,16 +48,21 @@ import { useAuthStore } from '@/stores/auth';
 // Auth store
 const authStore = useAuthStore();
 
-// Filter controls
-const selectedDealer = ref('12284'); // Default dealer
+// Use dealers composable for dynamic dealer loading
+const { dealerOptions, isLoading: dealersLoading, hasError: dealersError } = useDealers();
+
+// Filter controls - Use dealer from auth for DEALER_USER, fallback to first available dealer
+const getInitialDealer = () => {
+    if (authStore.userRole === 'DEALER_USER') {
+        return authStore.userDealerId;
+    }
+    // For non-DEALER_USER, we'll set the dealer once dealers are loaded
+    return '';
+};
+
+const selectedDealer = ref(getInitialDealer());
 const selectedDateFrom = ref(new Date(new Date().getFullYear(), 0, 1)); // Start of current year
 const selectedDateTo = ref(new Date()); // Today
-
-// Dealer options
-const dealerOptions = ref([
-    { label: 'Sample Dealer (12284)', value: '12284' },
-    { label: 'Test Dealer (00999)', value: '00999' }
-]);
 
 // Check if user is DEALER_USER role
 const isDealerUser = computed(() => {
@@ -78,6 +84,14 @@ const formattedDateTo = computed(() => {
     if (!selectedDateTo.value) return '';
     return selectedDateTo.value.toISOString().split('T')[0];
 });
+
+// Watch for dealers to be loaded and set initial dealer for non-DEALER_USER
+watch(dealerOptions, (newDealers) => {
+    if (newDealers.length > 0 && !selectedDealer.value && authStore.userRole !== 'DEALER_USER') {
+        // Set first dealer as default for non-DEALER_USER roles
+        selectedDealer.value = newDealers[0].value;
+    }
+}, { immediate: true });
 </script>
 
 <template>
@@ -93,7 +107,9 @@ const formattedDateTo = computed(() => {
                     :options="dealerOptions"
                     optionLabel="label"
                     optionValue="value"
-                    placeholder="Select Dealer"
+                    :placeholder="dealersLoading ? 'Loading dealers...' : (dealersError ? 'Error loading dealers' : 'Select Dealer')"
+                    :loading="dealersLoading"
+                    :disabled="dealersLoading || dealersError"
                     class="w-48"
                 />
             </div>

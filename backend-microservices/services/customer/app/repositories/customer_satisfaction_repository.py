@@ -12,6 +12,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, func, desc, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.utils.timezone_utils import (
+    get_indonesia_utc_now, 
+    convert_utc_to_indonesia_for_display
+)
+
 from app.models.customer_satisfaction_raw import CustomerSatisfactionRaw, CustomerSatisfactionUploadTracker
 
 logger = logging.getLogger(__name__)
@@ -243,7 +248,7 @@ class CustomerSatisfactionRepository:
             if error_message is not None:
                 tracker.error_message = error_message
             if status in ['COMPLETED', 'FAILED']:
-                tracker.completed_date = datetime.utcnow()
+                tracker.completed_date = get_indonesia_utc_now()
             
             self.db.commit()
             logger.info(f"Updated upload tracker {tracker_id} to status: {status}")
@@ -599,19 +604,16 @@ class CustomerSatisfactionRepository:
             if not latest_record:
                 return None
             
-            # Convert UTC datetime to Indonesia timezone (UTC+7)
-            indonesia_tz = pytz.timezone('Asia/Jakarta')
+            # Convert UTC datetime to Indonesia timezone
             if latest_record.created_date:
-                # Assume the stored datetime is in UTC
-                utc_dt = latest_record.created_date.replace(tzinfo=pytz.UTC) if latest_record.created_date.tzinfo is None else latest_record.created_date
-                indonesia_dt = utc_dt.astimezone(indonesia_tz)
-                latest_upload_date = indonesia_dt.isoformat()
+                indonesia_dt = convert_utc_to_indonesia_for_display(latest_record.created_date)
+                latest_upload_date = indonesia_dt.isoformat() if indonesia_dt else None
             else:
                 latest_upload_date = None
             
             # Check sentiment analysis processing status
             # Only check for records uploaded in the last 24 hours to avoid unnecessary processing
-            twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+            twenty_four_hours_ago = get_indonesia_utc_now() - timedelta(hours=24)
             
             # Count total records from recent uploads
             total_recent_records = self.db.query(CustomerSatisfactionRaw).filter(
@@ -639,9 +641,8 @@ class CustomerSatisfactionRepository:
             
             last_processed_at = None
             if last_processed_record and last_processed_record.sentiment_analyzed_at:
-                utc_processed_dt = last_processed_record.sentiment_analyzed_at.replace(tzinfo=pytz.UTC) if last_processed_record.sentiment_analyzed_at.tzinfo is None else last_processed_record.sentiment_analyzed_at
-                indonesia_processed_dt = utc_processed_dt.astimezone(indonesia_tz)
-                last_processed_at = indonesia_processed_dt.isoformat()
+                indonesia_processed_dt = convert_utc_to_indonesia_for_display(last_processed_record.sentiment_analyzed_at)
+                last_processed_at = indonesia_processed_dt.isoformat() if indonesia_processed_dt else None
             
             # Calculate processing progress
             processing_progress = 0.0
@@ -991,8 +992,8 @@ class CustomerSatisfactionRepository:
             record.sentiment_analyzed_at = sentiment_data.get('sentiment_analyzed_at')
             record.sentiment_batch_id = sentiment_data.get('sentiment_batch_id')
             
-            # Update modification timestamp
-            record.last_modified_date = datetime.utcnow()
+            # Update modification timestamp with Indonesian timezone
+            record.last_modified_date = get_indonesia_utc_now()
             
             self.db.commit()
             

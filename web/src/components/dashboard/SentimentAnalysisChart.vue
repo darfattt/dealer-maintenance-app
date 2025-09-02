@@ -23,7 +23,7 @@ const chartOptions = ref({});
 // Computed properties
 const hasData = computed(() => {
     const stats = props.stats;
-    return stats && stats.total_analyzed_records > 0 && stats.sentiment_distribution && stats.sentiment_distribution.length > 0;
+    return stats && stats.total_analyzed_records  && stats.total_analyzed_records > 0 && stats.sentiment_distribution && stats.sentiment_distribution.length > 0;
 });
 
 const chartTitle = computed(() => {

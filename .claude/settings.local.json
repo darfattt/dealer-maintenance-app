@@ -18,7 +18,11 @@
       "Bash(chmod:*)",
       "Bash(find:*)",
       "Bash(npm run lint:*)",
-      "Bash(docker-compose:*)"
+      "Bash(docker-compose:*)",
+      "Bash(for file in DocumentHandlingDetail.vue DealingProcess.vue ProspectingActivity.vue)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)"
     ],
     "deny": []
   }

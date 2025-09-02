@@ -10,6 +10,7 @@ import logging
 import uuid
 
 from app.models.customer_reminder_processing import CustomerReminderProcessing
+from app.utils.timezone_utils import get_indonesia_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,9 @@ class CustomerReminderProcessingRepository:
                 progress=0,
                 status='inprogress',
                 created_by=created_by or 'system',
-                created_date=datetime.utcnow(),
+                created_date=get_indonesia_utc_now(),
                 last_modified_by=created_by or 'system',
-                last_modified_date=datetime.utcnow()
+                last_modified_date=get_indonesia_utc_now()
             )
             
             self.db.add(db_tracker)
@@ -78,7 +79,7 @@ class CustomerReminderProcessingRepository:
             
             db_tracker.progress = progress
             db_tracker.last_modified_by = modified_by or 'system'
-            db_tracker.last_modified_date = datetime.utcnow()
+            db_tracker.last_modified_date = get_indonesia_utc_now()
             
             self.db.commit()
             self.db.refresh(db_tracker)
@@ -118,7 +119,7 @@ class CustomerReminderProcessingRepository:
                     logger.warning(f"Invalid progress value: {progress}. Progress not updated")
             
             db_tracker.last_modified_by = modified_by or 'system'
-            db_tracker.last_modified_date = datetime.utcnow()
+            db_tracker.last_modified_date = get_indonesia_utc_now()
             
             self.db.commit()
             self.db.refresh(db_tracker)

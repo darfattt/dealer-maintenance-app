@@ -218,6 +218,7 @@ import Tag from 'primevue/tag';
 import ProgressSpinner from 'primevue/progressspinner';
 import Checkbox from 'primevue/checkbox';
 import CustomerService from '@/service/CustomerService';
+import { formatIndonesiaDate, formatDateForAPI, getCurrentMonthIndonesia,formatIndonesiaTime } from '@/utils/dateFormatter';
 
 const props = defineProps({
     visible: {
@@ -337,19 +338,7 @@ const formatFileSize = (bytes) => {
 };
 
 const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown';
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('id-ID', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch (error) {
-        return 'Invalid Date';
-    }
+    return formatIndonesiaDate(dateString);
 };
 
 const getStatusSeverity = (status) => {

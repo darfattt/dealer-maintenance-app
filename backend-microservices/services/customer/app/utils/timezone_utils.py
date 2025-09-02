@@ -125,3 +125,40 @@ def parse_datetime_indonesia_format(datetime_str: str) -> datetime:
         
     except ValueError as e:
         raise ValueError(f"Invalid datetime format. Expected 'dd/mm/yyyy HH:MM:SS', got: {datetime_str}") from e
+
+
+def get_indonesia_utc_now() -> datetime:
+    """
+    Get current UTC datetime that represents Indonesian time for database storage.
+    
+    This function gets the current Indonesian time and converts it to UTC
+    for consistent database storage while maintaining the Indonesian timezone context.
+    
+    Returns:
+        datetime: UTC datetime representing current Indonesian time
+    """
+    # Get current time in Indonesia timezone
+    indonesia_now = datetime.now(INDONESIA_TZ)
+    
+    # Convert to UTC for database storage
+    return indonesia_now.astimezone(UTC_TZ).replace(tzinfo=None)
+
+
+def convert_utc_to_indonesia_for_display(utc_dt: Optional[datetime]) -> Optional[datetime]:
+    """
+    Convert UTC datetime from database to Indonesia timezone for display
+    
+    Args:
+        utc_dt: UTC datetime from database (timezone-naive)
+        
+    Returns:
+        datetime: Timezone-aware datetime in Asia/Jakarta timezone, or None if input is None
+    """
+    if utc_dt is None:
+        return None
+    
+    # Assume database datetime is UTC and add UTC timezone
+    utc_dt_aware = UTC_TZ.localize(utc_dt) if utc_dt.tzinfo is None else utc_dt
+    
+    # Convert to Indonesia timezone
+    return utc_dt_aware.astimezone(INDONESIA_TZ)

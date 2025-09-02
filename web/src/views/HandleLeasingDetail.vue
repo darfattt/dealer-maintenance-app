@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import { useDealers } from '@/composables/useDealers';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import Button from 'primevue/button';
@@ -16,16 +17,21 @@ import LeasingDataHistoryWidget from '@/components/dashboard/LeasingDataHistoryW
 const router = useRouter();
 const authStore = useAuthStore();
 
-// Filter controls
-const selectedDealer = ref('12284'); // Default dealer
+// Use dealers composable for dynamic dealer loading
+const { dealerOptions, isLoading: dealersLoading, hasError: dealersError } = useDealers();
+
+// Filter controls - Use dealer from auth for DEALER_USER, fallback to first available dealer
+const getInitialDealer = () => {
+    if (authStore.userRole === 'DEALER_USER') {
+        return authStore.userDealerId;
+    }
+    return '';
+};
+
+const selectedDealer = ref(getInitialDealer());
 const selectedDateFrom = ref(new Date(new Date().getFullYear(), 0, 1)); // Start of current year
 const selectedDateTo = ref(new Date()); // Today
 
-// Dealer options (mock data - replace with real API call)
-const dealerOptions = ref([
-     { label: 'Sample Dealer (12284)', value: '12284' },
-    { label: 'Test Dealer (00999)', value: '00999' }
-]);
 
 // Computed properties
 const isDealerUser = computed(() => {
@@ -61,6 +67,13 @@ const refreshData = () => {
 onMounted(() => {
     // Initialize any required data
 });
+
+// Watch for dealers to be loaded and set initial dealer for non-DEALER_USER
+watch(dealerOptions, (newDealers) => {
+    if (newDealers.length > 0 && !selectedDealer.value && authStore.userRole !== 'DEALER_USER') {
+        selectedDealer.value = newDealers[0].value;
+    }
+}, { immediate: true });
 </script>
 
 <template>
@@ -102,7 +115,9 @@ onMounted(() => {
                             :options="dealerOptions"
                             optionLabel="label"
                             optionValue="value"
-                            placeholder="Select Dealer"
+                            :placeholder="dealersLoading ? 'Loading dealers...' : (dealersError ? 'Error loading dealers' : 'Select Dealer')"
+                            :loading="dealersLoading"
+                            :disabled="dealersLoading || dealersError"
                             class="w-48"
                         />
                     </div>
