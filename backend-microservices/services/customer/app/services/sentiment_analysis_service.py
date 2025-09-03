@@ -7,18 +7,70 @@ import json
 import logging
 import asyncio
 from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
+from enum import Enum
 import httpx
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
+
+
+class CircuitBreakerState(Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+
+class CircuitBreaker:
+    """Circuit breaker implementation for external service resilience"""
+    
+    def __init__(self, failure_threshold: int = 5, timeout: int = 300):
+        self.failure_threshold = failure_threshold
+        self.timeout = timeout  # seconds
+        self.failure_count = 0
+        self.last_failure_time: Optional[datetime] = None
+        self.state = CircuitBreakerState.CLOSED
+    
+    def is_available(self) -> bool:
+        """Check if the circuit breaker allows requests"""
+        if self.state == CircuitBreakerState.CLOSED:
+            return True
+        elif self.state == CircuitBreakerState.OPEN:
+            if self.last_failure_time and (datetime.utcnow() - self.last_failure_time).total_seconds() > self.timeout:
+                self.state = CircuitBreakerState.HALF_OPEN
+                logger.info("Circuit breaker transitioning from OPEN to HALF_OPEN")
+                return True
+            return False
+        else:  # HALF_OPEN
+            return True
+    
+    def record_success(self):
+        """Record successful request"""
+        self.failure_count = 0
+        if self.state == CircuitBreakerState.HALF_OPEN:
+            self.state = CircuitBreakerState.CLOSED
+            logger.info("Circuit breaker transitioning from HALF_OPEN to CLOSED after successful request")
+    
+    def record_failure(self):
+        """Record failed request"""
+        self.failure_count += 1
+        self.last_failure_time = datetime.utcnow()
+        
+        if self.state == CircuitBreakerState.CLOSED and self.failure_count >= self.failure_threshold:
+            self.state = CircuitBreakerState.OPEN
+            logger.warning(f"Circuit breaker OPENING after {self.failure_count} failures")
+        elif self.state == CircuitBreakerState.HALF_OPEN:
+            self.state = CircuitBreakerState.OPEN
+            logger.warning("Circuit breaker transitioning from HALF_OPEN to OPEN after failure")
 
 
 class SentimentAnalysisService:
     """Service for sentiment analysis using external API"""
     
     def __init__(self):
-        self.api_url = "https://ai.daya-group.co.id:8090/api/v1/prediction/f482750b-b270-4515-8e91-c36d1c215e0b"
-        self.bearer_token = "VQF6fIutCf5Md2s7MR5qiJmvAoGJe6jynNGWydXHxyI"
+        self.api_url = settings.sentiment_api_url
+        self.bearer_token = settings.sentiment_api_token
         self.headers = {
             "Authorization": f"Bearer {self.bearer_token}",
             "Content-Type": "application/json",
@@ -27,9 +79,17 @@ class SentimentAnalysisService:
             "Cache-Control": "no-cache",
             "Connection": "keep-alive"
         }
-        self.timeout = 120.0  # Increased timeout for AI processing
-        self.max_retries = 3
-        self.retry_delay = 2.0
+        self.timeout = float(settings.sentiment_api_timeout)
+        self.max_retries = settings.sentiment_api_max_retries
+        self.retry_delay = settings.sentiment_api_retry_delay
+        self.connect_timeout = settings.sentiment_api_connect_timeout
+        self.read_timeout = settings.sentiment_api_read_timeout
+        
+        # Initialize circuit breaker
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=settings.sentiment_circuit_breaker_failure_threshold,
+            timeout=settings.sentiment_circuit_breaker_timeout
+        )
     
     def _extract_json_from_response_text(self, response_text: str) -> Optional[List[Dict[str, Any]]]:
         """
@@ -45,36 +105,58 @@ class SentimentAnalysisService:
             List of sentiment analysis results or None if extraction fails
         """
         try:
+            logger.info("Starting JSON extraction from API response")
+            
             # Pattern 1: Look for JSON array in code blocks (```json ... ```)
             json_block_pattern = r'```json\s*(\[.*?\])\s*```'
             match = re.search(json_block_pattern, response_text, re.DOTALL | re.IGNORECASE)
             
             if match:
                 json_str = match.group(1)
-                logger.info("Found JSON in code block")
-                return json.loads(json_str)
+                logger.info("Found JSON in code block, parsing...")
+                try:
+                    parsed_data = json.loads(json_str)
+                    logger.info(f"Successfully parsed JSON from code block: {len(parsed_data) if isinstance(parsed_data, list) else 1} items")
+                    return parsed_data
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse JSON from code block: {e}")
+                    # Continue to other patterns
             
             # Pattern 2: Look for standalone JSON array anywhere in the text
+            logger.info("Searching for standalone JSON arrays in response text")
             json_array_pattern = r'\[(?:[^[\]]|(?:\[[^\]]*\]))*\]'
             matches = re.findall(json_array_pattern, response_text, re.DOTALL)
             
-            for match in matches:
+            logger.info(f"Found {len(matches)} potential JSON arrays")
+            for i, match in enumerate(matches):
                 try:
+                    logger.debug(f"Attempting to parse JSON array {i+1}: {match[:100]}...")
                     # Try to parse each potential JSON array
                     parsed = json.loads(match)
                     # Verify it's a list of objects with expected structure
                     if isinstance(parsed, list) and len(parsed) > 0:
                         first_item = parsed[0]
                         if isinstance(first_item, dict) and 'id' in first_item and 'sentiment' in first_item:
-                            logger.info("Found valid JSON array in text")
+                            logger.info(f"Found valid JSON array in text (pattern {i+1}): {len(parsed)} items")
                             return parsed
-                except json.JSONDecodeError:
+                        else:
+                            logger.debug(f"JSON array {i+1} doesn't have expected structure: keys={list(first_item.keys()) if isinstance(first_item, dict) else type(first_item)}")
+                except json.JSONDecodeError as e:
+                    logger.debug(f"Failed to parse JSON array {i+1}: {e}")
                     continue
             
             # Pattern 3: Try to extract JSON from structured text response
             # Look for patterns like: "id": "...", "sentiment": "...", etc.
             logger.warning("Could not extract JSON array from response, attempting manual parsing")
-            return self._manual_parse_sentiment_response(response_text)
+            logger.debug(f"Response text that failed parsing (first 1000 chars): {response_text[:1000]}")
+            
+            manual_results = self._manual_parse_sentiment_response(response_text)
+            if manual_results:
+                logger.info(f"Manual parsing successful: {len(manual_results)} items extracted")
+                return manual_results
+            else:
+                logger.error("All parsing methods failed - no sentiment data could be extracted")
+                return None
             
         except Exception as e:
             logger.error(f"Error extracting JSON from response: {str(e)}")
@@ -136,7 +218,7 @@ class SentimentAnalysisService:
     
     async def _make_api_request(self, request_data: Dict[str, Any]) -> Optional[str]:
         """
-        Make HTTP request to sentiment analysis API with retry logic.
+        Make HTTP request to sentiment analysis API with circuit breaker and exponential backoff.
         
         Args:
             request_data: Request payload for the API
@@ -144,14 +226,19 @@ class SentimentAnalysisService:
         Returns:
             Response text or None if request fails
         """
+        # Check circuit breaker state
+        if not self.circuit_breaker.is_available():
+            logger.warning(f"Circuit breaker is {self.circuit_breaker.state.value}, skipping sentiment analysis request")
+            return None
+        
         for attempt in range(self.max_retries):
             try:
-                # Configure httpx client with better settings
+                # Configure httpx client with improved timeout settings
                 timeout_config = httpx.Timeout(
-                    connect=10.0,    # Connection timeout
-                    read=120.0,      # Read timeout for AI processing
-                    write=10.0,      # Write timeout
-                    pool=10.0        # Pool timeout
+                    connect=float(self.connect_timeout),    # Connection timeout
+                    read=float(self.read_timeout),          # Read timeout for AI processing (reduced)
+                    write=10.0,                             # Write timeout
+                    pool=10.0                               # Pool timeout
                 )
                 
                 # Configure client with SSL and connection settings
@@ -164,7 +251,14 @@ class SentimentAnalysisService:
                         max_connections=10
                     )
                 ) as client:
+                    # Calculate exponential backoff delay for this attempt
+                    if attempt > 0:
+                        backoff_delay = self.retry_delay * (2 ** (attempt - 1))  # Exponential backoff
+                        logger.info(f"Waiting {backoff_delay:.2f}s before retry {attempt + 1}")
+                        await asyncio.sleep(backoff_delay)
+                    
                     logger.info(f"Making sentiment analysis API request (attempt {attempt + 1}/{self.max_retries})")
+                    logger.debug(f"Circuit breaker state: {self.circuit_breaker.state.value}")
                     logger.debug(f"Request URL: {self.api_url}")
                     logger.debug(f"Request headers: {dict(self.headers)}")
                     logger.debug(f"Request data: {request_data}")
@@ -184,18 +278,32 @@ class SentimentAnalysisService:
                     response_json = response.json()
                     response_text = response_json.get('text', '')
                     
+                    # Add comprehensive logging to debug response format
+                    logger.info(f"API Response Status: {response.status_code}")
+                    logger.info(f"API Response JSON Keys: {list(response_json.keys())}")
+                    logger.debug(f"Full API Response JSON: {json.dumps(response_json, indent=2)}")
+                    
                     if not response_text:
                         logger.warning("API response does not contain 'text' field")
+                        logger.warning(f"Available response keys: {list(response_json.keys())}")
                         logger.debug(f"Full response JSON: {response_json}")
+                        # This is still considered a successful response for circuit breaker
+                        self.circuit_breaker.record_success()
                         return None
                     
-                    logger.info(f"Sentiment analysis API request successful, response length: {len(response_text)}")
+                    logger.info(f"Sentiment analysis API request successful, response text length: {len(response_text)}")
+                    logger.debug(f"Raw response text content: {response_text[:500]}..." if len(response_text) > 500 else response_text)
+                    
+                    # Record success in circuit breaker
+                    self.circuit_breaker.record_success()
                     return response_text
                     
             except httpx.TimeoutException as e:
                 logger.warning(f"API request timeout (attempt {attempt + 1}/{self.max_retries}): {str(e)}")
-                if attempt < self.max_retries - 1:
-                    await asyncio.sleep(self.retry_delay * (attempt + 1))
+                self.circuit_breaker.record_failure()
+                
+                if attempt >= self.max_retries - 1:
+                    break
                 
             except httpx.HTTPStatusError as e:
                 error_details = ""
@@ -207,21 +315,26 @@ class SentimentAnalysisService:
                 logger.error(f"API request failed with status {e.response.status_code}: {error_details}")
                 logger.error(f"Response headers: {dict(e.response.headers)}")
                 
-                if e.response.status_code >= 500 and attempt < self.max_retries - 1:
-                    # Retry on server errors
-                    logger.info(f"Retrying in {self.retry_delay * (attempt + 1)} seconds...")
-                    await asyncio.sleep(self.retry_delay * (attempt + 1))
+                # Only record as failure for 5xx errors (server issues)
+                if e.response.status_code >= 500:
+                    self.circuit_breaker.record_failure()
+                    
+                    if attempt >= self.max_retries - 1:
+                        break
                 else:
+                    # Client errors (4xx) don't trigger circuit breaker
+                    logger.error(f"Client error {e.response.status_code}, not retrying")
                     return None
                 
             except Exception as e:
                 logger.error(f"Unexpected error in API request (attempt {attempt + 1}/{self.max_retries}): {str(e)}")
                 logger.error(f"Error type: {type(e).__name__}")
-                if attempt < self.max_retries - 1:
-                    logger.info(f"Retrying in {self.retry_delay * (attempt + 1)} seconds...")
-                    await asyncio.sleep(self.retry_delay * (attempt + 1))
+                self.circuit_breaker.record_failure()
+                
+                if attempt >= self.max_retries - 1:
+                    break
         
-        logger.error("All API request attempts failed")
+        logger.error(f"All API request attempts failed. Circuit breaker state: {self.circuit_breaker.state.value}")
         return None
     
     def _format_request_data(self, records: List[Dict[str, Any]]) -> Dict[str, Any]:

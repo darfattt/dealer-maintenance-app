@@ -10,6 +10,13 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+# Import timezone utilities for proper Indonesian timezone formatting
+try:
+    from app.utils.timezone_utils import convert_utc_to_indonesia_for_display
+except ImportError:
+    # Fallback if timezone utils not available
+    convert_utc_to_indonesia_for_display = None
+
 # Import Indonesian timezone utility function
 def _get_indonesia_timezone_utc():
     """Get current Indonesian time as UTC for database storage"""
@@ -81,6 +88,19 @@ class CustomerSatisfactionRaw(Base):
     def __repr__(self):
         return f"<CustomerSatisfactionRaw(id={self.id}, no_tiket={self.no_tiket}, nama_konsumen={self.nama_konsumen})>"
     
+    def _format_datetime_indonesia(self, dt):
+        """Format datetime field with Indonesian timezone conversion"""
+        if dt is None:
+            return None
+        
+        # Convert UTC datetime to Indonesian timezone for display
+        if convert_utc_to_indonesia_for_display:
+            indonesia_dt = convert_utc_to_indonesia_for_display(dt)
+            return indonesia_dt.isoformat() if indonesia_dt else None
+        else:
+            # Fallback to original format if timezone utils not available
+            return dt.isoformat()
+    
     def to_dict(self):
         """Convert customer satisfaction raw data to dictionary"""
         return {
@@ -120,13 +140,13 @@ class CustomerSatisfactionRaw(Base):
             "sentiment_reasons": self.sentiment_reasons,
             "sentiment_suggestion": self.sentiment_suggestion,
             "sentiment_themes": self.sentiment_themes,
-            "sentiment_analyzed_at": self.sentiment_analyzed_at.isoformat() if self.sentiment_analyzed_at else None,
+            "sentiment_analyzed_at": self._format_datetime_indonesia(self.sentiment_analyzed_at),
             "sentiment_batch_id": str(self.sentiment_batch_id) if self.sentiment_batch_id else None,
             # Audit fields
             "created_by": self.created_by,
-            "created_date": self.created_date.isoformat() if self.created_date else None,
+            "created_date": self._format_datetime_indonesia(self.created_date),
             "last_modified_by": self.last_modified_by,
-            "last_modified_date": self.last_modified_date.isoformat() if self.last_modified_date else None,
+            "last_modified_date": self._format_datetime_indonesia(self.last_modified_date),
         }
 
 
@@ -162,6 +182,19 @@ class CustomerSatisfactionUploadTracker(Base):
     def __repr__(self):
         return f"<CustomerSatisfactionUploadTracker(id={self.id}, file_name={self.file_name}, status={self.upload_status})>"
     
+    def _format_datetime_indonesia(self, dt):
+        """Format datetime field with Indonesian timezone conversion"""
+        if dt is None:
+            return None
+        
+        # Convert UTC datetime to Indonesian timezone for display
+        if convert_utc_to_indonesia_for_display:
+            indonesia_dt = convert_utc_to_indonesia_for_display(dt)
+            return indonesia_dt.isoformat() if indonesia_dt else None
+        else:
+            # Fallback to original format if timezone utils not available
+            return dt.isoformat()
+    
     def to_dict(self):
         """Convert upload tracker to dictionary"""
         return {
@@ -174,6 +207,6 @@ class CustomerSatisfactionUploadTracker(Base):
             "upload_status": self.upload_status,
             "error_message": self.error_message,
             "uploaded_by": self.uploaded_by,
-            "upload_date": self.upload_date.isoformat() if self.upload_date else None,
-            "completed_date": self.completed_date.isoformat() if self.completed_date else None,
+            "upload_date": self._format_datetime_indonesia(self.upload_date),
+            "completed_date": self._format_datetime_indonesia(self.completed_date),
         }

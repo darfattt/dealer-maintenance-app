@@ -682,15 +682,20 @@ class CustomerSatisfactionController:
                 }
             )
             
-            # Trigger background sentiment analysis for successful uploads
+            # Trigger background sentiment analysis for successful uploads (completely non-blocking)
             if successful_count > 0:
                 try:
-                    asyncio.create_task(
-                        self._background_sentiment_analysis(str(tracker.id))
+                    # Create a completely isolated background task that cannot affect the upload response
+                    task = asyncio.create_task(
+                        self._safe_background_sentiment_analysis(str(tracker.id))
                     )
+                    # Don't await the task - let it run completely independently
+                    task.add_done_callback(lambda t: self._log_background_task_completion(t, str(tracker.id)))
                     logger.info(f"Started background sentiment analysis for upload batch {tracker.id}")
                 except Exception as bg_error:
-                    logger.warning(f"Failed to start background sentiment analysis: {str(bg_error)}")
+                    # Even task creation failures should not affect file upload success
+                    logger.warning(f"Failed to start background sentiment analysis (non-blocking): {str(bg_error)}")
+                    logger.info("File upload completed successfully despite sentiment analysis startup failure")
             
             return response
             
@@ -1031,6 +1036,35 @@ class CustomerSatisfactionController:
     
     # Sentiment Analysis Methods
     
+    def _log_background_task_completion(self, task: asyncio.Task, upload_batch_id: str) -> None:
+        """
+        Log the completion of background sentiment analysis task
+        
+        Args:
+            task: The completed asyncio task
+            upload_batch_id: UUID of the upload batch that was analyzed
+        """
+        try:
+            if task.exception():
+                logger.error(f"Background sentiment analysis failed for batch {upload_batch_id}: {str(task.exception())}")
+            else:
+                logger.info(f"Background sentiment analysis completed successfully for batch {upload_batch_id}")
+        except Exception as e:
+            logger.error(f"Error logging background task completion for batch {upload_batch_id}: {str(e)}")
+
+    async def _safe_background_sentiment_analysis(self, upload_batch_id: str) -> None:
+        """
+        Safe wrapper for background sentiment analysis that catches all exceptions
+        
+        Args:
+            upload_batch_id: UUID of the upload batch to analyze
+        """
+        try:
+            await self._background_sentiment_analysis(upload_batch_id)
+        except Exception as e:
+            # Catch all exceptions to prevent them from bubbling up
+            logger.error(f"Safe wrapper caught error in background sentiment analysis for batch {upload_batch_id}: {str(e)}", exc_info=True)
+
     async def _background_sentiment_analysis(self, upload_batch_id: str) -> None:
         """
         Background task to perform sentiment analysis on uploaded records
@@ -1064,26 +1098,36 @@ class CustomerSatisfactionController:
                 logger.info(f"Processing sentiment analysis batch {i//batch_size + 1} with {len(batch)} records")
                 
                 # Analyze sentiments for this batch
-                sentiment_results, errors = await self.sentiment_service.analyze_sentiments(batch)
-                
-                if sentiment_results:
-                    # Update database with results
-                    update_stats = self.repository.bulk_update_sentiment_analysis(
-                        sentiment_results, 
-                        batch_id=batch_id
-                    )
+                try:
+                    sentiment_results, errors = await self.sentiment_service.analyze_sentiments(batch)
                     
-                    total_successful += update_stats["updated_count"]
-                    total_failed += update_stats["failed_count"]
-                else:
-                    logger.warning(f"No sentiment results for batch {i//batch_size + 1}")
+                    if sentiment_results:
+                        # Update database with results
+                        update_stats = self.repository.bulk_update_sentiment_analysis(
+                            sentiment_results, 
+                            batch_id=batch_id
+                        )
+                        
+                        total_successful += update_stats["updated_count"]
+                        total_failed += update_stats["failed_count"]
+                        
+                        if errors:
+                            logger.warning(f"Batch {i//batch_size + 1} had {len(errors)} errors: {errors[:3]}")  # Log first 3 errors
+                    else:
+                        logger.warning(f"No sentiment results for batch {i//batch_size + 1}")
+                        if errors:
+                            logger.error(f"Sentiment analysis errors for batch {i//batch_size + 1}: {errors[:3]}")  # Log first 3 errors
+                        total_failed += len(batch)
+                        
+                except Exception as batch_error:
+                    logger.error(f"Unexpected error processing sentiment analysis batch {i//batch_size + 1}: {str(batch_error)}")
                     total_failed += len(batch)
                 
                 total_processed += len(batch)
                 
                 # Small delay between batches to be respectful to the API
                 if i + batch_size < len(unanalyzed_records):
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(2)  # Increased delay to reduce API pressure
             
             logger.info(f"Background sentiment analysis completed for batch {upload_batch_id}: "
                        f"{total_successful} successful, {total_failed} failed, {total_processed} total")

@@ -36,7 +36,8 @@ auth_middleware = AuthMiddleware(
 
 proxy_middleware = ProxyMiddleware(
     service_routes=settings.get_service_routes(),
-    timeout=settings.request_timeout
+    timeout=settings.request_timeout,
+    file_upload_timeout=settings.file_upload_timeout
 )
 
 logging_middleware = LoggingMiddleware()

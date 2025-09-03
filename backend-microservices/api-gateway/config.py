@@ -40,8 +40,9 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 100
     rate_limit_window: int = 60  # seconds
     
-    # Timeout Configuration
-    request_timeout: int = 30  # seconds
+    # Timeout Configuration - Environment Configurable
+    request_timeout: int = Field(default=120, env="API_GATEWAY_REQUEST_TIMEOUT")  # Increased for file uploads
+    file_upload_timeout: int = Field(default=300, env="API_GATEWAY_FILE_UPLOAD_TIMEOUT")  # 5 minutes for large files
     
     class Config:
         env_file = ".env"

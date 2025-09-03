@@ -4,6 +4,7 @@ Configuration settings for the customer service
 
 import os
 from typing import List
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -37,6 +38,26 @@ class Settings(BaseSettings):
     # Fonnte API Configuration
     fonnte_default_api_url: str = "https://api.fonnte.com/send"
     fonnte_timeout: int = 30
+    
+    # Sentiment Analysis API Configuration - Environment Configurable
+    sentiment_api_url: str = Field(
+        default="https://ai.daya-group.co.id:8090/api/v1/prediction/f482750b-b270-4515-8e91-c36d1c215e0b",
+        env="SENTIMENT_API_URL"
+    )
+    sentiment_api_token: str = Field(
+        default="VQF6fIutCf5Md2s7MR5qiJmvAoGJe6jynNGWydXHxyI",
+        env="SENTIMENT_API_TOKEN"
+    )
+    sentiment_api_timeout: int = Field(default=60, env="SENTIMENT_API_TIMEOUT")  # Reduced from 120s to 60s
+    sentiment_api_max_retries: int = Field(default=3, env="SENTIMENT_API_MAX_RETRIES")
+    sentiment_api_retry_delay: float = Field(default=2.0, env="SENTIMENT_API_RETRY_DELAY")
+    sentiment_api_connect_timeout: int = Field(default=10, env="SENTIMENT_API_CONNECT_TIMEOUT")
+    sentiment_api_read_timeout: int = Field(default=60, env="SENTIMENT_API_READ_TIMEOUT")
+    
+    # Circuit Breaker Configuration for Sentiment Analysis
+    sentiment_circuit_breaker_failure_threshold: int = Field(default=5, env="SENTIMENT_CIRCUIT_BREAKER_FAILURE_THRESHOLD")
+    sentiment_circuit_breaker_timeout: int = Field(default=300, env="SENTIMENT_CIRCUIT_BREAKER_TIMEOUT")  # 5 minutes
+    sentiment_circuit_breaker_expected_exception: bool = Field(default=True, env="SENTIMENT_CIRCUIT_BREAKER_EXPECTED_EXCEPTION")
     
     # Rate limiting
     request_timeout: int = 30
