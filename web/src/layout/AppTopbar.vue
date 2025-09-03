@@ -38,8 +38,8 @@ const handleLogout = async () => {
             <button class="layout-menu-button layout-topbar-action" @click="toggleMenu">
                 <i class="pi pi-bars"></i>
             </button>
-            <!-- <router-link to="/" class="layout-topbar-logo">
-                <svg viewBox="0 0 54 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <router-link to="/" class="layout-topbar-logo">
+                <!-- <svg viewBox="0 0 54 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
                         fill-rule="evenodd"
                         clip-rule="evenodd"
@@ -55,10 +55,11 @@ const handleLogout = async () => {
                             fill="var(--primary-color)"
                         />
                     </g>
-                </svg>
+                </svg> -->
+                <img src="/assets/images/logo-transparent.png" alt="Logo" class="w-16 shrink-0 mx-auto" />
 
                 <span></span>
-            </router-link> -->
+            </router-link> 
         </div>
 
         <div class="layout-topbar-actions">
