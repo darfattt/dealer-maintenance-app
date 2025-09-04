@@ -221,9 +221,9 @@ const loadThemesData = async () => {
 
         // Use dealerId prop or fall back to auth store logic
         if (props.dealerId) {
-            apiFilters.dealerId = props.dealerId;
+            apiFilters.no_ahass = props.dealerId;
         } else if (authStore.userRole === 'DEALER_USER' && authStore.userDealerId) {
-            apiFilters.dealerId = authStore.userDealerId;
+            apiFilters.no_ahass = authStore.userDealerId;
         }
 
         const response = await CustomerService.getSentimentThemesStatistics(apiFilters);

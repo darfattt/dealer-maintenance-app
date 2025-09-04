@@ -319,7 +319,7 @@ onMounted(() => {
                 </DataTable>
 
                 <!-- Pagination -->
-                <Paginator v-if="totalRecords > pageSize" :first="currentPage * pageSize" :rows="pageSize" :totalRecords="totalRecords" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
+                <Paginator :first="currentPage * pageSize" :rows="pageSize" :totalRecords="totalRecords" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
             </template>
         </Card>
     </div>

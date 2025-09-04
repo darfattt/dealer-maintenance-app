@@ -90,7 +90,7 @@ def get_current_user(
             )
         
         # For dealer users, dealer_id is required
-        if role in ["DEALER_ADMIN", "DEALER_USER"] and not dealer_id:
+        if role in ["DEALER_USER"] and not dealer_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Dealer ID required for dealer users",
