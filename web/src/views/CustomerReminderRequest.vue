@@ -18,7 +18,7 @@ import DeliveryStatusChart from '@/components/dashboard/DeliveryStatusChart.vue'
 import ReminderTargetChart from '@/components/dashboard/ReminderTargetChart.vue';
 import ReminderTypeStatusChart from '@/components/dashboard/ReminderTypeStatusChart.vue';
 import Top5TipeUnitWidget from '@/components/dashboard/Top5TipeUnitWidget.vue';
-import { formatIndonesiaDate, formatDateForAPI, getCurrentMonthIndonesia,formatIndonesiaTime } from '@/utils/dateFormatter';
+import { formatIndonesiaDate, formatDateForAPI, getCurrentMonthIndonesia, formatIndonesiaTime } from '@/utils/dateFormatter';
 
 const authStore = useAuthStore();
 
@@ -107,13 +107,8 @@ const selectedReminder = ref(null);
 const loadStats = async () => {
     statsLoading.value = true;
     try {
-        const response = await CustomerService.getReminderStats(
-            formattedDateFrom.value,
-            formattedDateTo.value,
-            selectedDealer.value,
-            selectedReminderTarget.value
-        );
-        
+        const response = await CustomerService.getReminderStats(formattedDateFrom.value, formattedDateTo.value, selectedDealer.value, selectedReminderTarget.value);
+
         if (response.success && response.data) {
             const data = response.data;
             stats.value = {
@@ -155,7 +150,7 @@ const loadReminders = async () => {
             reminderTarget: selectedReminderTarget.value || null,
             dealerId: selectedDealer.value
         });
-        
+
         if (response.success && response.data) {
             reminders.value = response.data.items || [];
             // Update pagination state with response data
@@ -299,19 +294,27 @@ const closeDetailsDialog = () => {
 };
 
 // Watch for filter changes - includes selectedDealer for SUPER_ADMIN dealer switching
-watch([formattedDateFrom, formattedDateTo, selectedReminderTarget, selectedDealer], () => {
-    pagination.page = 1; // Reset to first page when filters change
-    loadStats();
-    loadReminders();
-}, { deep: true });
+watch(
+    [formattedDateFrom, formattedDateTo, selectedReminderTarget, selectedDealer],
+    () => {
+        pagination.page = 1; // Reset to first page when filters change
+        loadStats();
+        loadReminders();
+    },
+    { deep: true }
+);
 
 // Watch for dealers to be loaded and set initial dealer for non-DEALER_USER
-watch(dealerOptions, (newDealers) => {
-    if (newDealers.length > 0 && !selectedDealer.value && authStore.userRole !== 'DEALER_USER') {
-        // Set first dealer as default for non-DEALER_USER roles
-        selectedDealer.value = newDealers[0].value;
-    }
-}, { immediate: true });
+watch(
+    dealerOptions,
+    (newDealers) => {
+        if (newDealers.length > 0 && !selectedDealer.value && authStore.userRole !== 'DEALER_USER') {
+            // Set first dealer as default for non-DEALER_USER roles
+            selectedDealer.value = newDealers[0].value;
+        }
+    },
+    { immediate: true }
+);
 
 // Initial load
 onMounted(() => {
@@ -333,7 +336,7 @@ onMounted(() => {
                     :options="dealerOptions"
                     optionLabel="label"
                     optionValue="value"
-                    :placeholder="dealersLoading ? 'Loading dealers...' : (dealersError ? 'Error loading dealers' : 'Select Dealer')"
+                    :placeholder="dealersLoading ? 'Loading dealers...' : dealersError ? 'Error loading dealers' : 'Select Dealer'"
                     :loading="dealersLoading"
                     :disabled="dealersLoading || dealersError"
                     class="w-48"
@@ -343,34 +346,14 @@ onMounted(() => {
             <!-- Reminder Target Filter -->
             <div class="flex items-center space-x-2">
                 <label for="target-filter" class="text-sm font-medium">Target:</label>
-                <Dropdown
-                    id="target-filter"
-                    v-model="selectedReminderTarget"
-                    :options="reminderTargetOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="All Targets"
-                    class="w-44"
-                />
+                <Dropdown id="target-filter" v-model="selectedReminderTarget" :options="reminderTargetOptions" optionLabel="label" optionValue="value" placeholder="All Targets" class="w-44" />
             </div>
 
             <!-- Date Range Filters -->
             <div class="flex items-center space-x-2">
-                <Calendar
-                    v-model="selectedDateFrom"
-                    dateFormat="dd-mm-yy"
-                    placeholder="From Date"
-                    class="w-36"
-                    showIcon
-                />
+                <Calendar v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" class="w-36" showIcon />
                 <span class="text-sm text-muted-color">to</span>
-                <Calendar
-                    v-model="selectedDateTo"
-                    dateFormat="dd-mm-yy"
-                    placeholder="To Date"
-                    class="w-36"
-                    showIcon
-                />
+                <Calendar v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" class="w-36" showIcon />
             </div>
         </div>
 
@@ -381,29 +364,18 @@ onMounted(() => {
                 :stats="stats" 
                 :loading="statsLoading"
             /> -->
-            
+
             <!-- Reminder Target Chart -->
             <!-- <ReminderTargetChart 
                 :stats="stats" 
                 :loading="statsLoading"
             /> -->
-            
+
             <!-- Reminder Type Status Chart -->
-            <ReminderTypeStatusChart 
-                :date-from="formattedDateFrom"
-                :date-to="formattedDateTo"
-                :dealer-id="selectedDealer"
-                :reminder-target="selectedReminderTarget"
-                :loading="statsLoading"
-            />
-            
+            <ReminderTypeStatusChart :date-from="formattedDateFrom" :date-to="formattedDateTo" :dealer-id="selectedDealer" :reminder-target="selectedReminderTarget" :loading="statsLoading" />
+
             <!-- Top 5 Vehicle Types Widget -->
-            <Top5TipeUnitWidget 
-                :date-from="formattedDateFrom"
-                :date-to="formattedDateTo"
-                :dealer-id="selectedDealer"
-                :reminder-target="selectedReminderTarget"
-            />
+            <Top5TipeUnitWidget :date-from="formattedDateFrom" :date-to="formattedDateTo" :dealer-id="selectedDealer" :reminder-target="selectedReminderTarget" />
         </div>
 
         <!-- Reminder Target Breakdown
@@ -426,13 +398,7 @@ onMounted(() => {
                 <h2 class="text-xl font-bold text-surface-900">Customer Reminder Requests</h2>
             </template>
             <template #content>
-                <DataTable
-                    :value="reminders"
-                    :loading="loading"
-                    responsiveLayout="scroll"
-                    :paginator="false"
-                    class="p-datatable-customers"
-                >
+                <DataTable :value="reminders" :loading="loading" responsiveLayout="scroll" :paginator="false" class="p-datatable-customers">
                     <Column field="request_date" header="Tanggal Reminder">
                         <template #body="slotProps">
                             {{ formatDate(slotProps.data.request_date) }}
@@ -449,22 +415,16 @@ onMounted(() => {
                     <!-- <Column field="tipe_unit" header="Unit Type" /> -->
                     <Column field="whatsapp_status" header="Status WhatsApp">
                         <template #body="slotProps">
-                            <Tag 
-                                :value="getStatusLabel(slotProps.data.whatsapp_status)" 
-                                :severity="getStatusSeverity(slotProps.data.whatsapp_status)"
-                            />
+                            <Tag :value="getStatusLabel(slotProps.data.whatsapp_status)" :severity="getStatusSeverity(slotProps.data.whatsapp_status)" />
                         </template>
                     </Column>
                     <Column field="reminder_target" header="Reminder Target">
                         <template #body="slotProps">
-                            <Tag 
-                                :value="getReminderTargetLabel(slotProps.data.reminder_target)" 
-                                :severity="getReminderTargetSeverity(slotProps.data.reminder_target)"
-                            />
+                            <Tag :value="getReminderTargetLabel(slotProps.data.reminder_target)" :severity="getReminderTargetSeverity(slotProps.data.reminder_target)" />
                         </template>
                     </Column>
                     <!-- <Column field="reminder_type" header="Reminder Type" /> -->
-                    
+
                     <Column header="Actions" :exportable="false" class="action-column">
                         <template #body="slotProps">
                             <div class="flex gap-2">
@@ -477,18 +437,12 @@ onMounted(() => {
                                     severity="info"
                                     @click.stop
                                 />
-                                
+
                                 <!-- Details Icon -->
-                                <Button
-                                    icon="pi pi-info-circle"
-                                    class="p-button-rounded p-button-text p-button-sm"
-                                    severity="secondary"
-                                    @click="showReminderDetails(slotProps.data)"
-                                />
+                                <Button icon="pi pi-info-circle" class="p-button-rounded p-button-text p-button-sm" severity="secondary" @click="showReminderDetails(slotProps.data)" />
                             </div>
                         </template>
                     </Column>
-                    
                 </DataTable>
 
                 <!-- Pagination -->
@@ -505,13 +459,7 @@ onMounted(() => {
         </Card>
 
         <!-- Details Dialog -->
-        <Dialog 
-            v-model:visible="showDetailsDialog" 
-            :header="'Reminder Details'"
-            modal 
-            :style="{ width: '50vw' }"
-            :breakpoints="{ '960px': '75vw', '641px': '90vw' }"
-        >
+        <Dialog v-model:visible="showDetailsDialog" :header="'Reminder Details'" modal :style="{ width: '50vw' }" :breakpoints="{ '960px': '75vw', '641px': '90vw' }">
             <div v-if="selectedReminder" class="space-y-4">
                 <!-- Basic Information -->
                 <div class="grid grid-cols-2 gap-4">
@@ -541,10 +489,7 @@ onMounted(() => {
                     <div>
                         <label class="font-medium text-surface-700 dark:text-surface-300">Reminder Target:</label>
                         <p class="text-surface-900 dark:text-surface-100">
-                            <Tag 
-                                :value="getReminderTargetLabel(selectedReminder.reminder_target)" 
-                                :severity="getReminderTargetSeverity(selectedReminder.reminder_target)"
-                            />
+                            <Tag :value="getReminderTargetLabel(selectedReminder.reminder_target)" :severity="getReminderTargetSeverity(selectedReminder.reminder_target)" />
                         </p>
                     </div>
                     <div>
@@ -558,10 +503,7 @@ onMounted(() => {
                     <div>
                         <label class="font-medium text-surface-700 dark:text-surface-300">WhatsApp Status:</label>
                         <p class="text-surface-900 dark:text-surface-100">
-                            <Tag 
-                                :value="getStatusLabel(selectedReminder.whatsapp_status)" 
-                                :severity="getStatusSeverity(selectedReminder.whatsapp_status)"
-                            />
+                            <Tag :value="getStatusLabel(selectedReminder.whatsapp_status)" :severity="getStatusSeverity(selectedReminder.whatsapp_status)" />
                         </p>
                     </div>
                     <div>
@@ -615,7 +557,7 @@ onMounted(() => {
                     </div>
                 </div>
             </div>
-            
+
             <template #footer>
                 <Button label="Close" @click="closeDetailsDialog" />
             </template>
@@ -645,7 +587,7 @@ onMounted(() => {
     .grid.md\:grid-cols-4 {
         grid-template-columns: repeat(1, minmax(0, 1fr));
     }
-    
+
     .grid.md\:grid-cols-3 {
         grid-template-columns: repeat(1, minmax(0, 1fr));
     }

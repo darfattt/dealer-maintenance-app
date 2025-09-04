@@ -142,10 +142,10 @@ const fetchUnitInboundData = async (page = 1, perPage = rows.value) => {
 // Status styling
 const getStatusClass = (status) => {
     const statusClasses = {
-        'Completed': 'bg-green-100 text-green-800',
+        Completed: 'bg-green-100 text-green-800',
         'In Progress': 'bg-blue-100 text-blue-800',
-        'Pending': 'bg-yellow-100 text-yellow-800',
-        'Cancelled': 'bg-red-100 text-red-800'
+        Pending: 'bg-yellow-100 text-yellow-800',
+        Cancelled: 'bg-red-100 text-red-800'
     };
     return statusClasses[status] || 'bg-gray-100 text-gray-800';
 };
@@ -159,11 +159,15 @@ const onPageChange = (event) => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    first.value = 0;
-    currentPage.value = 1;
-    fetchUnitInboundData();
-}, { immediate: false });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        first.value = 0;
+        currentPage.value = 1;
+        fetchUnitInboundData();
+    },
+    { immediate: false }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -178,25 +182,13 @@ onMounted(() => {
                 <span class="text-sm font-bold uppercase">DATA HISTORY</span>
                 <div class="flex items-center space-x-2">
                     <!-- Filter Button (placeholder for future implementation) -->
-                    <Button
-                        icon="pi pi-filter"
-                        size="small"
-                        text
-                        severity="secondary"
-                        class="p-1"
-                    />
+                    <Button icon="pi pi-filter" size="small" text severity="secondary" class="p-1" />
                     <!-- Export Button (placeholder for future implementation) -->
-                    <Button
-                        icon="pi pi-download"
-                        size="small"
-                        text
-                        severity="secondary"
-                        class="p-1"
-                    />
+                    <Button icon="pi pi-download" size="small" text severity="secondary" class="p-1" />
                 </div>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -205,16 +197,7 @@ onMounted(() => {
 
             <!-- Data Table -->
             <div v-if="!error" class="space-y-4">
-                <DataTable
-                    :value="unitInboundData"
-                    :loading="loading"
-                    :paginator="false"
-                    :rows="rows"
-                    :first="first"
-                    stripedRows
-                    size="small"
-                    class="text-xs"
-                >
+                <DataTable :value="unitInboundData" :loading="loading" :paginator="false" :rows="rows" :first="first" stripedRows size="small" class="text-xs">
                     <Column field="no" header="No" style="width: 60px">
                         <template #body="{ data }">
                             {{ data.no }}
@@ -225,8 +208,7 @@ onMounted(() => {
                     <Column field="no_invoice" header="No Invoice" style="width: 140px"></Column>
                     <Column field="status_shipping_list" header="Status Shipping List" style="width: 150px">
                         <template #body="{ data }">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                  :class="getStatusClass(data.status_shipping_list)">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium" :class="getStatusClass(data.status_shipping_list)">
                                 {{ data.status_shipping_list }}
                             </span>
                         </template>
@@ -243,9 +225,7 @@ onMounted(() => {
 
                 <!-- Custom Pagination -->
                 <div class="flex justify-between items-center pt-4 border-t border-surface-200">
-                    <div class="text-xs text-muted-color">
-                        Showing {{ first + 1 }} to {{ Math.min(first + rows, totalRecords) }} of {{ totalRecords }} entries
-                    </div>
+                    <div class="text-xs text-muted-color">Showing {{ first + 1 }} to {{ Math.min(first + rows, totalRecords) }} of {{ totalRecords }} entries</div>
                     <Paginator
                         :first="first"
                         :rows="rows"

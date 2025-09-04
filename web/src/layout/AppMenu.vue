@@ -29,9 +29,7 @@ const model = ref([
     },
     {
         label: 'AHASS',
-        items: [
-            { label: 'Sentiment Analysis', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' }
-        ]
+        items: [{ label: 'Sentiment Analysis', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' }]
     }
 ]);
 </script>

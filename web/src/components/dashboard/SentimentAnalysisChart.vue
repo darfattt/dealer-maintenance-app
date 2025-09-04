@@ -23,38 +23,38 @@ const chartOptions = ref({});
 // Computed properties
 const hasData = computed(() => {
     const stats = props.stats;
-    return stats && stats.total_analyzed_records  && stats.total_analyzed_records > 0 && stats.sentiment_distribution && stats.sentiment_distribution.length > 0;
+    return stats && stats.total_analyzed_records && stats.total_analyzed_records > 0 && stats.sentiment_distribution && stats.sentiment_distribution.length > 0;
 });
 
 const chartTitle = computed(() => {
-    const total = props.stats.total_analyzed_records || 0;
+    const total = props.stats?.total_analyzed_records || 0;
     return `Sentiment Analysis (${total} analyzed)`;
 });
 
 // Initialize chart configuration
 const initChart = () => {
     const stats = props.stats;
-    
-    if (!hasData.value) {
+
+    if (!hasData.value || !stats) {
         chartData.value = {};
         return;
     }
 
     const distribution = stats.sentiment_distribution || [];
-    
+
     // Prepare data for pie chart
     const labels = [];
     const data = [];
     const backgroundColor = [];
-    
+
     // Sort by percentage to maintain consistent order
     const sortedDistribution = [...distribution].sort((a, b) => b.percentage - a.percentage);
-    
-    sortedDistribution.forEach(item => {
+
+    sortedDistribution.forEach((item) => {
         if (item.sentiment && item.count > 0) {
             labels.push(item.sentiment);
             data.push(item.count); // Use count instead of percentage for better tooltip display
-            
+
             // Set colors based on sentiment
             switch (item.sentiment.toLowerCase()) {
                 case 'positive':
@@ -71,7 +71,7 @@ const initChart = () => {
             }
         }
     });
-    
+
     if (data.length === 0) {
         chartData.value = {};
         return;
@@ -79,16 +79,18 @@ const initChart = () => {
 
     chartData.value = {
         labels: labels,
-        datasets: [{
-            data: data,
-            backgroundColor: backgroundColor,
-            borderWidth: 2,
-            borderColor: '#ffffff'
-        }]
+        datasets: [
+            {
+                data: data,
+                backgroundColor: backgroundColor,
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }
+        ]
     };
 
     const totalCount = data.reduce((sum, val) => sum + val, 0);
-    
+
     chartOptions.value = {
         plugins: {
             legend: {
@@ -99,7 +101,7 @@ const initChart = () => {
                     font: {
                         size: 12
                     },
-                    generateLabels: function(chart) {
+                    generateLabels: function (chart) {
                         const data = chart.data;
                         if (data.labels.length && data.datasets.length) {
                             return data.labels.map((label, i) => {
@@ -107,7 +109,7 @@ const initChart = () => {
                                 const style = meta.controller.getStyle(i);
                                 const value = data.datasets[0].data[i];
                                 const percentage = totalCount > 0 ? ((value / totalCount) * 100).toFixed(1) : 0;
-                                
+
                                 return {
                                     text: `${label} (${percentage}%)`,
                                     fillStyle: style.backgroundColor,
@@ -125,7 +127,7 @@ const initChart = () => {
             },
             tooltip: {
                 callbacks: {
-                    label: function(context) {
+                    label: function (context) {
                         const value = context.parsed;
                         const percentage = totalCount > 0 ? ((value / totalCount) * 100).toFixed(1) : 0;
                         return `${context.label}: ${value} (${percentage}%)`;
@@ -151,7 +153,15 @@ const initChart = () => {
 };
 
 // Watch for stats changes
-watch(() => props.stats, initChart, { immediate: true, deep: true });
+watch(
+    () => props.stats,
+    () => {
+        if (props.stats) {
+            initChart();
+        }
+    },
+    { immediate: true, deep: true }
+);
 
 // Helper methods for styling
 const getSentimentCardClass = (sentiment) => {
@@ -195,7 +205,9 @@ const getSentimentSubTextClass = (sentiment) => {
 
 // Initialize on mount
 onMounted(() => {
-    initChart();
+    if (props.stats) {
+        initChart();
+    }
 });
 </script>
 
@@ -208,24 +220,17 @@ onMounted(() => {
             <div v-if="loading" class="flex justify-center items-center h-64">
                 <div class="text-surface-500 dark:text-surface-400">Loading chart data...</div>
             </div>
-            
+
             <div v-else-if="!hasData" class="flex flex-col items-center justify-center h-64">
                 <Message severity="info" :closable="false">
                     <template #default>
-                        <div class="text-surface-600 dark:text-surface-300">
-                            No sentiment analysis data available for the selected period
-                        </div>
+                        <div class="text-surface-600 dark:text-surface-300">No sentiment analysis data available for the selected period</div>
                     </template>
                 </Message>
             </div>
-            
+
             <div v-else class="chart-container h-64">
-                <Chart 
-                    type="doughnut" 
-                    :data="chartData" 
-                    :options="chartOptions"
-                    class="w-full h-full"
-                />
+                <Chart type="doughnut" :data="chartData" :options="chartOptions" class="w-full h-full" />
             </div>
 
             <!-- Summary Stats -->
@@ -253,7 +258,6 @@ onMounted(() => {
     </Card>
 </template>
 
-
 <style scoped>
 .sentiment-analysis-chart :deep(.p-card-body) {
     padding: 1.5rem;
@@ -272,7 +276,7 @@ onMounted(() => {
     .chart-container {
         height: 200px;
     }
-    
+
     .grid-cols-1.sm\\:grid-cols-3 {
         grid-template-columns: repeat(1, minmax(0, 1fr));
         gap: 0.5rem;

@@ -69,9 +69,13 @@ const fetchDocumentHandlingData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchDocumentHandlingData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchDocumentHandlingData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -84,11 +88,9 @@ onMounted(() => {
         <template #content>
             <!-- Total Records Info -->
             <div v-if="totalRecords > 0" class="flex justify-end mb-4">
-                <small class="text-muted-color">
-                    Total: {{ totalRecords }}
-                </small>
+                <small class="text-muted-color"> Total: {{ totalRecords }} </small>
             </div>
-            
+
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}
@@ -101,25 +103,19 @@ onMounted(() => {
                         {{ documentData.title }}
                     </h3>
                     <div class="relative inline-block">
-                        <div 
+                        <div
                             class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto"
-                            :style="{ 
+                            :style="{
                                 backgroundColor: documentData.color + '20',
-                                color: documentData.color 
+                                color: documentData.color
                             }"
                         >
                             {{ documentData.count }}
                         </div>
-                        <div 
-                            v-if="documentData.trend === 'up'"
-                            class="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-1"
-                        >
+                        <div v-if="documentData.trend === 'up'" class="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-1">
                             <i class="pi pi-arrow-up text-xs"></i>
                         </div>
-                        <div 
-                            v-else-if="documentData.trend === 'down'"
-                            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                        >
+                        <div v-else-if="documentData.trend === 'down'" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1">
                             <i class="pi pi-arrow-down text-xs"></i>
                         </div>
                     </div>

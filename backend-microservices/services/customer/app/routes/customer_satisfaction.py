@@ -659,6 +659,79 @@ async def get_sentiment_statistics(
 
 
 @router.get(
+    "/sentiment-themes/statistics",
+    summary="Get sentiment themes statistics",
+    description="Get statistics about sentiment themes with counts and percentages"
+)
+async def get_sentiment_themes_statistics(
+    dealer_id: str = Query(None, description="Filter by dealer ID"),
+    date_from: str = Query(None, description="Filter by analysis date from (YYYY-MM-DD format)"),
+    date_to: str = Query(None, description="Filter by analysis date to (YYYY-MM-DD format)"),
+    periode_utk_suspend: str = Query(None, description="Filter by periode untuk suspend"),
+    submit_review_date: str = Query(None, description="Filter by submit review date (partial match)"),
+    no_ahass: str = Query(None, description="Filter by No AHASS"),
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get sentiment themes statistics
+    
+    Returns comprehensive statistics about sentiment themes including:
+    - List of themes with counts and percentages
+    - Total themes count
+    - Total records with themes
+    - Top themes summary
+    
+    Themes are extracted from the sentiment_themes JSON field and aggregated
+    across all matching records. Supports robust JSON parsing with fallback
+    for comma-separated string format.
+    
+    Supports filtering by:
+    - Dealer ID
+    - Analysis date range
+    - Period for suspend
+    - Submit review date
+    - AHASS number
+    
+    Authentication: Requires Authorization: Bearer <token> header with valid JWT token
+    """
+    try:
+        # Create filters object
+        filters = CustomerSatisfactionFilters(
+            periode_utk_suspend=periode_utk_suspend,
+            submit_review_date=submit_review_date,
+            no_ahass=no_ahass,
+            date_from=date_from,
+            date_to=date_to,
+            page=1,
+            page_size=10  # Not used for statistics
+        )
+        
+        # Get sentiment themes statistics
+        controller = CustomerSatisfactionController(db)
+        result = controller.get_sentiment_themes_statistics(filters)
+        
+        if not result["success"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result["message"]
+            )
+        
+        logger.info(f"Retrieved sentiment themes statistics for user {current_user.email}")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving sentiment themes statistics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error while retrieving sentiment themes statistics"
+        )
+
+
+@router.get(
     "/sentiment-analysis/records/{sentiment}",
     response_model=CustomerSatisfactionListResponse,
     summary="Get records by sentiment",

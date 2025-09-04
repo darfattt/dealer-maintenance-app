@@ -34,15 +34,12 @@ const totalRecords = ref(0);
 const userDealers = ref([]); // For DEALER_USER role
 
 // Chart colors
-const chartColors = [
-    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
-    '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
-];
+const chartColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'];
 
 // Status mapping for unit inbound
 const statusMapping = {
-    '0': 'Belum Diterima',
-    '1': 'Sudah Diterima'
+    0: 'Belum Diterima',
+    1: 'Sudah Diterima'
 };
 
 // Computed properties
@@ -118,7 +115,7 @@ const fetchUnitInboundStatus = async () => {
             }
 
             // Prepare chart data - use status_label from API if available, otherwise use mapping
-            const mappedData = data.map(item => ({
+            const mappedData = data.map((item) => ({
                 status: item.status_label || statusMapping[item.status_shipping_list] || item.status_shipping_list || 'Unknown',
                 count: item.count,
                 originalStatus: item.status_shipping_list
@@ -126,7 +123,7 @@ const fetchUnitInboundStatus = async () => {
 
             // Group by mapped status (in case multiple original statuses map to the same label)
             const groupedData = mappedData.reduce((acc, item) => {
-                const existing = acc.find(x => x.status === item.status);
+                const existing = acc.find((x) => x.status === item.status);
                 if (existing) {
                     existing.count += item.count;
                 } else {
@@ -135,8 +132,8 @@ const fetchUnitInboundStatus = async () => {
                 return acc;
             }, []);
 
-            const labels = groupedData.map(item => item.status);
-            const values = groupedData.map(item => item.count);
+            const labels = groupedData.map((item) => item.status);
+            const values = groupedData.map((item) => item.count);
             const colors = chartColors.slice(0, groupedData.length);
 
             chartData.value = {
@@ -170,7 +167,7 @@ const fetchUnitInboundStatus = async () => {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 const label = context.label || '';
                                 const value = context.parsed.y;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -224,9 +221,13 @@ const fetchUnitInboundStatus = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchUnitInboundStatus();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchUnitInboundStatus();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(async () => {
@@ -253,12 +254,7 @@ onMounted(async () => {
                 <!-- Vertical Bar Chart -->
                 <div class="lg:col-span-3">
                     <div class="h-80 p-2">
-                        <Chart
-                            type="bar"
-                            :data="chartData"
-                            :options="chartOptions"
-                            class="h-full w-full"
-                        />
+                        <Chart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
                     </div>
                 </div>
 
@@ -266,16 +262,9 @@ onMounted(async () => {
                 <div class="lg:col-span-2 flex flex-col justify-center">
                     <h4 class="text-sm font-semibold mb-3 text-center text-surface-700">Status Distribution</h4>
                     <div class="space-y-2">
-                        <div
-                            v-for="(item, index) in legendItems"
-                            :key="index"
-                            class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-all duration-200 hover:shadow-sm"
-                        >
+                        <div v-for="(item, index) in legendItems" :key="index" class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-all duration-200 hover:shadow-sm">
                             <div class="flex items-center space-x-2">
-                                <div
-                                    class="w-4 h-4 rounded-full flex-shrink-0 shadow-sm"
-                                    :style="{ backgroundColor: item.color }"
-                                ></div>
+                                <div class="w-4 h-4 rounded-full flex-shrink-0 shadow-sm" :style="{ backgroundColor: item.color }"></div>
                                 <span class="font-medium text-xs text-surface-700 truncate">{{ item.label }}</span>
                             </div>
                             <div class="text-right ml-2">

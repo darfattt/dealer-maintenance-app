@@ -46,9 +46,9 @@ const fetchStatusProspectData = async () => {
             { status: 'Low', count: 96, color: '#FDE68A' }
         ];
 
-        const labels = dummyData.map(item => item.status);
-        const values = dummyData.map(item => item.count);
-        const colors = dummyData.map(item => item.color);
+        const labels = dummyData.map((item) => item.status);
+        const values = dummyData.map((item) => item.count);
+        const colors = dummyData.map((item) => item.color);
 
         chartData.value = {
             labels: labels,
@@ -73,7 +73,7 @@ const fetchStatusProspectData = async () => {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return `${context.label}: ${context.parsed.x} prospects`;
                         }
                     }
@@ -102,9 +102,13 @@ const fetchStatusProspectData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchStatusProspectData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchStatusProspectData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -122,12 +126,7 @@ onMounted(() => {
 
             <!-- Chart -->
             <div v-if="!error && Object.keys(chartData).length > 0" class="h-80">
-                <Chart
-                    type="bar"
-                    :data="chartData"
-                    :options="chartOptions"
-                    class="h-full"
-                />
+                <Chart type="bar" :data="chartData" :options="chartOptions" class="h-full" />
             </div>
 
             <!-- Loading State -->

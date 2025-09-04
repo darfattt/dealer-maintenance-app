@@ -103,7 +103,6 @@ const fetchSebaranData = async () => {
         await nextTick();
         console.log('Next tick completed, initializing map...');
         await initializeMap(L);
-
     } catch (err) {
         console.error('Error fetching sebaran data:', err);
         error.value = 'Failed to fetch distribution data: ' + err.message;
@@ -192,9 +191,13 @@ const initializeMap = async (L) => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchSebaranData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchSebaranData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -218,7 +221,7 @@ onUnmounted(() => {
                 <span class="text-sm font-bold uppercase">SEBARAN DATA PROSPECT</span>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -229,11 +232,7 @@ onUnmounted(() => {
             <div v-if="!loading" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <!-- Map -->
                 <div class="lg:col-span-2">
-                    <div
-                        ref="mapContainer"
-                        class="h-64 w-full rounded-lg border border-surface-200 relative"
-                        style="min-height: 300px;"
-                    >
+                    <div ref="mapContainer" class="h-64 w-full rounded-lg border border-surface-200 relative" style="min-height: 300px">
                         <!-- Error overlay -->
                         <div v-if="error" class="absolute inset-0 flex items-center justify-center bg-surface-50 rounded-lg">
                             <div class="text-center p-4">
@@ -248,25 +247,13 @@ onUnmounted(() => {
                 <!-- Legend -->
                 <div class="lg:col-span-1 flex flex-col justify-center">
                     <div class="space-y-3">
-                        <div
-                            v-for="(region, index) in regionData"
-                            :key="index"
-                            class="flex items-center justify-between p-2 rounded border border-surface-200"
-                        >
+                        <div v-for="(region, index) in regionData" :key="index" class="flex items-center justify-between p-2 rounded border border-surface-200">
                             <div class="flex items-center space-x-2">
-                                <div
-                                    class="w-4 h-4 rounded-full border-2 border-white"
-                                    :style="{ backgroundColor: region.color }"
-                                ></div>
+                                <div class="w-4 h-4 rounded-full border-2 border-white" :style="{ backgroundColor: region.color }"></div>
                                 <span class="text-xs font-medium">{{ region.name }}</span>
                             </div>
                             <div class="text-right">
-                                <div 
-                                    class="font-bold text-sm px-2 py-1 rounded text-white"
-                                    :style="{ backgroundColor: region.color }"
-                                >
-                                    {{ region.percentage }}%
-                                </div>
+                                <div class="font-bold text-sm px-2 py-1 rounded text-white" :style="{ backgroundColor: region.color }">{{ region.percentage }}%</div>
                             </div>
                         </div>
                     </div>

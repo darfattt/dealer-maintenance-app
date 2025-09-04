@@ -43,14 +43,13 @@ onMounted(() => {
 <template>
     <div class="space-y-6">
         <!-- Header -->
-        
 
         <!-- Content Card -->
         <Card>
             <template #content>
                 <!-- Loading State -->
                 <div v-if="loading" class="flex flex-col items-center justify-center py-12">
-                    <ProgressSpinner style="width: 50px; height: 50px;" strokeWidth="4" />
+                    <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
                     <p class="mt-4 text-surface-600">Loading Sentiment Analysis Tool...</p>
                 </div>
 
@@ -58,28 +57,13 @@ onMounted(() => {
                 <div v-else-if="iframeError" class="flex flex-col items-center justify-center py-12">
                     <i class="pi pi-exclamation-triangle text-4xl text-red-500 mb-4"></i>
                     <h3 class="text-lg font-semibold text-surface-900 mb-2">Unable to Load Sentiment Analysis</h3>
-                    <p class="text-surface-600 text-center mb-4">
-                        The sentiment analysis tool could not be loaded. Please check your internet connection and try again.
-                    </p>
-                    <button 
-                        class="p-button p-button-primary"
-                        @click="window.location.reload()"
-                    >
-                        Retry
-                    </button>
+                    <p class="text-surface-600 text-center mb-4">The sentiment analysis tool could not be loaded. Please check your internet connection and try again.</p>
+                    <button class="p-button p-button-primary" @click="window.location.reload()">Retry</button>
                 </div>
 
                 <!-- Iframe Content -->
-                <div v-else class="relative w-full" style="height: calc(100vh - 200px); min-height: 600px;">
-                    <iframe
-                        :src="sentimentUrl"
-                        class="w-full h-full border-0 rounded-lg shadow-sm"
-                        frameborder="0"
-                        allowfullscreen
-                        @load="onIframeLoad"
-                        @error="onIframeError"
-                        title="Sentiment Analysis Tool"
-                    />
+                <div v-else class="relative w-full" style="height: calc(100vh - 200px); min-height: 600px">
+                    <iframe :src="sentimentUrl" class="w-full h-full border-0 rounded-lg shadow-sm" frameborder="0" allowfullscreen @load="onIframeLoad" @error="onIframeError" title="Sentiment Analysis Tool" />
                 </div>
             </template>
         </Card>

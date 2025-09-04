@@ -1367,3 +1367,62 @@ class CustomerSatisfactionController:
                 "message": f"Internal server error while retrieving sentiment statistics: {str(e)}",
                 "data": None
             }
+    
+    def get_sentiment_themes_statistics(self, filters: CustomerSatisfactionFilters) -> Dict[str, Any]:
+        """
+        Get sentiment themes statistics with filtering - counts and groups by sentiment_themes
+        
+        Args:
+            filters: Filter parameters including date range, no_ahass, etc.
+            
+        Returns:
+            Dictionary containing sentiment themes statistics
+        """
+        try:
+            # Parse date filters
+            date_from = None
+            date_to = None
+            
+            if filters.date_from:
+                try:
+                    date_from = datetime.strptime(filters.date_from, '%Y-%m-%d')
+                except ValueError:
+                    return {
+                        "success": False,
+                        "message": "Invalid date_from format. Use YYYY-MM-DD.",
+                        "data": None
+                    }
+            
+            if filters.date_to:
+                try:
+                    date_to = datetime.strptime(filters.date_to, '%Y-%m-%d')
+                    date_to = date_to.replace(hour=23, minute=59, second=59)
+                except ValueError:
+                    return {
+                        "success": False,
+                        "message": "Invalid date_to format. Use YYYY-MM-DD.",
+                        "data": None
+                    }
+            
+            # Get sentiment themes statistics from repository
+            stats = self.repository.get_sentiment_themes_statistics(
+                periode_utk_suspend=filters.periode_utk_suspend,
+                submit_review_date=filters.submit_review_date,
+                no_ahass=filters.no_ahass,
+                date_from=date_from,
+                date_to=date_to
+            )
+            
+            return {
+                "success": True,
+                "message": "Sentiment themes statistics retrieved successfully",
+                "data": stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting sentiment themes statistics: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"Internal server error while retrieving sentiment themes statistics: {str(e)}",
+                "data": None
+            }

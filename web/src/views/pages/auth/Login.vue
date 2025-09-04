@@ -11,94 +11,94 @@ const authStore = useAuthStore();
 
 const loading = ref(false);
 const form = reactive({
-  email: '',
-  password: ''
+    email: '',
+    password: ''
 });
 
 const errors = reactive({
-  email: '',
-  password: '',
-  general: ''
+    email: '',
+    password: '',
+    general: ''
 });
 
 const clearErrors = () => {
-  errors.email = '';
-  errors.password = '';
-  errors.general = '';
+    errors.email = '';
+    errors.password = '';
+    errors.general = '';
 };
 
 const validateForm = () => {
-  clearErrors();
-  let isValid = true;
+    clearErrors();
+    let isValid = true;
 
-  if (!form.email) {
-    errors.email = 'Email is required';
-    isValid = false;
-  } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-    errors.email = 'Email is invalid';
-    isValid = false;
-  }
+    if (!form.email) {
+        errors.email = 'Email is required';
+        isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+        errors.email = 'Email is invalid';
+        isValid = false;
+    }
 
-  if (!form.password) {
-    errors.password = 'Password is required';
-    isValid = false;
-  }
+    if (!form.password) {
+        errors.password = 'Password is required';
+        isValid = false;
+    }
 
-  return isValid;
+    return isValid;
 };
 
 const handleLogin = async () => {
-  if (!validateForm()) {
-    return;
-  }
-
-  loading.value = true;
-  clearErrors();
-
-  try {
-    const result = await authStore.login({
-      email: form.email,
-      password: form.password
-    });
-
-    if (result.success) {
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Login successful',
-        life: 3000
-      });
-      router.push('/');
-    } else {
-      errors.general = result.message || 'Login failed';
-      toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: result.message || 'Login failed',
-        life: 5000
-      });
+    if (!validateForm()) {
+        return;
     }
-  } catch (error) {
-    console.error('Login error:', error);
-    errors.general = 'An unexpected error occurred';
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'An unexpected error occurred',
-      life: 5000
-    });
-  } finally {
-    loading.value = false;
-  }
+
+    loading.value = true;
+    clearErrors();
+
+    try {
+        const result = await authStore.login({
+            email: form.email,
+            password: form.password
+        });
+
+        if (result.success) {
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Login successful',
+                life: 3000
+            });
+            router.push('/');
+        } else {
+            errors.general = result.message || 'Login failed';
+            toast.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: result.message || 'Login failed',
+                life: 5000
+            });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        errors.general = 'An unexpected error occurred';
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'An unexpected error occurred',
+            life: 5000
+        });
+    } finally {
+        loading.value = false;
+    }
 };
 
 // Check if user is already authenticated
 onMounted(() => {
-  authStore.checkAuth();
-  if (authStore.isAuthenticated) {
-    console.log('User already authenticated, redirecting to dashboard');
-    router.push('/');
-  }
+    authStore.checkAuth();
+    if (authStore.isAuthenticated) {
+        console.log('User already authenticated, redirecting to dashboard');
+        router.push('/');
+    }
 });
 </script>
 
@@ -107,7 +107,7 @@ onMounted(() => {
     <div class="flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="flex flex-col items-center justify-center">
             <div style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)">
-                <div class="w-full bg-surface-0 dark:bg-surface-900 py-20 px-8 sm:px-20" style="border-radius: 53px;" >
+                <div class="w-full bg-surface-0 dark:bg-surface-900 py-20 px-8 sm:px-20" style="border-radius: 53px">
                     <div class="text-center mb-8">
                         <img src="/assets/images/logo-transparent.png" alt="Logo" class="mb-8 w-16 shrink-0 mx-auto" />
                         <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Welcome Back!</div>
@@ -117,30 +117,12 @@ onMounted(() => {
                     <div>
                         <form @submit.prevent="handleLogin">
                             <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-                            <InputText
-                                id="email1"
-                                type="email"
-                                placeholder="Email address"
-                                class="w-full md:w-[30rem] mb-2"
-                                v-model="form.email"
-                                :class="{ 'p-invalid': errors.email }"
-                                required
-                            />
+                            <InputText id="email1" type="email" placeholder="Email address" class="w-full md:w-[30rem] mb-2" v-model="form.email" :class="{ 'p-invalid': errors.email }" required />
                             <small v-if="errors.email" class="p-error block mb-6">{{ errors.email }}</small>
                             <div v-else class="mb-6"></div>
 
                             <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
-                            <Password
-                                id="password1"
-                                v-model="form.password"
-                                placeholder="Password"
-                                :toggleMask="true"
-                                class="mb-2"
-                                fluid
-                                :feedback="false"
-                                :class="{ 'p-invalid': errors.password }"
-                                required
-                            />
+                            <Password id="password1" v-model="form.password" placeholder="Password" :toggleMask="true" class="mb-2" fluid :feedback="false" :class="{ 'p-invalid': errors.password }" required />
                             <small v-if="errors.password" class="p-error block mb-4">{{ errors.password }}</small>
                             <div v-else class="mb-4"></div>
 
@@ -154,13 +136,7 @@ onMounted(() => {
                                 </div>
                             </div>
 
-                            <Button
-                                type="submit"
-                                label="Sign In"
-                                class="w-full"
-                                :loading="loading"
-                                :disabled="loading"
-                            />
+                            <Button type="submit" label="Sign In" class="w-full" :loading="loading" :disabled="loading" />
                         </form>
                     </div>
                 </div>

@@ -38,7 +38,7 @@ const totalCount = computed(() => {
 const stackedBarData = computed(() => {
     if (totalCount.value === 0) return [];
 
-    return deliveryData.value.map(item => ({
+    return deliveryData.value.map((item) => ({
         ...item,
         percentage: ((item.count / totalCount.value) * 100).toFixed(1)
     }));
@@ -66,8 +66,8 @@ const fetchDeliveryProcessData = async () => {
             },
             headers: {
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
+                Pragma: 'no-cache',
+                Expires: '0'
             }
         });
 
@@ -83,20 +83,19 @@ const fetchDeliveryProcessData = async () => {
 
             // Transform API response to component format with predefined colors
             const statusColorMapping = {
-                'Ready': { color: '#FCD34D', bgColor: '#FEF3C7' }, // Yellow
+                Ready: { color: '#FCD34D', bgColor: '#FEF3C7' }, // Yellow
                 'In Progress': { color: '#22D3EE', bgColor: '#CFFAFE' }, // Cyan
                 'Back to Dealer': { color: '#D1D5DB', bgColor: '#F3F4F6' }, // Gray
-                'Completed': { color: '#10B981', bgColor: '#D1FAE5' } // Green
+                Completed: { color: '#10B981', bgColor: '#D1FAE5' } // Green
             };
 
-            deliveryData.value = data.map(item => ({
+            deliveryData.value = data.map((item) => ({
                 status: item.status_label?.toUpperCase() || 'UNKNOWN',
                 count: item.count,
                 color: statusColorMapping[item.status_label]?.color || '#9CA3AF',
                 bgColor: statusColorMapping[item.status_label]?.bgColor || '#F3F4F6',
                 originalStatus: item.status_delivery_document
             }));
-
         } else {
             error.value = response.data.message || 'Failed to fetch delivery process data';
         }
@@ -114,9 +113,13 @@ const forceRefresh = () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchDeliveryProcessData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchDeliveryProcessData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -146,12 +149,10 @@ onMounted(() => {
                     :disabled="loading"
                     title="Refresh data"
                 > -->
-                    <i ></i>
-                    
+                <i></i>
+
                 <!-- </button> -->
-                <small class="text-muted-color">
-                    Total Records: {{ totalRecords.toLocaleString() }}
-                </small>
+                <small class="text-muted-color"> Total Records: {{ totalRecords.toLocaleString() }} </small>
             </div>
 
             <!-- Stacked Bar Chart -->
@@ -179,25 +180,15 @@ onMounted(() => {
 
                 <!-- Legend Below -->
                 <div class="grid grid-cols-1 gap-3">
-                    <div
-                        v-for="(item, index) in deliveryData"
-                        :key="index"
-                        class="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200"
-                    >
+                    <div v-for="(item, index) in deliveryData" :key="index" class="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200">
                         <div class="flex items-center space-x-3">
-                            <div
-                                class="w-4 h-4 rounded flex-shrink-0"
-                                :style="{ backgroundColor: item.color }"
-                            ></div>
+                            <div class="w-4 h-4 rounded flex-shrink-0" :style="{ backgroundColor: item.color }"></div>
                             <span class="font-medium text-gray-700 text-sm uppercase tracking-wide">
                                 {{ item.status }}
                             </span>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <span
-                                class="text-lg font-bold px-3 py-1 rounded-md text-white"
-                                :style="{ backgroundColor: item.color }"
-                            >
+                            <span class="text-lg font-bold px-3 py-1 rounded-md text-white" :style="{ backgroundColor: item.color }">
                                 {{ item.count }}
                             </span>
                         </div>

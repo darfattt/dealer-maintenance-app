@@ -67,12 +67,12 @@ const fetchPaymentMethodData = async () => {
 
         // Define colors for different payment methods
         const colorMap = {
-            'Cash': { bg: '#00BCD4', border: '#00ACC1' },
-            'Transfer': { bg: '#2196F3', border: '#1976D2' },
-            'Unknown': { bg: '#9E9E9E', border: '#757575' }
+            Cash: { bg: '#00BCD4', border: '#00ACC1' },
+            Transfer: { bg: '#2196F3', border: '#1976D2' },
+            Unknown: { bg: '#9E9E9E', border: '#757575' }
         };
 
-        apiData.forEach(item => {
+        apiData.forEach((item) => {
             const label = item.cara_bayar_label || 'Unknown';
             labels.push(label);
             data.push(item.count);
@@ -86,12 +86,14 @@ const fetchPaymentMethodData = async () => {
         if (data.length === 0) {
             chartData.value = {
                 labels: ['No Data'],
-                datasets: [{
-                    data: [1],
-                    backgroundColor: ['#E0E0E0'],
-                    borderColor: ['#BDBDBD'],
-                    borderWidth: 2
-                }]
+                datasets: [
+                    {
+                        data: [1],
+                        backgroundColor: ['#E0E0E0'],
+                        borderColor: ['#BDBDBD'],
+                        borderWidth: 2
+                    }
+                ]
             };
         } else {
             // Setup chart data with real API data
@@ -125,7 +127,7 @@ const fetchPaymentMethodData = async () => {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const label = context.label || '';
                             const value = context.parsed;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -136,7 +138,6 @@ const fetchPaymentMethodData = async () => {
                 }
             }
         };
-
     } catch (err) {
         console.error('Error fetching payment method data:', err);
         error.value = 'Failed to fetch payment method data';
@@ -146,9 +147,13 @@ const fetchPaymentMethodData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchPaymentMethodData();
-}, { immediate: false });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchPaymentMethodData();
+    },
+    { immediate: false }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -173,12 +178,7 @@ onMounted(() => {
 
                 <!-- Pie Chart -->
                 <div v-else class="h-48">
-                    <Chart 
-                        type="pie" 
-                        :data="chartData" 
-                        :options="chartOptions"
-                        class="w-full h-full"
-                    />
+                    <Chart type="pie" :data="chartData" :options="chartOptions" class="w-full h-full" />
                 </div>
             </div>
 

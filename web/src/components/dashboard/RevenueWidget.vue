@@ -32,7 +32,7 @@ const effectiveDealerId = computed(() => {
 
 const formattedRevenue = computed(() => {
     if (totalRevenue.value === 0) return 'Rp 0';
-    
+
     // Format number with Indonesian currency format
     const formatter = new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -40,7 +40,7 @@ const formattedRevenue = computed(() => {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     });
-    
+
     return formatter.format(totalRevenue.value);
 });
 
@@ -66,7 +66,7 @@ const fetchRevenueData = async () => {
 
         if (response.data.success) {
             totalRevenue.value = response.data.total_revenue || 0;
-            
+
             if (totalRevenue.value === 0) {
                 error.value = 'No revenue data found for the selected criteria';
             }
@@ -82,9 +82,13 @@ const fetchRevenueData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchRevenueData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchRevenueData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -97,7 +101,7 @@ onMounted(() => {
         <template #title>
             <span class="text-lg font-semibold text-surface-700">REVENUE</span>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -110,9 +114,7 @@ onMounted(() => {
                     <div class="text-4xl md:text-5xl lg:text-6xl font-bold text-surface-900 mb-2">
                         {{ formattedRevenue }}
                     </div>
-                    <div class="text-sm text-surface-600 font-medium">
-                        Total Revenue
-                    </div>
+                    <div class="text-sm text-surface-600 font-medium">Total Revenue</div>
                 </div>
             </div>
 

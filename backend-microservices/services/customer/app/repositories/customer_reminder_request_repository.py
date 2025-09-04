@@ -380,19 +380,24 @@ class CustomerReminderRequestRepository:
         # Get cross-tabulation of reminder_type and whatsapp_status
         results = query.with_entities(
             CustomerReminderRequest.reminder_type,
+            CustomerReminderRequest.reminder_target,
             CustomerReminderRequest.whatsapp_status,
             func.count(CustomerReminderRequest.id).label('count')
         ).group_by(
             CustomerReminderRequest.reminder_type,
+            CustomerReminderRequest.reminder_target,
             CustomerReminderRequest.whatsapp_status
         ).all()
         
-        # Structure the results as nested dictionary
+        # Structure the results as nested dictionary with fallback logic
         stats = {}
-        for reminder_type, whatsapp_status, count in results:
-            if reminder_type not in stats:
-                stats[reminder_type] = {}
-            stats[reminder_type][whatsapp_status] = count
+        for reminder_type, reminder_target, whatsapp_status, count in results:
+            # Use reminder_target as fallback if reminder_type is null
+            type_key = reminder_type if reminder_type else reminder_target
+            
+            if type_key not in stats:
+                stats[type_key] = {}
+            stats[type_key][whatsapp_status] = count
         
         return stats
     

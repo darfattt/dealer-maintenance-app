@@ -52,7 +52,7 @@ const fetchTopDriversData = async () => {
 
         if (response.data.success) {
             const data = response.data.data;
-            
+
             if (data.length === 0) {
                 error.value = 'No top driver data found for the selected criteria';
                 topDrivers.value = [];
@@ -69,7 +69,6 @@ const fetchTopDriversData = async () => {
                 totalDocuments: item.total_deliveries,
                 description: `${item.total_deliveries} Deliveries`
             }));
-            
         } else {
             error.value = response.data.message || 'Failed to fetch top driver data';
         }
@@ -87,25 +86,29 @@ const getDriverImage = (idDriver) => {
     const colorIndex = Math.abs(idDriver ? idDriver.hashCode() : 0) % colors.length;
     const color = colors[colorIndex];
     const initials = idDriver ? idDriver.substring(0, 2).toUpperCase() : 'DR';
-    
+
     return `/assets/images/no-profile-picture-icon.svg`;
 };
 
 // String hash function for consistent color assignment
-String.prototype.hashCode = function() {
+String.prototype.hashCode = function () {
     let hash = 0;
     for (let i = 0; i < this.length; i++) {
         const char = this.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
+        hash = (hash << 5) - hash + char;
         hash = hash & hash; // Convert to 32bit integer
     }
     return hash;
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchTopDriversData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchTopDriversData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -118,7 +121,7 @@ onMounted(() => {
         <template #title>
             <span class="text-lg font-semibold text-surface-900">DRIVER</span>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -127,11 +130,7 @@ onMounted(() => {
 
             <!-- Top Drivers List -->
             <div v-if="!error && topDrivers.length > 0" class="space-y-4">
-                <div
-                    v-for="driver in topDrivers"
-                    :key="driver.id"
-                    class="flex items-center space-x-4 p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors"
-                >
+                <div v-for="driver in topDrivers" :key="driver.id" class="flex items-center space-x-4 p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors">
                     <!-- Rank Number -->
                     <div class="flex-shrink-0 w-8 h-8 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center font-bold text-sm">
                         {{ driver.rank }}
@@ -139,12 +138,7 @@ onMounted(() => {
 
                     <!-- Driver Image -->
                     <div class="flex-shrink-0">
-                        <img
-                            :src="driver.image"
-                            :alt="driver.name"
-                            class="w-12 h-12 object-cover rounded-full border-2 border-surface-200"
-                            @error="$event.target.src = '/assets/images/no-profile-picture-icon.svg'"
-                        />
+                        <img :src="driver.image" :alt="driver.name" class="w-12 h-12 object-cover rounded-full border-2 border-surface-200" @error="$event.target.src = '/assets/images/no-profile-picture-icon.svg'" />
                     </div>
 
                     <!-- Driver Details -->
@@ -183,11 +177,11 @@ onMounted(() => {
         width: 2.5rem;
         height: 2.5rem;
     }
-    
+
     .font-bold {
         font-size: 0.875rem;
     }
-    
+
     .text-sm {
         font-size: 0.75rem;
     }

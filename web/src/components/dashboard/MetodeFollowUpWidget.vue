@@ -33,18 +33,18 @@ const chartColors = [
     '#E91E63', // Pink for SMS (WA/LINE)
     '#FFC107', // Yellow for Call
     '#2196F3', // Blue for Visit
-    '#4CAF50'  // Green for Direct Touch
+    '#4CAF50' // Green for Direct Touch
 ];
 
 // Computed property for legend items
 const legendItems = computed(() => {
     if (!chartData.value || !chartData.value.labels) return [];
-    
+
     const labels = chartData.value.labels;
     const values = chartData.value.datasets[0]?.data || [];
     const colors = chartData.value.datasets[0]?.backgroundColor || [];
     const total = values.reduce((sum, val) => sum + val, 0);
-    
+
     return labels.map((label, index) => ({
         label: label,
         count: values[index] || 0,
@@ -84,7 +84,7 @@ const fetchMetodeFollowUpData = async () => {
             }
 
             // Transform API response to component format
-            const mappedData = data.map(item => ({
+            const mappedData = data.map((item) => ({
                 method: item.metode_label || item.metode_follow_up || 'Unknown',
                 count: item.count,
                 originalMetode: item.metode_follow_up
@@ -93,8 +93,8 @@ const fetchMetodeFollowUpData = async () => {
             // Sort by count descending for better visualization
             mappedData.sort((a, b) => b.count - a.count);
 
-            const labels = mappedData.map(item => item.method);
-            const values = mappedData.map(item => item.count);
+            const labels = mappedData.map((item) => item.method);
+            const values = mappedData.map((item) => item.count);
             const colors = chartColors.slice(0, mappedData.length);
 
             chartData.value = {
@@ -119,7 +119,7 @@ const fetchMetodeFollowUpData = async () => {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 const label = context.label || '';
                                 const value = context.parsed;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -142,9 +142,13 @@ const fetchMetodeFollowUpData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchMetodeFollowUpData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchMetodeFollowUpData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -157,12 +161,10 @@ onMounted(() => {
         <template #title>
             <div class="flex justify-between items-center">
                 <span class="text-sm font-bold uppercase">METODE FOLLOW UP</span>
-                <small v-if="totalRecords > 0" class="text-muted-color">
-                    Total: {{ totalRecords }}
-                </small>
+                <small v-if="totalRecords > 0" class="text-muted-color"> Total: {{ totalRecords }} </small>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -173,27 +175,15 @@ onMounted(() => {
             <div v-if="!error && Object.keys(chartData).length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <!-- Pie Chart -->
                 <div class="h-48">
-                    <Chart
-                        type="pie"
-                        :data="chartData"
-                        :options="chartOptions"
-                        class="h-full"
-                    />
+                    <Chart type="pie" :data="chartData" :options="chartOptions" class="h-full" />
                 </div>
 
                 <!-- Custom Legend -->
                 <div class="flex flex-col justify-center">
                     <div class="space-y-2">
-                        <div
-                            v-for="(item, index) in legendItems"
-                            :key="index"
-                            class="flex items-center justify-between p-2 rounded border border-surface-200"
-                        >
+                        <div v-for="(item, index) in legendItems" :key="index" class="flex items-center justify-between p-2 rounded border border-surface-200">
                             <div class="flex items-center space-x-2">
-                                <div
-                                    class="w-3 h-3 rounded-full"
-                                    :style="{ backgroundColor: item.color }"
-                                ></div>
+                                <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
                                 <span class="text-xs font-medium">{{ item.label }}</span>
                             </div>
                             <div class="text-right">

@@ -74,7 +74,7 @@ const fetchLeasingHistoryData = async () => {
             }
 
             leasingHistoryData.value = data.map((item, index) => ({
-                no: ((currentPage.value - 1) * perPage.value) + index + 1,
+                no: (currentPage.value - 1) * perPage.value + index + 1,
                 id_spk: item.id_spk || '-',
                 id_dokumen_pengajuan: item.id_dokumen_pengajuan || '-',
                 tgl_pengajuan: item.tgl_pengajuan ? formatDate(item.tgl_pengajuan) : '-',
@@ -83,16 +83,15 @@ const fetchLeasingHistoryData = async () => {
                 jumlah_cicilan: item.jumlah_cicilan ? formatCurrency(item.jumlah_cicilan) : '-',
                 nama_finance_company: item.nama_finance_company || '-'
             }));
-
         } else {
             error.value = response.data.message || 'Failed to fetch leasing history data';
         }
     } catch (err) {
         console.error('Error fetching leasing history data:', err);
-        
+
         // Mock data for development
         const mockData = Array.from({ length: perPage.value }, (_, index) => ({
-            no: ((currentPage.value - 1) * perPage.value) + index + 1,
+            no: (currentPage.value - 1) * perPage.value + index + 1,
             id_spk: `SPK${String(1000 + index).padStart(6, '0')}`,
             id_dokumen_pengajuan: `DOC${String(2000 + index).padStart(6, '0')}`,
             tgl_pengajuan: formatDate(new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1)),
@@ -101,7 +100,7 @@ const fetchLeasingHistoryData = async () => {
             jumlah_cicilan: formatCurrency(Math.floor(Math.random() * 2000000) + 1000000),
             nama_finance_company: ['PT. Federal International Finance (FIF)', 'Adira Finance', 'PT. Summit Oto Finance', 'PT. Mega Finance', 'PT. BCA Finance'][Math.floor(Math.random() * 5)]
         }));
-        
+
         leasingHistoryData.value = mockData;
         totalRecords.value = 150; // Mock total
         error.value = '';
@@ -149,10 +148,14 @@ const filterData = () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    currentPage.value = 1;
-    fetchLeasingHistoryData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        currentPage.value = 1;
+        fetchLeasingHistoryData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -166,30 +169,13 @@ onMounted(() => {
             <div class="flex justify-between items-center">
                 <span class="text-sm font-bold uppercase">DATA HISTORY</span>
                 <div class="flex items-center space-x-2">
-                    <Button
-                        icon="pi pi-filter"
-                        size="small"
-                        text
-                        severity="secondary"
-                        class="p-1"
-                        @click="filterData"
-                        :disabled="loading"
-                    />
-                    <Button
-                        icon="pi pi-download"
-                        size="small"
-                        text
-                        severity="secondary"
-                        class="p-1"
-                        @click="exportData"
-                        :disabled="loading || leasingHistoryData.length === 0"
-                    />
+                    <Button icon="pi pi-filter" size="small" text severity="secondary" class="p-1" @click="filterData" :disabled="loading" />
+                    <Button icon="pi pi-download" size="small" text severity="secondary" class="p-1" @click="exportData" :disabled="loading || leasingHistoryData.length === 0" />
                 </div>
             </div>
         </template>
 
         <template #content>
-
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}
@@ -197,28 +183,19 @@ onMounted(() => {
 
             <!-- Data Table -->
             <div v-if="!error" class="space-y-4">
-                <DataTable
-                    :value="leasingHistoryData"
-                    :loading="loading"
-                    :paginator="false"
-                    :rows="perPage"
-                    :first="paginatorFirst"
-                    stripedRows
-                    size="small"
-                    class="text-xs"
-                >
+                <DataTable :value="leasingHistoryData" :loading="loading" :paginator="false" :rows="perPage" :first="paginatorFirst" stripedRows size="small" class="text-xs">
                     <Column field="no" header="No" style="width: 60px" class="text-center">
                         <template #body="{ data }">
                             <span class="font-medium">{{ data.no }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="id_spk" header="ID SPK" style="min-width: 120px">
                         <template #body="{ data }">
                             <span class="font-mono text-xs">{{ data.id_spk }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="id_dokumen_pengajuan" header="ID Dokumen Pengajuan" style="width: 150px">
                         <template #body="{ data }">
                             <div class="truncate max-w-xs font-mono text-xs" :title="data.id_dokumen_pengajuan">
@@ -226,31 +203,31 @@ onMounted(() => {
                             </div>
                         </template>
                     </Column>
-                    
+
                     <Column field="tgl_pengajuan" header="Tgl Pengajuan" style="min-width: 120px">
                         <template #body="{ data }">
                             <span class="text-xs">{{ data.tgl_pengajuan }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="jumlah_dp" header="Jumlah DP" style="min-width: 130px" class="text-right">
                         <template #body="{ data }">
                             <span class="font-medium text-xs">{{ data.jumlah_dp }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="tenor" header="Tenor" style="min-width: 100px" class="text-center">
                         <template #body="{ data }">
                             <span class="text-xs">{{ data.tenor }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="jumlah_cicilan" header="Jumlah Cicilan" style="min-width: 130px" class="text-right">
                         <template #body="{ data }">
                             <span class="font-medium text-xs">{{ data.jumlah_cicilan }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="nama_finance_company" header="Nama Finance Company" style="min-width: 200px">
                         <template #body="{ data }">
                             <div class="truncate max-w-xs text-xs" :title="data.nama_finance_company">
@@ -262,9 +239,7 @@ onMounted(() => {
 
                 <!-- Custom Pagination -->
                 <div class="flex justify-between items-center pt-4 border-t border-surface-200">
-                    <div class="text-xs text-muted-color">
-                        Showing {{ paginatorFirst + 1 }} to {{ Math.min(paginatorFirst + perPage, totalRecords) }} of {{ totalRecords }} entries
-                    </div>
+                    <div class="text-xs text-muted-color">Showing {{ paginatorFirst + 1 }} to {{ Math.min(paginatorFirst + perPage, totalRecords) }} of {{ totalRecords }} entries</div>
                     <Paginator
                         :first="paginatorFirst"
                         :rows="perPage"
@@ -278,8 +253,7 @@ onMounted(() => {
             </div>
 
             <!-- No Data State -->
-            <div v-if="!loading && !error && leasingHistoryData.length === 0" 
-                 class="flex flex-col items-center justify-center h-64 text-surface-500">
+            <div v-if="!loading && !error && leasingHistoryData.length === 0" class="flex flex-col items-center justify-center h-64 text-surface-500">
                 <i class="pi pi-table text-4xl mb-4"></i>
                 <p class="text-lg font-medium">No Leasing History Data</p>
                 <p class="text-sm">No data available for the selected period</p>

@@ -47,26 +47,19 @@ const fetchTipeUnitData = async () => {
 
     try {
         // Call the tipe unit stats API
-        const response = await CustomerService.getTipeUnitStats(
-            props.dateFrom,
-            props.dateTo,
-            effectiveDealerId.value,
-            props.reminderTarget
-        );
+        const response = await CustomerService.getTipeUnitStats(props.dateFrom, props.dateTo, effectiveDealerId.value, props.reminderTarget);
 
         if (response.success && response.data) {
             // Convert API response to top 5 units with percentages
             const unitEntries = Object.entries(response.data);
             const totalUnits = unitEntries.reduce((sum, [, count]) => sum + count, 0);
-            
+
             // Sort by count descending and take top 5
-            const sortedUnits = unitEntries
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 5);
-            
+            const sortedUnits = unitEntries.sort(([, a], [, b]) => b - a).slice(0, 5);
+
             topUnits.value = sortedUnits.map(([unitName, count], index) => {
                 const percentage = totalUnits > 0 ? ((count / totalUnits) * 100).toFixed(1) : 0;
-                
+
                 return {
                     id: index + 1,
                     rank: index + 1,
@@ -91,12 +84,12 @@ const fetchTipeUnitData = async () => {
             'Scoopy Sporty': 15,
             'ADV 160': 12
         };
-        
+
         const totalUnits = Object.values(mockData).reduce((sum, count) => sum + count, 0);
-        
+
         topUnits.value = Object.entries(mockData).map(([unitName, count], index) => {
             const percentage = ((count / totalUnits) * 100).toFixed(1);
-            
+
             return {
                 id: index + 1,
                 rank: index + 1,
@@ -124,7 +117,7 @@ const getUnitImage = (unitName) => {
         'Scoopy Sporty': '/demo/images/avatar/motorcycle-scoopy.svg',
         'ADV 160': '/demo/images/avatar/motorcycle-adv.svg'
     };
-    
+
     // Return specific image or default motorcycle icon
     return unitImages[unitName] || '/demo/images/avatar/motorcycle.svg';
 };
@@ -135,7 +128,7 @@ const getRankColor = (rank) => {
         case 1:
             return 'text-yellow-500'; // Gold
         case 2:
-            return 'text-gray-400'; // Silver  
+            return 'text-gray-400'; // Silver
         case 3:
             return 'text-orange-600'; // Bronze
         default:
@@ -152,9 +145,13 @@ const getPercentageColor = (percentage) => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo, () => props.reminderTarget], () => {
-    fetchTipeUnitData();
-}, { immediate: false });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo, () => props.reminderTarget],
+    () => {
+        fetchTipeUnitData();
+    },
+    { immediate: false }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -168,14 +165,10 @@ onMounted(() => {
             <div class="flex justify-between items-center">
                 <h3 class="text-lg font-semibold text-surface-900">JENIS UNIT</h3>
                 <!-- Loading indicator -->
-                <ProgressSpinner 
-                    v-if="loading" 
-                    style="width: 20px; height: 20px" 
-                    strokeWidth="4"
-                />
+                <ProgressSpinner v-if="loading" style="width: 20px; height: 20px" strokeWidth="4" />
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error && !loading" severity="warn" :closable="false" class="mb-4">
@@ -184,11 +177,7 @@ onMounted(() => {
 
             <!-- Top Units List -->
             <div v-if="!loading && topUnits.length > 0" class="space-y-4">
-                <div
-                    v-for="unit in topUnits"
-                    :key="unit.id"
-                    class="flex items-center space-x-4 p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors"
-                >
+                <div v-for="unit in topUnits" :key="unit.id" class="flex items-center space-x-4 p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors">
                     <!-- Rank Badge -->
                     <div class="flex-shrink-0">
                         <div class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-100">
@@ -200,12 +189,7 @@ onMounted(() => {
 
                     <!-- Unit Image -->
                     <div class="flex-shrink-0">
-                        <img
-                            :src="unit.image"
-                            :alt="unit.name"
-                            class="w-12 h-12 object-cover rounded-lg border-2 border-surface-200"
-                            @error="$event.target.src = '/assets/images/motor.png'"
-                        />
+                        <img :src="unit.image" :alt="unit.name" class="w-12 h-12 object-cover rounded-lg border-2 border-surface-200" @error="$event.target.src = '/assets/images/motor.png'" />
                     </div>
 
                     <!-- Unit Details -->
@@ -216,12 +200,8 @@ onMounted(() => {
 
                     <!-- Percentage Display -->
                     <div class="flex-shrink-0 text-right">
-                        <div :class="['text-2xl font-bold', getPercentageColor(unit.percentage)]">
-                            {{ unit.percentage }}%
-                        </div>
-                        <div class="text-xs text-surface-500">
-                            {{ unit.totalUnits }} units
-                        </div>
+                        <div :class="['text-2xl font-bold', getPercentageColor(unit.percentage)]">{{ unit.percentage }}%</div>
+                        <div class="text-xs text-surface-500">{{ unit.totalUnits }} units</div>
                     </div>
                 </div>
             </div>
@@ -446,20 +426,21 @@ onMounted(() => {
     .space-x-4 > * + * {
         margin-left: 0.5rem;
     }
-    
-    .w-12, .h-12 {
+
+    .w-12,
+    .h-12 {
         width: 2.5rem;
         height: 2.5rem;
     }
-    
+
     .text-base {
         font-size: 0.875rem;
     }
-    
+
     .text-sm {
         font-size: 0.75rem;
     }
-    
+
     .text-2xl {
         font-size: 1.25rem;
     }
@@ -474,7 +455,7 @@ onMounted(() => {
     .hover\:bg-surface-50:hover {
         background-color: var(--surface-700);
     }
-    
+
     .border-surface-200 {
         border-color: var(--surface-600);
     }

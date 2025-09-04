@@ -23,7 +23,9 @@
       "Bash(do)",
       "Bash(echo:*)",
       "Bash(done)",
-      "Bash(timeout 30s npm run build)"
+      "Bash(timeout 30s npm run build)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)"
     ],
     "deny": []
   }

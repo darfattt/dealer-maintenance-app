@@ -34,7 +34,7 @@ const chartTitle = computed(() => {
 // Initialize chart configuration
 const initChart = () => {
     const stats = props.stats;
-    
+
     if (!hasData.value) {
         chartData.value = {};
         return;
@@ -46,16 +46,18 @@ const initChart = () => {
 
     chartData.value = {
         labels: ['Delivered', 'Failed', 'Pending'],
-        datasets: [{
-            data: [delivered, failed, pending],
-            backgroundColor: [
-                '#10B981', // Green for delivered
-                '#EF4444', // Red for failed
-                '#F59E0B'  // Orange for pending
-            ],
-            borderWidth: 2,
-            borderColor: '#ffffff'
-        }]
+        datasets: [
+            {
+                data: [delivered, failed, pending],
+                backgroundColor: [
+                    '#10B981', // Green for delivered
+                    '#EF4444', // Red for failed
+                    '#F59E0B' // Orange for pending
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }
+        ]
     };
 
     chartOptions.value = {
@@ -72,7 +74,7 @@ const initChart = () => {
             },
             tooltip: {
                 callbacks: {
-                    label: function(context) {
+                    label: function (context) {
                         const value = context.parsed;
                         const total = delivered + failed + pending;
                         const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
@@ -105,20 +107,13 @@ onMounted(() => {
             <div v-if="loading" class="flex justify-center items-center h-64">
                 <div class="text-surface-500">Loading chart data...</div>
             </div>
-            
+
             <div v-else-if="!hasData" class="flex flex-col items-center justify-center h-64">
-                <Message severity="info" :closable="false">
-                    No data available for the selected period
-                </Message>
+                <Message severity="info" :closable="false"> No data available for the selected period </Message>
             </div>
-            
+
             <div v-else class="chart-container h-64">
-                <Chart 
-                    type="doughnut" 
-                    :data="chartData" 
-                    :options="chartOptions"
-                    class="w-full h-full"
-                />
+                <Chart type="doughnut" :data="chartData" :options="chartOptions" class="w-full h-full" />
             </div>
 
             <!-- Summary Stats -->
@@ -164,7 +159,7 @@ onMounted(() => {
     .chart-container {
         height: 200px;
     }
-    
+
     .grid-cols-3 {
         grid-template-columns: repeat(1, minmax(0, 1fr));
         gap: 0.5rem;

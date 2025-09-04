@@ -1168,6 +1168,142 @@ class CustomerSatisfactionRepository:
                 }
             }
     
+    def get_sentiment_themes_statistics(
+        self,
+        periode_utk_suspend: Optional[str] = None,
+        submit_review_date: Optional[str] = None,
+        no_ahass: Optional[str] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """
+        Get sentiment themes statistics - counts and groups by individual themes
+        
+        Args:
+            periode_utk_suspend: Filter by periode untuk suspend
+            submit_review_date: Filter by submit review date
+            no_ahass: Filter by No AHASS
+            date_from: Filter by date from
+            date_to: Filter by date to
+            
+        Returns:
+            Dictionary containing sentiment themes statistics
+        """
+        try:
+            import json
+            
+            # Build base query for records with sentiment themes
+            query = self.db.query(CustomerSatisfactionRaw).filter(
+                and_(
+                    CustomerSatisfactionRaw.sentiment_themes.isnot(None),
+                    CustomerSatisfactionRaw.sentiment_themes != ''
+                )
+            )
+            
+            # Apply filters (same logic as other methods)
+            if periode_utk_suspend:
+                query = query.filter(CustomerSatisfactionRaw.periode_utk_suspend.ilike(f"%{periode_utk_suspend}%"))
+            
+            if submit_review_date:
+                query = query.filter(CustomerSatisfactionRaw.submit_review_date_first_fu_cs.ilike(f"%{submit_review_date}%"))
+            
+            if no_ahass:
+                query = query.filter(CustomerSatisfactionRaw.no_ahass == no_ahass)
+            
+            # Apply tanggal_rating date filtering using Indonesian date parsing
+            query = self._build_tanggal_rating_date_filter(query, date_from, date_to)
+            
+            # Get all records with themes
+            records = query.all()
+            
+            # Parse themes and count occurrences
+            theme_counts = {}
+            total_records_with_themes = len(records)
+            total_theme_occurrences = 0
+            
+            for record in records:
+                if record.sentiment_themes:
+                    try:
+                        # Parse JSON themes field
+                        themes = json.loads(record.sentiment_themes)
+                        if isinstance(themes, list):
+                            for theme in themes:
+                                if isinstance(theme, str) and theme.strip():
+                                    theme_normalized = theme.strip().lower()
+                                    theme_counts[theme_normalized] = theme_counts.get(theme_normalized, 0) + 1
+                                    total_theme_occurrences += 1
+                    except (json.JSONDecodeError, TypeError):
+                        # If it's not valid JSON, try treating as comma-separated string
+                        try:
+                            themes_str = str(record.sentiment_themes).strip()
+                            if themes_str:
+                                themes = [theme.strip() for theme in themes_str.split(',')]
+                                for theme in themes:
+                                    if theme:
+                                        theme_normalized = theme.lower()
+                                        theme_counts[theme_normalized] = theme_counts.get(theme_normalized, 0) + 1
+                                        total_theme_occurrences += 1
+                        except Exception:
+                            logger.warning(f"Could not parse sentiment_themes for record {record.id}: {record.sentiment_themes}")
+                            continue
+            
+            # Sort themes by count (descending) and format results
+            sorted_themes = sorted(theme_counts.items(), key=lambda x: x[1], reverse=True)
+            
+            themes_data = []
+            for theme, count in sorted_themes:
+                percentage = round((count / total_theme_occurrences * 100), 2) if total_theme_occurrences > 0 else 0.0
+                themes_data.append({
+                    "theme": theme,
+                    "count": count,
+                    "percentage": percentage
+                })
+            
+            # Get top themes (limit to top 20 for performance)
+            top_themes = themes_data[:20]
+            
+            return {
+                "total_records_with_themes": total_records_with_themes,
+                "total_theme_occurrences": total_theme_occurrences,
+                "unique_themes_count": len(theme_counts),
+                "themes": themes_data,
+                "top_themes": top_themes,
+                "summary": {
+                    "most_common_theme": themes_data[0]["theme"] if themes_data else None,
+                    "most_common_theme_count": themes_data[0]["count"] if themes_data else 0,
+                    "themes_per_record_avg": round(total_theme_occurrences / total_records_with_themes, 2) if total_records_with_themes > 0 else 0.0
+                }
+            }
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting sentiment themes statistics: {str(e)}")
+            return {
+                "total_records_with_themes": 0,
+                "total_theme_occurrences": 0,
+                "unique_themes_count": 0,
+                "themes": [],
+                "top_themes": [],
+                "summary": {
+                    "most_common_theme": None,
+                    "most_common_theme_count": 0,
+                    "themes_per_record_avg": 0.0
+                }
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error getting sentiment themes statistics: {str(e)}")
+            return {
+                "total_records_with_themes": 0,
+                "total_theme_occurrences": 0,
+                "unique_themes_count": 0,
+                "themes": [],
+                "top_themes": [],
+                "summary": {
+                    "most_common_theme": None,
+                    "most_common_theme_count": 0,
+                    "themes_per_record_avg": 0.0
+                }
+            }
+    
     def get_records_by_sentiment(
         self,
         sentiment: str,

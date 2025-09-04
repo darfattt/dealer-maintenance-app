@@ -59,7 +59,7 @@ const handleLogout = async () => {
                 <img src="/assets/images/logo-transparent.png" alt="Logo" class="w-16 shrink-0 mx-auto" />
 
                 <span></span>
-            </router-link> 
+            </router-link>
         </div>
 
         <div class="layout-topbar-actions">

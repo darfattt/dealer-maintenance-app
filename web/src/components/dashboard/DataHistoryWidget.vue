@@ -63,7 +63,7 @@ const fetchDataHistory = async (page = 1, perPage = rows.value) => {
 
         if (response.data.success) {
             const data = response.data.data;
-            
+
             if (data.length === 0 && page === 1) {
                 error.value = 'No prospect data found for the selected criteria';
                 prospectData.value = [];
@@ -74,7 +74,7 @@ const fetchDataHistory = async (page = 1, perPage = rows.value) => {
 
             // Transform API response to component format
             prospectData.value = data.map((item, index) => ({
-                no: ((page - 1) * perPage) + index + 1,
+                no: (page - 1) * perPage + index + 1,
                 id_prospect: item.id_prospect || '-',
                 nama_lengkap: item.nama_lengkap || '-',
                 alamat: item.alamat || '-',
@@ -87,7 +87,6 @@ const fetchDataHistory = async (page = 1, perPage = rows.value) => {
             totalRecords.value = response.data.total_records;
             totalPages.value = response.data.total_pages;
             currentPage.value = response.data.current_page;
-            
         } else {
             error.value = response.data.message || 'Failed to fetch prospect data';
         }
@@ -103,7 +102,7 @@ const fetchDataHistory = async (page = 1, perPage = rows.value) => {
 const onPageChange = (event) => {
     first.value = event.first;
     rows.value = event.rows;
-    
+
     const newPage = Math.floor(event.first / event.rows) + 1;
     fetchDataHistory(newPage, event.rows);
 };
@@ -111,21 +110,25 @@ const onPageChange = (event) => {
 // Status styling method for prospect status
 const getStatusClass = (status) => {
     const statusClasses = {
-        '1': 'bg-green-100 text-green-800', // Active/New
-        '2': 'bg-blue-100 text-blue-800',   // In Progress
-        '3': 'bg-yellow-100 text-yellow-800', // Follow Up
-        '4': 'bg-red-100 text-red-800',    // Closed/Lost
-        '5': 'bg-purple-100 text-purple-800', // Won
-        '-': 'bg-gray-100 text-gray-800'   // Unknown/Default
+        1: 'bg-green-100 text-green-800', // Active/New
+        2: 'bg-blue-100 text-blue-800', // In Progress
+        3: 'bg-yellow-100 text-yellow-800', // Follow Up
+        4: 'bg-red-100 text-red-800', // Closed/Lost
+        5: 'bg-purple-100 text-purple-800', // Won
+        '-': 'bg-gray-100 text-gray-800' // Unknown/Default
     };
     return statusClasses[status] || 'bg-gray-100 text-gray-800';
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    first.value = 0; // Reset to first page
-    fetchDataHistory(1, rows.value);
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        first.value = 0; // Reset to first page
+        fetchDataHistory(1, rows.value);
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -139,24 +142,12 @@ onMounted(() => {
             <div class="flex justify-between items-center">
                 <span class="text-sm font-bold uppercase">PROSPECT DATA HISTORY</span>
                 <div class="flex items-center space-x-2">
-                    <Button 
-                        icon="pi pi-filter" 
-                        size="small" 
-                        text 
-                        severity="secondary"
-                        class="p-1"
-                    />
-                    <Button 
-                        icon="pi pi-download" 
-                        size="small" 
-                        text 
-                        severity="secondary"
-                        class="p-1"
-                    />
+                    <Button icon="pi pi-filter" size="small" text severity="secondary" class="p-1" />
+                    <Button icon="pi pi-download" size="small" text severity="secondary" class="p-1" />
                 </div>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -165,16 +156,7 @@ onMounted(() => {
 
             <!-- Data Table -->
             <div v-if="!error" class="space-y-4">
-                <DataTable
-                    :value="prospectData"
-                    :loading="loading"
-                    :paginator="false"
-                    :rows="rows"
-                    :first="first"
-                    stripedRows
-                    size="small"
-                    class="text-xs"
-                >
+                <DataTable :value="prospectData" :loading="loading" :paginator="false" :rows="rows" :first="first" stripedRows size="small" class="text-xs">
                     <Column field="no" header="No" style="width: 60px">
                         <template #body="{ data }">
                             {{ data.no }}
@@ -193,8 +175,7 @@ onMounted(() => {
                     <Column field="tanggal_prospect" header="Tanggal Prospect" style="width: 120px"></Column>
                     <Column field="status_prospect" header="Status" style="width: 100px">
                         <template #body="{ data }">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                  :class="getStatusClass(data.status_prospect)">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium" :class="getStatusClass(data.status_prospect)">
                                 {{ data.status_prospect }}
                             </span>
                         </template>
@@ -203,9 +184,7 @@ onMounted(() => {
 
                 <!-- Custom Pagination -->
                 <div class="flex justify-between items-center pt-4 border-t border-surface-200">
-                    <div class="text-xs text-muted-color">
-                        Showing {{ first + 1 }} to {{ Math.min(first + rows, totalRecords) }} of {{ totalRecords }} entries
-                    </div>
+                    <div class="text-xs text-muted-color">Showing {{ first + 1 }} to {{ Math.min(first + rows, totalRecords) }} of {{ totalRecords }} entries</div>
                     <Paginator
                         :first="first"
                         :rows="rows"

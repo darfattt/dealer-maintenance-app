@@ -65,7 +65,7 @@ const fetchDeliveryDataHistory = async () => {
 
         if (response.data.success) {
             const data = response.data.data;
-            
+
             if (data.length === 0 && currentPage.value === 1) {
                 error.value = 'No delivery data found for the selected criteria';
                 deliveryData.value = [];
@@ -86,9 +86,8 @@ const fetchDeliveryDataHistory = async () => {
                 alamatPenerima: item.lokasi_pengiriman || '-',
                 estimasiPengiriman: item.waktu_pengiriman || '-'
             }));
-            
+
             totalRecords.value = response.data.total_records;
-            
         } else {
             error.value = response.data.message || 'Failed to fetch delivery data history';
         }
@@ -124,9 +123,13 @@ const getStatusSeverity = (status) => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchDeliveryDataHistory();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchDeliveryDataHistory();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -140,24 +143,12 @@ onMounted(() => {
             <div class="flex justify-between items-center">
                 <span class="text-sm font-bold uppercase">DATA HISTORY</span>
                 <div class="flex items-center space-x-2">
-                    <Button 
-                        icon="pi pi-filter" 
-                        size="small" 
-                        text 
-                        severity="secondary"
-                        class="p-1"
-                    />
-                    <Button 
-                        icon="pi pi-download" 
-                        size="small" 
-                        text 
-                        severity="secondary"
-                        class="p-1"
-                    />
+                    <Button icon="pi pi-filter" size="small" text severity="secondary" class="p-1" />
+                    <Button icon="pi pi-download" size="small" text severity="secondary" class="p-1" />
                 </div>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -166,16 +157,7 @@ onMounted(() => {
 
             <!-- Data Table -->
             <div v-if="!error" class="space-y-4">
-                <DataTable
-                    :value="deliveryData"
-                    :loading="loading"
-                    :paginator="false"
-                    :rows="rows"
-                    :first="first"
-                    stripedRows
-                    size="small"
-                    class="text-xs"
-                >
+                <DataTable :value="deliveryData" :loading="loading" :paginator="false" :rows="rows" :first="first" stripedRows size="small" class="text-xs">
                     <Column field="no" header="No" style="width: 60px">
                         <template #body="{ index }">
                             {{ first + index + 1 }}
@@ -185,7 +167,7 @@ onMounted(() => {
                     <Column field="tglPengiriman" header="Tgl Pengiriman" style="width: 100px"></Column>
                     <Column field="statusPengiriman" header="Status Pengiriman" style="width: 120px">
                         <template #body="{ data }">
-                            <span 
+                            <span
                                 class="px-2 py-1 rounded-full text-xs font-medium"
                                 :class="{
                                     'bg-green-100 text-green-800': data.statusPengiriman === 'Completed',
@@ -214,9 +196,7 @@ onMounted(() => {
 
                 <!-- Custom Pagination -->
                 <div class="flex justify-between items-center pt-4 border-t border-surface-200">
-                    <div class="text-xs text-muted-color">
-                        Showing {{ first + 1 }} to {{ Math.min(first + rows, totalRecords) }} of {{ totalRecords }} entries
-                    </div>
+                    <div class="text-xs text-muted-color">Showing {{ first + 1 }} to {{ Math.min(first + rows, totalRecords) }} of {{ totalRecords }} entries</div>
                     <Paginator
                         :first="first"
                         :rows="rows"

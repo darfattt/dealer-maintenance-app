@@ -87,14 +87,14 @@ const fetchPermohonanFakturData = async () => {
         }
     } catch (err) {
         console.error('Error fetching Permohonan Faktur data:', err);
-        
+
         // Use mock data as fallback
         permohonanFakturData.value = {
             count: 340,
             trend: 'up',
             percentage: 20
         };
-        
+
         // Don't show error for mock data
         error.value = '';
     } finally {
@@ -103,9 +103,13 @@ const fetchPermohonanFakturData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchPermohonanFakturData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchPermohonanFakturData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -129,9 +133,7 @@ onMounted(() => {
             <!-- Content -->
             <div v-else class="text-center">
                 <!-- Title -->
-                <h4 class="text-sm font-semibold text-surface-700 mb-4 uppercase tracking-wide">
-                    Permohonan Faktur
-                </h4>
+                <h4 class="text-sm font-semibold text-surface-700 mb-4 uppercase tracking-wide">Permohonan Faktur</h4>
 
                 <!-- Main Count -->
                 <div class="mb-4">
@@ -143,9 +145,7 @@ onMounted(() => {
                 <!-- Trend Indicator -->
                 <div class="flex justify-center items-center space-x-2">
                     <i :class="[trendIcon, trendColor, 'text-sm']"></i>
-                    <span :class="[trendColor, 'text-sm font-medium']">
-                        {{ Math.abs(permohonanFakturData.percentage) }}%
-                    </span>
+                    <span :class="[trendColor, 'text-sm font-medium']"> {{ Math.abs(permohonanFakturData.percentage) }}% </span>
                 </div>
             </div>
         </template>

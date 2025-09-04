@@ -198,7 +198,7 @@ function onMenuModeChange() {
 
 // Apply cyan theme on mount if it's the configured primary color
 onMounted(() => {
-    const cyanColor = primaryColors.value.find(c => c.name === 'cyan');
+    const cyanColor = primaryColors.value.find((c) => c.name === 'cyan');
     if (cyanColor && layoutConfig.primary === 'cyan') {
         updateColors('primary', cyanColor);
     }
