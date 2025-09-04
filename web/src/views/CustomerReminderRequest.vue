@@ -459,7 +459,7 @@ onMounted(() => {
 
                 <!-- Pagination -->
                 <Paginator
-                    v-if="pagination.total_count > pagination.page_size"
+                  
                     :rows="pagination.page_size"
                     :totalRecords="pagination.total_count"
                     :first="(pagination.page - 1) * pagination.page_size"

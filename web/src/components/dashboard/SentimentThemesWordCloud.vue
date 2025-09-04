@@ -1,43 +1,32 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import Card from 'primevue/card';
 import ProgressSpinner from 'primevue/progressspinner';
 import Message from 'primevue/message';
-import CustomerService from '@/service/CustomerService';
-import { useAuthStore } from '@/stores/auth';
 
 // Props
 const props = defineProps({
-    dateFrom: {
-        type: String,
-        required: true
-    },
-    dateTo: {
-        type: String,
-        required: true
-    },
-    dealerId: {
-        type: String,
-        default: null
+    themes: {
+        type: Object,
+        default: () => ({})
     },
     loading: {
         type: Boolean,
         default: false
-    },
-    searchTrigger: {
-        type: Number,
-        default: 0
     }
 });
 
-// Auth store for role-based logic
-const authStore = useAuthStore();
-
 // Reactive data
-const themesLoading = ref(false);
-const themesError = ref('');
-const themesData = ref([]);
 const wordCloudSvg = ref(null);
+
+// Computed properties for themes data
+const hasData = computed(() => {
+    return props.themes && props.themes.themes && Array.isArray(props.themes.themes) && props.themes.themes.length > 0;
+});
+
+const themesData = computed(() => {
+    return hasData.value ? props.themes.themes : [];
+});
 
 // Computed properties for themes data
 const totalThemesMentions = computed(() => {
@@ -201,69 +190,6 @@ const positionedWords = computed(() => {
     return positions;
 });
 
-// Load sentiment themes data
-const loadThemesData = async () => {
-    if (!props.dateFrom || !props.dateTo) {
-        themesError.value = 'Date range is required for loading themes data';
-        return;
-    }
-
-    themesLoading.value = true;
-    themesError.value = '';
-    themesData.value = []; // Clear previous data
-
-    try {
-        // Prepare API filters
-        const apiFilters = {
-            dateFrom: props.dateFrom,
-            dateTo: props.dateTo
-        };
-
-        // Use dealerId prop or fall back to auth store logic
-        if (props.dealerId) {
-            apiFilters.no_ahass = props.dealerId;
-        } else if (authStore.userRole === 'DEALER_USER' && authStore.userDealerId) {
-            apiFilters.no_ahass = authStore.userDealerId;
-        }
-
-        const response = await CustomerService.getSentimentThemesStatistics(apiFilters);
-
-        if (response.success && response.data && response.data.themes) {
-            const themes = response.data.themes;
-            if (themes.length > 0) {
-                themesData.value = themes.slice(0, 20); // Limit to top 20 themes for better visualization
-            } else {
-                themesError.value = 'No sentiment themes found for the selected period';
-            }
-        } else {
-            throw new Error(response.message || 'Failed to fetch themes data');
-        }
-    } catch (err) {
-        console.error('Error loading sentiment themes:', err);
-        themesError.value = 'Failed to load sentiment themes data. Please try again later.';
-        themesData.value = [];
-    } finally {
-        themesLoading.value = false;
-    }
-};
-
-// Watch for prop changes
-watch(
-    [() => props.dateFrom, () => props.dateTo, () => props.dealerId, () => props.searchTrigger],
-    () => {
-        if (props.dateFrom && props.dateTo) {
-           loadThemesData();
-        }
-    },
-    { deep: true }
-);
-
-// Initialize on mount
-onMounted(() => {
-    if (props.dateFrom && props.dateTo) {
-        loadThemesData();
-    }
-});
 </script>
 
 <template>
@@ -271,20 +197,15 @@ onMounted(() => {
         <template #title>
             <div class="flex justify-between items-center">
                 <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Themes</h3>
-                <ProgressSpinner v-if="loading || themesLoading" style="width: 20px; height: 20px" strokeWidth="4" />
+                <ProgressSpinner v-if="loading" style="width: 20px; height: 20px" strokeWidth="4" />
             </div>
         </template>
 
         <template #content>
-            <!-- Error Message -->
-            <!-- <Message v-if="themesError && !themesLoading" severity="warn" :closable="false" class="mb-4">
-                {{ themesError }}
-            </Message> -->
-
             <!-- Word Cloud Container -->
             <div class="word-cloud-container" style="height: 200px">
                 <!-- Custom Word Cloud -->
-                <div v-if="!themesLoading && !loading && themesData.length > 0" class="w-full h-full relative overflow-hidden">
+                <div v-if="!loading && hasData" class="w-full h-full relative overflow-hidden">
                     <svg ref="wordCloudSvg" class="w-full h-full" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
                         <text
                             v-for="(word, index) in positionedWords"
@@ -307,7 +228,7 @@ onMounted(() => {
                 </div>
 
                 <!-- Loading State -->
-                <div v-else-if="themesLoading || loading" class="flex flex-col items-center justify-center h-full">
+                <div v-else-if="loading" class="flex flex-col items-center justify-center h-full">
                     <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
                     <p class="text-muted-color text-sm mt-4">Loading sentiment themes...</p>
                 </div>
@@ -319,28 +240,6 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- Summary Stats 
-            <div v-if="!themesLoading && !loading && themesData.length > 0" class="mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div>
-                        <div class="text-2xl font-bold text-primary-600">{{ themesData.length }}</div>
-                        <div class="text-xs text-muted-color">Total Themes</div>
-                    </div>
-                    <div>
-                        <div class="text-2xl font-bold text-primary-600">{{ totalThemesMentions }}</div>
-                        <div class="text-xs text-muted-color">Total Mentions</div>
-                    </div>
-                    <div v-if="themesData[0]">
-                        <div class="text-2xl font-bold text-primary-600">{{ themesData[0].count }}</div>
-                        <div class="text-xs text-muted-color">Top Theme</div>
-                    </div>
-                    <div>
-                        <div class="text-2xl font-bold text-primary-600">{{ averageThemesMentions }}</div>
-                        <div class="text-xs text-muted-color">Avg per Theme</div>
-                    </div>
-                </div>
-            </div>
-        -->
         </template>
     </Card>
 </template>

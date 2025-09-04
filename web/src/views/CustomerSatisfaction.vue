@@ -43,6 +43,7 @@ const loadingUploadInfo = ref(false);
 const topComplaints = ref([]);
 const overallRating = ref(null);
 const sentimentStatistics = ref(null);
+const sentimentThemesStatistics = ref(null);
 const searchTrigger = ref(0);
 
 // Dialog state for details popup
@@ -110,8 +111,8 @@ const loadData = async () => {
             apiFilters.no_ahass = authStore.userDealerId;
         }
 
-        // Load records, statistics, top complaints, overall rating, and sentiment statistics
-        const [recordsResult, statsResult, complaintsResult, ratingResult, sentimentResult] = await Promise.all([
+        // Load records, statistics, top complaints, overall rating, sentiment statistics, and themes statistics
+        const [recordsResult, statsResult, complaintsResult, ratingResult, sentimentResult, themesResult] = await Promise.all([
             CustomerService.getCustomerSatisfactionRecords(apiFilters),
             CustomerService.getCustomerSatisfactionStatistics(apiFilters),
             CustomerService.getTopIndikasiKeluhan({
@@ -136,6 +137,13 @@ const loadData = async () => {
                 no_ahass: apiFilters.no_ahass,
                 date_from: apiFilters.date_from,
                 date_to: apiFilters.date_to
+            }),
+            CustomerService.getSentimentThemesStatistics({
+                periode_utk_suspend: apiFilters.periode_utk_suspend,
+                submit_review_date: apiFilters.submit_review_date,
+                no_ahass: apiFilters.no_ahass,
+                dateFrom: apiFilters.date_from,
+                dateTo: apiFilters.date_to
             })
         ]);
 
@@ -166,6 +174,10 @@ const loadData = async () => {
 
         if (sentimentResult.success) {
             sentimentStatistics.value = sentimentResult.data || null;
+        }
+
+        if (themesResult.success) {
+            sentimentThemesStatistics.value = themesResult.data || null;
         }
     } catch (error) {
         console.error('Error loading customer satisfaction data:', error);
@@ -420,7 +432,7 @@ onMounted(() => {
             <SentimentAnalysisChart :stats="sentimentStatistics" :loading="loading" />
 
             <!-- Sentiment Themes Word Cloud -->
-            <SentimentThemesWordCloud :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" :dealerId="isDealerUser ? authStore.userDealerId : showAhassFilter ? filters.no_ahass : null" :searchTrigger="searchTrigger" />
+            <SentimentThemesWordCloud :themes="sentimentThemesStatistics" :loading="loading" />
 
             <!-- Top Complaints Card -->
             <!-- <Card class="text-center">
@@ -622,7 +634,7 @@ onMounted(() => {
                 </DataTable>
 
                 <!-- Pagination -->
-                <Paginator v-if="pagination.total_count > pagination.page_size" :rows="pagination.page_size" :totalRecords="pagination.total_count" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
+                <Paginator  :rows="pagination.page_size" :totalRecords="pagination.total_count" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
 
                 <!-- Simplified Latest Upload Info -->
                 <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-surface-700 dark:to-surface-800 rounded-xl border border-blue-200 dark:border-surface-600 shadow-sm">
