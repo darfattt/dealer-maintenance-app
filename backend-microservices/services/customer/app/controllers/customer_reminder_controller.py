@@ -65,7 +65,7 @@ class CustomerReminderController:
         return 'ERROR'
     
     
-    async def add_bulk_reminders(self, request_data: BulkReminderRequest, dealer_id: str) -> BulkReminderResponse:
+    async def add_bulk_reminders(self, request_data: BulkReminderRequest, dealer_id: str, created_by: str = 'api') -> BulkReminderResponse:
         """Handle bulk customer reminder creation"""
         try:
             # Step 1: Validate dealer exists
@@ -89,7 +89,7 @@ class CustomerReminderController:
             
             # Step 3: Create processing tracker
             processing_tracker = self.processing_repo.create_processing_tracker(
-                created_by='api'
+                created_by=created_by
             )
             transaction_id = processing_tracker.transaction_id
             
@@ -114,7 +114,7 @@ class CustomerReminderController:
                         reminder_type=request_data.filter_data,
                         dealer_id=dealer_id,
                         transaction_id=transaction_id,
-                        created_by='api'
+                        created_by=created_by
                     )
                     
                     # Send WhatsApp message to customer using enhanced template formatting
@@ -150,7 +150,7 @@ class CustomerReminderController:
                             whatsapp_status=whatsapp_status,
                             whatsapp_message=whatsapp_message,
                             fonnte_response=whatsapp_response.response_data,
-                            modified_by='system'
+                            modified_by=created_by
                         )
                         
                         if whatsapp_response.success:
@@ -165,7 +165,7 @@ class CustomerReminderController:
                         self.processing_repo.update_progress(
                             transaction_id=transaction_id,
                             progress=progress,
-                            modified_by='system'
+                            modified_by=created_by
                         )
                             
                     except Exception as e:
@@ -176,7 +176,7 @@ class CustomerReminderController:
                             request_status='FAILED',
                             whatsapp_status='ERROR',
                             fonnte_response={"error": str(e)},
-                            modified_by='system'
+                            modified_by=created_by
                         )
                         
                         # Update processing progress
@@ -184,7 +184,7 @@ class CustomerReminderController:
                         self.processing_repo.update_progress(
                             transaction_id=transaction_id,
                             progress=progress,
-                            modified_by='system'
+                            modified_by=created_by
                         )
                         
                 except Exception as e:
@@ -196,7 +196,7 @@ class CustomerReminderController:
                     self.processing_repo.update_progress(
                         transaction_id=transaction_id,
                         progress=progress,
-                        modified_by='system'
+                        modified_by=created_by
                     )
             
             # Mark processing as completed
@@ -204,7 +204,7 @@ class CustomerReminderController:
                 transaction_id=transaction_id,
                 status='completed',
                 progress=100,
-                modified_by='system'
+                modified_by=created_by
             )
             
             # Calculate success rate

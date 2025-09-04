@@ -44,28 +44,13 @@ async def validate_customer(
     Authentication: Requires Authorization: Bearer <token> header with valid JWT token
     """
     try:
-        # Use dealer_id from authenticated user context
-        dealer_id = current_user.dealer_id
-        
-        if not dealer_id:
-            logger.warning(f"User {current_user.email} does not have a dealer_id")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User is not associated with a dealer"
-            )
-        
-        # Validate that kode_ahass matches dealer_id
-        if request.kode_ahass != dealer_id:
-            logger.warning(f"kode_ahass mismatch for user {current_user.email}: request.kode_ahass='{request.kode_ahass}' != dealer_id='{dealer_id}'")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="kode_ahass must match the authenticated user's dealer ID"
-            )
+        # Use kode_ahass as dealer_id
+        dealer_id = request.kode_ahass
         
         logger.info(f"Processing customer validation for dealer {dealer_id}, user {current_user.email}")
         
         controller = CustomerController(db)
-        result = await controller.validate_customer(request, dealer_id)
+        result = await controller.validate_customer(request, dealer_id, created_by=current_user.email)
         
         logger.info(f"Customer validation processed for dealer {dealer_id}, customer {request.nama_pembawa}")
         

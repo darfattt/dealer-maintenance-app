@@ -56,7 +56,7 @@ class CustomerController:
         # If no status field or unclear, default to ERROR
         return 'ERROR'
     
-    async def validate_customer(self, request_data: CustomerValidationRequestCreate, dealer_id: str) -> CustomerValidationResponse:
+    async def validate_customer(self, request_data: CustomerValidationRequestCreate, dealer_id: str, created_by: str = 'api') -> CustomerValidationResponse:
         """Handle customer validation request"""
         try:
             # Step 1: Validate dealer exists
@@ -81,7 +81,7 @@ class CustomerController:
             # Step 3: Store request in database
             try:
                 # Use dealer_id from authenticated user
-                db_request = self.customer_repo.create(request_data, dealer_id, created_by='api')
+                db_request = self.customer_repo.create(request_data, dealer_id, created_by=created_by)
                 logger.info(f"Customer validation request created: {db_request.id}")
             except Exception as e:
                 logger.error(f"Failed to store customer validation request: {str(e)}")
@@ -123,7 +123,7 @@ class CustomerController:
                         whatsapp_status=whatsapp_status,
                         whatsapp_message=whatsapp_message,
                         fonnte_response=whatsapp_response.response_data,
-                        modified_by='system'
+                        modified_by=created_by
                     )
                     logger.info(f"WhatsApp message sent successfully for request {db_request.id}")
                 else:
@@ -134,7 +134,7 @@ class CustomerController:
                         whatsapp_status=whatsapp_status,
                         whatsapp_message=whatsapp_message,
                         fonnte_response=whatsapp_response.response_data,
-                        modified_by='system'
+                        modified_by=created_by
                     )
                     logger.error(f"WhatsApp message failed for request {db_request.id}: {whatsapp_response.message}")
                 
@@ -165,7 +165,7 @@ class CustomerController:
                     request_status='FAILED',
                     whatsapp_status='ERROR',
                     fonnte_response={"error": str(e)},
-                    modified_by='system'
+                    modified_by=created_by
                 )
                 
                 # Return error response with basic data

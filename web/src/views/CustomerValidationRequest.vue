@@ -132,8 +132,11 @@ const onPageChange = (event) => {
     // Update page size if it changed
     if (event.rows && event.rows !== pageSize.value) {
         pageSize.value = event.rows;
+        // Reset to first page when page size changes
+        loadRequests(0);
+    } else {
+        loadRequests(event.page);
     }
-    loadRequests(event.page);
 };
 
 // Get status severity for Tag component

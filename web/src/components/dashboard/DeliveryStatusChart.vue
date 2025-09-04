@@ -45,7 +45,7 @@ const initChart = () => {
     const pending = stats.pending_count || 0;
 
     chartData.value = {
-        labels: ['Delivered', 'Failed', 'Pending'],
+        labels: ['Terkirim', 'Gagal', 'Pending'],
         datasets: [
             {
                 data: [delivered, failed, pending],
@@ -120,11 +120,11 @@ onMounted(() => {
             <div v-if="hasData && !loading" class="mt-4 grid grid-cols-3 gap-4 text-center">
                 <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
                     <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ stats.delivered_count || 0 }}</div>
-                    <div class="text-sm text-green-700 dark:text-green-300">Delivered</div>
+                    <div class="text-sm text-green-700 dark:text-green-300">Terkirim</div>
                 </div>
                 <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
                     <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ stats.failed_count || 0 }}</div>
-                    <div class="text-sm text-red-700 dark:text-red-300">Failed</div>
+                    <div class="text-sm text-red-700 dark:text-red-300">Gagal</div>
                 </div>
                 <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
                     <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ stats.pending_count || 0 }}</div>

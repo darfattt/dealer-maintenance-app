@@ -47,28 +47,13 @@ async def add_bulk_reminders(
     Authentication: Requires Authorization: Bearer <token> header with valid JWT token
     """
     try:
-        # Use dealer_id from authenticated user context
-        dealer_id = current_user.dealer_id
-        
-        if not dealer_id:
-            logger.warning(f"User {current_user.email} does not have a dealer_id")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User is not associated with a dealer"
-            )
-        
-        # Validate that kode_ahass matches dealer_id
-        if request.kode_ahass != dealer_id:
-            logger.warning(f"kode_ahass mismatch for user {current_user.email}: request.kode_ahass='{request.kode_ahass}' != dealer_id='{dealer_id}'")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="kode_ahass must match the authenticated user's dealer ID"
-            )
+        # Use kode_ahass as dealer_id
+        dealer_id = request.kode_ahass
         
         logger.info(f"Processing bulk customer reminders for dealer {dealer_id}, user {current_user.email}, customers: {len(request.data)}")
         
         controller = CustomerReminderController(db)
-        result = await controller.add_bulk_reminders(request, dealer_id)
+        result = await controller.add_bulk_reminders(request, dealer_id, created_by=current_user.email)
         
         logger.info(f"Bulk customer reminders processed for dealer {dealer_id}, total customers: {len(request.data)}")
         

@@ -43,6 +43,7 @@ const loadingUploadInfo = ref(false);
 const topComplaints = ref([]);
 const overallRating = ref(null);
 const sentimentStatistics = ref(null);
+const searchTrigger = ref(0);
 
 // Dialog state for details popup
 const showDetailsDialog = ref(false);
@@ -182,6 +183,7 @@ const loadData = async () => {
 // Manual search handler
 const handleSearch = () => {
     pagination.page = 1; // Reset to first page when searching
+    searchTrigger.value++; // Increment to trigger word cloud refresh
     loadData();
 };
 
@@ -418,7 +420,7 @@ onMounted(() => {
             <SentimentAnalysisChart :stats="sentimentStatistics" :loading="loading" />
 
             <!-- Sentiment Themes Word Cloud -->
-            <SentimentThemesWordCloud :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" :dealerId="isDealerUser ? authStore.userDealerId : showAhassFilter ? filters.no_ahass : null" />
+            <SentimentThemesWordCloud :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" :dealerId="isDealerUser ? authStore.userDealerId : showAhassFilter ? filters.no_ahass : null" :searchTrigger="searchTrigger" />
 
             <!-- Top Complaints Card -->
             <!-- <Card class="text-center">
@@ -483,7 +485,7 @@ onMounted(() => {
                                 {{ formatChangeText(overallRating?.change, overallRating?.change_direction) }}
                             </span>
                         </div>
-                        <div v-else class="text-base text-surface-500 dark:text-surface-400">No comparison data</div>
+                        <div v-else class="text-base text-surface-500 dark:text-surface-400">Tidak ada perbandingan data dengan bulan lalu</div>
                     </div>
                 </template>
             </Card>
@@ -557,18 +559,18 @@ onMounted(() => {
                     </Column>
 
                     <!-- Alamat Email Column (with masking) -->
-                    <Column field="alamat_email" header="Alamat Email" style="min-width: 150px">
+                    <!-- <Column field="alamat_email" header="Alamat Email" style="min-width: 150px">
                         <template #body="{ data }">
                             <span class="text-sm font-mono">{{ maskEmail(data.alamat_email) || '-' }}</span>
                         </template>
-                    </Column>
+                    </Column> -->
 
                     <!-- Kota Column -->
-                    <Column field="kota" header="Kota" style="min-width: 120px">
+                    <!-- <Column field="kota" header="Kota" style="min-width: 120px">
                         <template #body="{ data }">
                             <span class="text-sm">{{ data.kota || '-' }}</span>
                         </template>
-                    </Column>
+                    </Column> -->
 
                     <!-- Inbox Column -->
                     <Column field="inbox" header="Inbox" style="min-width: 200px">
@@ -579,15 +581,8 @@ onMounted(() => {
                         </template>
                     </Column>
 
-                    <!-- Indikasi Keluhan Column -->
-                    <Column field="indikasi_keluhan" header="Indikasi Keluhan" style="min-width: 180px">
-                        <template #body="{ data }">
-                            <span class="text-sm">{{ data.indikasi_keluhan || '-' }}</span>
-                        </template>
-                    </Column>
-
-                    <!-- Sentiment Column -->
-                    <Column field="sentiment" header="Sentiment" style="min-width: 120px">
+                     <!-- Sentiment Column -->
+                     <Column field="sentiment" header="Sentiment" style="min-width: 120px">
                         <template #body="{ data }">
                             <div v-if="data.sentiment" class="flex align-items-center gap-2">
                                 <Tag :value="data.sentiment" :severity="getSentimentSeverity(data.sentiment)" class="text-xs" />
@@ -595,6 +590,15 @@ onMounted(() => {
                             <span v-else class="text-gray-400 text-sm">-</span>
                         </template>
                     </Column>
+
+                    <!-- Indikasi Keluhan Column -->
+                    <Column field="indikasi_keluhan" header="Indikasi Keluhan" style="min-width: 180px">
+                        <template #body="{ data }">
+                            <span class="text-sm">{{ data.indikasi_keluhan || '-' }}</span>
+                        </template>
+                    </Column>
+
+                   
 
                     <!-- Rating Column -->
                     <Column field="rating" header="Rating" style="min-width: 100px">

@@ -23,6 +23,10 @@ const props = defineProps({
     loading: {
         type: Boolean,
         default: false
+    },
+    searchTrigger: {
+        type: Number,
+        default: 0
     }
 });
 
@@ -245,10 +249,10 @@ const loadThemesData = async () => {
 
 // Watch for prop changes
 watch(
-    [() => props.dateFrom, () => props.dateTo, () => props.dealerId],
+    [() => props.dateFrom, () => props.dateTo, () => props.dealerId, () => props.searchTrigger],
     () => {
         if (props.dateFrom && props.dateTo) {
-            loadThemesData();
+           loadThemesData();
         }
     },
     { deep: true }
@@ -266,16 +270,16 @@ onMounted(() => {
     <Card class="h-full">
         <template #title>
             <div class="flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Indicator</h3>
+                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Themes</h3>
                 <ProgressSpinner v-if="loading || themesLoading" style="width: 20px; height: 20px" strokeWidth="4" />
             </div>
         </template>
 
         <template #content>
             <!-- Error Message -->
-            <Message v-if="themesError && !themesLoading" severity="warn" :closable="false" class="mb-4">
+            <!-- <Message v-if="themesError && !themesLoading" severity="warn" :closable="false" class="mb-4">
                 {{ themesError }}
-            </Message>
+            </Message> -->
 
             <!-- Word Cloud Container -->
             <div class="word-cloud-container" style="height: 200px">

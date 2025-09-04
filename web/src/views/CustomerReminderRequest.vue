@@ -292,6 +292,18 @@ const closeDetailsDialog = () => {
     showDetailsDialog.value = false;
     selectedReminder.value = null;
 };
+const isAllTarget = computed(() => selectedReminderTarget.value === '');
+
+// Dynamic grid classes based on content
+const gridClasses = computed(() => {
+    // When All Target is selected: 3 charts (DeliveryStatus, ReminderTarget, Top5TipeUnit)
+    // When specific target is selected: 2 charts (ReminderTypeStatus, Top5TipeUnit)
+    if (isAllTarget.value) {
+        return 'grid grid-cols-1 md:grid-cols-3 gap-6';
+    } else {
+        return 'grid grid-cols-1 md:grid-cols-2 gap-6';
+    }
+});
 
 // Watch for filter changes - includes selectedDealer for SUPER_ADMIN dealer switching
 watch(
@@ -358,21 +370,21 @@ onMounted(() => {
         </div>
 
         <!-- Overview Section -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div :class="gridClasses">
             <!-- Delivery Status Chart -->
-            <!-- <DeliveryStatusChart 
+            <DeliveryStatusChart v-if="isAllTarget" 
                 :stats="stats" 
                 :loading="statsLoading"
-            /> -->
+            />
 
             <!-- Reminder Target Chart -->
-            <!-- <ReminderTargetChart 
+            <ReminderTargetChart v-if="isAllTarget" 
                 :stats="stats" 
                 :loading="statsLoading"
-            /> -->
+            />
 
             <!-- Reminder Type Status Chart -->
-            <ReminderTypeStatusChart :date-from="formattedDateFrom" :date-to="formattedDateTo" :dealer-id="selectedDealer" :reminder-target="selectedReminderTarget" :loading="statsLoading" />
+            <ReminderTypeStatusChart v-if="!isAllTarget" :date-from="formattedDateFrom" :date-to="formattedDateTo" :dealer-id="selectedDealer" :reminder-target="selectedReminderTarget" :loading="statsLoading" />
 
             <!-- Top 5 Vehicle Types Widget -->
             <Top5TipeUnitWidget :date-from="formattedDateFrom" :date-to="formattedDateTo" :dealer-id="selectedDealer" :reminder-target="selectedReminderTarget" />
