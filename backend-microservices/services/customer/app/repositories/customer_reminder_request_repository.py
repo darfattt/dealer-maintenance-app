@@ -10,6 +10,7 @@ import logging
 
 from app.models.customer_reminder_request import CustomerReminderRequest
 from app.schemas.customer_reminder_request import CustomerReminderRequestCreate, BulkReminderCustomerData
+from app.utils.timezone_utils import get_indonesia_datetime, parse_datetime_indonesia_format
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +25,15 @@ class CustomerReminderRequestRepository:
         """Create a new customer reminder request"""
         try:
             # Parse the datetime strings or use current time as default
-            current_time = datetime.utcnow()
+            current_time = get_indonesia_datetime()
             
             if request_data.created_time:
-                created_datetime = datetime.strptime(request_data.created_time, '%d/%m/%Y %H:%M:%S')
+                created_datetime = parse_datetime_indonesia_format(request_data.created_time)
             else:
                 created_datetime = current_time
                 
             if request_data.modified_time:
-                modified_datetime = datetime.strptime(request_data.modified_time, '%d/%m/%Y %H:%M:%S')
+                modified_datetime = parse_datetime_indonesia_format(request_data.modified_time)
             else:
                 modified_datetime = current_time
             
@@ -41,7 +42,7 @@ class CustomerReminderRequestRepository:
                 dealer_id=request_data.dealer_id,
                 request_date=created_datetime.date(),
                 request_time=created_datetime.time(),
-                nama_pemilik=request_data.nama_pemilik,
+                nama_pelanggan=request_data.nama_pelanggan,
                 nomor_telepon_pelanggan=request_data.nomor_telepon_pelanggan,
                 reminder_type=request_data.reminder_type,
                 request_status='PENDING',
@@ -74,7 +75,7 @@ class CustomerReminderRequestRepository:
     ) -> CustomerReminderRequest:
         """Create a new customer reminder request from bulk data"""
         try:
-            current_time = datetime.utcnow()
+            current_time = get_indonesia_datetime()
             
             # Parse date strings
             tanggal_beli = None
@@ -95,10 +96,8 @@ class CustomerReminderRequestRepository:
                 dealer_id=dealer_id,
                 request_date=current_time.date(),
                 request_time=current_time.time(),
-                nama_pemilik=customer_data.nama_pemilik,
+                nama_pelanggan=customer_data.nama_pelanggan,
                 nomor_telepon_pelanggan=customer_data.nomor_telepon_pelanggan,
-                nama_pembawa=customer_data.nama_pembawa,
-                no_telepon_pembawa=customer_data.no_telepon_pembawa,
                 nomor_mesin=customer_data.nomor_mesin,
                 nomor_polisi=customer_data.nomor_polisi,
                 tipe_unit=customer_data.tipe_unit,
@@ -170,7 +169,7 @@ class CustomerReminderRequestRepository:
             if modified_by:
                 db_request.last_modified_by = modified_by
             
-            db_request.last_modified_date = datetime.utcnow()
+            db_request.last_modified_date = get_indonesia_datetime()
             
             self.db.commit()
             self.db.refresh(db_request)
@@ -213,7 +212,7 @@ class CustomerReminderRequestRepository:
         
         return query.count()
     
-    def get_whatsapp_status_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> dict:
+    def get_whatsapp_status_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
         """Get WhatsApp status statistics for a dealer"""
         from sqlalchemy import func
         
@@ -226,6 +225,9 @@ class CustomerReminderRequestRepository:
         
         if date_to:
             query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
         
         # Count total requests
         total_requests = query.count()
@@ -246,7 +248,7 @@ class CustomerReminderRequestRepository:
             'delivery_percentage': delivery_percentage
         }
     
-    def get_reminder_type_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None) -> dict:
+    def get_reminder_type_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
         """Get reminder type statistics for a dealer"""
         from sqlalchemy import func
         
@@ -260,6 +262,9 @@ class CustomerReminderRequestRepository:
         if date_to:
             query = query.filter(CustomerReminderRequest.request_date <= date_to)
         
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
+        
         # Count by reminder type
         reminder_stats = query.with_entities(
             CustomerReminderRequest.reminder_type,
@@ -267,6 +272,31 @@ class CustomerReminderRequestRepository:
         ).group_by(CustomerReminderRequest.reminder_type).all()
         
         return {reminder_type: count for reminder_type, count in reminder_stats}
+    
+    def get_reminder_target_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
+        """Get reminder target statistics for a dealer"""
+        from sqlalchemy import func
+        
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
+        
+        # Count by reminder target
+        reminder_target_stats = query.with_entities(
+            CustomerReminderRequest.reminder_target,
+            func.count(CustomerReminderRequest.id).label('count')
+        ).group_by(CustomerReminderRequest.reminder_target).all()
+        
+        return {target or 'Unknown': count for target, count in reminder_target_stats}
     
     def get_paginated_requests_by_dealer(
         self, 
@@ -302,7 +332,7 @@ class CustomerReminderRequestRepository:
         ).offset(offset).limit(page_size).all()
         
         return {
-            'items': [request.to_dict() for request in requests],
+            'items': [request.to_safe_dict() for request in requests],
             'total': total,
             'page': page,
             'page_size': page_size,
@@ -325,10 +355,76 @@ class CustomerReminderRequestRepository:
         ).all()
         
         return {
-            'items': [request.to_dict() for request in requests],
+            'items': [request.to_safe_dict() for request in requests],
             'total': total,
             'transaction_id': transaction_id
         }
+    
+    def get_reminder_type_whatsapp_status_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
+        """Get statistics grouped by reminder_type and whatsapp_status (cross-tabulation)"""
+        from sqlalchemy import func
+        
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
+        
+        # Get cross-tabulation of reminder_type and whatsapp_status
+        results = query.with_entities(
+            CustomerReminderRequest.reminder_type,
+            CustomerReminderRequest.reminder_target,
+            CustomerReminderRequest.whatsapp_status,
+            func.count(CustomerReminderRequest.id).label('count')
+        ).group_by(
+            CustomerReminderRequest.reminder_type,
+            CustomerReminderRequest.reminder_target,
+            CustomerReminderRequest.whatsapp_status
+        ).all()
+        
+        # Structure the results as nested dictionary with fallback logic
+        stats = {}
+        for reminder_type, reminder_target, whatsapp_status, count in results:
+            # Use reminder_target as fallback if reminder_type is null
+            type_key = reminder_type if reminder_type else reminder_target
+            
+            if type_key not in stats:
+                stats[type_key] = {}
+            stats[type_key][whatsapp_status] = count
+        
+        return stats
+    
+    def get_tipe_unit_stats(self, dealer_id: str, date_from: Optional[date] = None, date_to: Optional[date] = None, reminder_target: Optional[str] = None) -> dict:
+        """Get statistics grouped by tipe_unit (vehicle type)"""
+        from sqlalchemy import func
+        
+        query = self.db.query(CustomerReminderRequest).filter(
+            CustomerReminderRequest.dealer_id == dealer_id
+        )
+        
+        if date_from:
+            query = query.filter(CustomerReminderRequest.request_date >= date_from)
+        
+        if date_to:
+            query = query.filter(CustomerReminderRequest.request_date <= date_to)
+        
+        if reminder_target:
+            query = query.filter(CustomerReminderRequest.reminder_target == reminder_target)
+        
+        # Count by tipe_unit
+        tipe_unit_stats = query.with_entities(
+            CustomerReminderRequest.tipe_unit,
+            func.count(CustomerReminderRequest.id).label('count')
+        ).group_by(CustomerReminderRequest.tipe_unit).all()
+        
+        return {tipe_unit or 'Unknown': count for tipe_unit, count in tipe_unit_stats}
     
     def delete(self, request_id: str) -> bool:
         """Delete customer reminder request"""

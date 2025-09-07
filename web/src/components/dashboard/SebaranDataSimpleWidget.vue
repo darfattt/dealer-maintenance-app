@@ -55,9 +55,13 @@ const fetchSebaranData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchSebaranData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchSebaranData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -72,7 +76,7 @@ onMounted(() => {
                 <span class="text-sm font-bold uppercase">SEBARAN DATA PROSPECT</span>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -89,7 +93,7 @@ onMounted(() => {
                             <h3 class="text-lg font-semibold text-muted-color">West Java Region</h3>
                             <p class="text-xs text-muted-color">Prospect Distribution</p>
                         </div>
-                        
+
                         <!-- Visual Grid Representation -->
                         <div class="grid grid-cols-3 gap-4 h-40">
                             <!-- Region blocks positioned to roughly represent West Java -->
@@ -103,7 +107,7 @@ onMounted(() => {
                                 </div>
                                 <span class="text-xs mt-1">{{ regionData[1]?.name }}</span>
                             </div>
-                            
+
                             <div class="flex flex-col justify-start items-center pt-4">
                                 <div
                                     class="w-16 h-16 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-md cursor-pointer hover:scale-110 transition-transform"
@@ -114,7 +118,7 @@ onMounted(() => {
                                 </div>
                                 <span class="text-xs mt-1">{{ regionData[0]?.name }}</span>
                             </div>
-                            
+
                             <div class="flex flex-col justify-end items-center pb-4">
                                 <div
                                     class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md cursor-pointer hover:scale-110 transition-transform"
@@ -126,7 +130,7 @@ onMounted(() => {
                                 <span class="text-xs mt-1">{{ regionData[3]?.name }}</span>
                             </div>
                         </div>
-                        
+
                         <!-- Bottom regions -->
                         <div class="flex justify-center space-x-8 mt-4">
                             <div class="flex flex-col items-center">
@@ -139,7 +143,7 @@ onMounted(() => {
                                 </div>
                                 <span class="text-xs mt-1">{{ regionData[2]?.name }}</span>
                             </div>
-                            
+
                             <div class="flex flex-col items-center">
                                 <div
                                     class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md cursor-pointer hover:scale-110 transition-transform"
@@ -157,25 +161,13 @@ onMounted(() => {
                 <!-- Legend -->
                 <div class="lg:col-span-1 flex flex-col justify-center">
                     <div class="space-y-3">
-                        <div
-                            v-for="(region, index) in regionData"
-                            :key="index"
-                            class="flex items-center justify-between p-2 rounded border border-surface-200 hover:bg-surface-50 transition-colors"
-                        >
+                        <div v-for="(region, index) in regionData" :key="index" class="flex items-center justify-between p-2 rounded border border-surface-200 hover:bg-surface-50 transition-colors">
                             <div class="flex items-center space-x-2">
-                                <div
-                                    class="w-4 h-4 rounded-full border-2 border-white shadow-sm"
-                                    :style="{ backgroundColor: region.color }"
-                                ></div>
+                                <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm" :style="{ backgroundColor: region.color }"></div>
                                 <span class="text-xs font-medium">{{ region.name }}</span>
                             </div>
                             <div class="text-right">
-                                <div 
-                                    class="font-bold text-sm px-2 py-1 rounded text-white"
-                                    :style="{ backgroundColor: region.color }"
-                                >
-                                    {{ region.percentage }}%
-                                </div>
+                                <div class="font-bold text-sm px-2 py-1 rounded text-white" :style="{ backgroundColor: region.color }">{{ region.percentage }}%</div>
                             </div>
                         </div>
                     </div>

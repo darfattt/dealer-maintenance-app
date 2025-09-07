@@ -9,7 +9,19 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
+from app.utils.phone_masking import mask_phone_number
+
 Base = declarative_base()
+
+# Import Indonesian timezone utility function
+def _get_indonesia_timezone_utc():
+    """Get current Indonesian time as UTC for database storage"""
+    try:
+        from app.utils.timezone_utils import get_indonesia_utc_now
+        return get_indonesia_utc_now()
+    except ImportError:
+        # Fallback to standard UTC if timezone utils not available
+        return datetime.utcnow()
 
 
 class CustomerReminderRequest(Base):
@@ -30,11 +42,9 @@ class CustomerReminderRequest(Base):
     
     # Customer data  
     nomor_telepon_pelanggan = Column(String(20), nullable=False)  # Customer primary phone number
+    nama_pelanggan = Column(String(255), nullable=False)  # Customer name field
     
     # Additional customer/vehicle data
-    nama_pemilik = Column(String(255), nullable=False)  # Primary customer/owner name field
-    nama_pembawa = Column(String(255), nullable=True)
-    no_telepon_pembawa = Column(String(20), nullable=True)
     nomor_mesin = Column(String(50), nullable=True)
     nomor_polisi = Column(String(20), nullable=True)
     tipe_unit = Column(String(100), nullable=True)
@@ -63,14 +73,14 @@ class CustomerReminderRequest(Base):
     # Transaction tracking
     transaction_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     
-    # Audit fields
+    # Audit fields - using Indonesian timezone
     created_by = Column(String(100), nullable=True)
-    created_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_date = Column(DateTime, default=_get_indonesia_timezone_utc, nullable=False)
     last_modified_by = Column(String(100), nullable=True)
-    last_modified_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_modified_date = Column(DateTime, default=_get_indonesia_timezone_utc, onupdate=_get_indonesia_timezone_utc, nullable=False)
     
     def __repr__(self):
-        return f"<CustomerReminderRequest(id={self.id}, dealer_id={self.dealer_id}, nama_pemilik={self.nama_pemilik})>"
+        return f"<CustomerReminderRequest(id={self.id}, dealer_id={self.dealer_id}, nama_pelanggan={self.nama_pelanggan})>"
     
     def to_dict(self):
         """Convert customer reminder request to dictionary"""
@@ -80,9 +90,7 @@ class CustomerReminderRequest(Base):
             "request_date": self.request_date.isoformat() if self.request_date else None,
             "request_time": self.request_time.isoformat() if self.request_time else None,
             "nomor_telepon_pelanggan": self.nomor_telepon_pelanggan,
-            "nama_pemilik": self.nama_pemilik,
-            "nama_pembawa": self.nama_pembawa,
-            "no_telepon_pembawa": self.no_telepon_pembawa,
+            "nama_pelanggan": self.nama_pelanggan,
             "nomor_mesin": self.nomor_mesin,
             "nomor_polisi": self.nomor_polisi,
             "tipe_unit": self.tipe_unit,
@@ -97,6 +105,34 @@ class CustomerReminderRequest(Base):
             "reminder_type": self.reminder_type,
             "whatsapp_message": self.whatsapp_message,
             "fonnte_response": self.fonnte_response,
+            "transaction_id": str(self.transaction_id) if self.transaction_id else None,
+            "created_by": self.created_by,
+            "created_date": self.created_date.isoformat() if self.created_date else None,
+            "last_modified_by": self.last_modified_by,
+            "last_modified_date": self.last_modified_date.isoformat() if self.last_modified_date else None,
+        }
+    
+    def to_safe_dict(self):
+        """Convert customer reminder request to dictionary without sensitive fields"""
+        return {
+            "id": str(self.id),
+            "request_date": self.request_date.isoformat() if self.request_date else None,
+            "request_time": self.request_time.isoformat() if self.request_time else None,
+            "nomor_telepon_pelanggan": mask_phone_number(self.nomor_telepon_pelanggan),
+            "nama_pelanggan": self.nama_pelanggan,
+            "nomor_mesin": self.nomor_mesin,
+            "nomor_polisi": self.nomor_polisi,
+            "tipe_unit": self.tipe_unit,
+            "tanggal_beli": self.tanggal_beli.isoformat() if self.tanggal_beli else None,
+            "tanggal_expired_kpb": self.tanggal_expired_kpb.isoformat() if self.tanggal_expired_kpb else None,
+            "kode_ahass": self.kode_ahass,
+            "nama_ahass": self.nama_ahass,
+            "alamat_ahass": self.alamat_ahass,
+            "request_status": self.request_status,
+            "whatsapp_status": self.whatsapp_status,
+            "reminder_target": self.reminder_target,
+            "reminder_type": self.reminder_type,
+            "whatsapp_message": self.whatsapp_message,
             "transaction_id": str(self.transaction_id) if self.transaction_id else None,
             "created_by": self.created_by,
             "created_date": self.created_date.isoformat() if self.created_date else None,

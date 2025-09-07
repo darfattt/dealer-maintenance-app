@@ -126,9 +126,13 @@ const getUnitImage = (unitName) => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchTopUnitsData();
-}, { immediate: false });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchTopUnitsData();
+    },
+    { immediate: false }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -146,19 +150,10 @@ onMounted(() => {
 
             <!-- Top Units List -->
             <div v-if="!error && topUnits.length > 0" class="space-y-4">
-                <div
-                    v-for="unit in topUnits"
-                    :key="unit.id"
-                    class="flex items-center space-x-4 p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors"
-                >
+                <div v-for="unit in topUnits" :key="unit.id" class="flex items-center space-x-4 p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors">
                     <!-- Unit Image -->
                     <div class="flex-shrink-0">
-                        <img
-                            :src="unit.image"
-                            :alt="unit.name"
-                            class="w-12 h-12 object-cover rounded-lg border-2 border-surface-200"
-                            @error="$event.target.src = 'https://via.placeholder.com/48x48/FF5722/FFFFFF?text=🏍️'"
-                        />
+                        <img :src="unit.image" :alt="unit.name" class="w-12 h-12 object-cover rounded-lg border-2 border-surface-200" @error="$event.target.src = 'https://via.placeholder.com/48x48/FF5722/FFFFFF?text=🏍️'" />
                     </div>
 
                     <!-- Unit Details -->
@@ -201,15 +196,15 @@ onMounted(() => {
         width: 2.5rem;
         height: 2.5rem;
     }
-    
+
     .font-bold {
         font-size: 0.875rem;
     }
-    
+
     .text-sm {
         font-size: 0.75rem;
     }
-    
+
     .text-2xl {
         font-size: 1.25rem;
     }

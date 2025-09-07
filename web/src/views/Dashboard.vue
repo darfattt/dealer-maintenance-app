@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { useDealers } from '@/composables/useDealers';
 import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
 import UnitInboundStatusWidget from '@/components/dashboard/UnitInboundStatusWidget.vue';
@@ -47,16 +48,21 @@ import { useAuthStore } from '@/stores/auth';
 // Auth store
 const authStore = useAuthStore();
 
-// Filter controls
-const selectedDealer = ref('12284'); // Default dealer
+// Use dealers composable for dynamic dealer loading
+const { dealerOptions, isLoading: dealersLoading, hasError: dealersError } = useDealers();
+
+// Filter controls - Use dealer from auth for DEALER_USER, fallback to first available dealer
+const getInitialDealer = () => {
+    if (authStore.userRole === 'DEALER_USER') {
+        return authStore.userDealerId;
+    }
+    // For non-DEALER_USER, we'll set the dealer once dealers are loaded
+    return '';
+};
+
+const selectedDealer = ref(getInitialDealer());
 const selectedDateFrom = ref(new Date(new Date().getFullYear(), 0, 1)); // Start of current year
 const selectedDateTo = ref(new Date()); // Today
-
-// Dealer options
-const dealerOptions = ref([
-    { label: 'Sample Dealer (12284)', value: '12284' },
-    { label: 'Test Dealer (00999)', value: '00999' }
-]);
 
 // Check if user is DEALER_USER role
 const isDealerUser = computed(() => {
@@ -78,6 +84,18 @@ const formattedDateTo = computed(() => {
     if (!selectedDateTo.value) return '';
     return selectedDateTo.value.toISOString().split('T')[0];
 });
+
+// Watch for dealers to be loaded and set initial dealer for non-DEALER_USER
+watch(
+    dealerOptions,
+    (newDealers) => {
+        if (newDealers.length > 0 && !selectedDealer.value && authStore.userRole !== 'DEALER_USER') {
+            // Set first dealer as default for non-DEALER_USER roles
+            selectedDealer.value = newDealers[0].value;
+        }
+    },
+    { immediate: true }
+);
 </script>
 
 <template>
@@ -93,34 +111,23 @@ const formattedDateTo = computed(() => {
                     :options="dealerOptions"
                     optionLabel="label"
                     optionValue="value"
-                    placeholder="Select Dealer"
+                    :placeholder="dealersLoading ? 'Loading dealers...' : dealersError ? 'Error loading dealers' : 'Select Dealer'"
+                    :loading="dealersLoading"
+                    :disabled="dealersLoading || dealersError"
                     class="w-48"
                 />
             </div>
 
             <!-- Date Range Filters -->
             <div class="flex items-center space-x-2">
-                <Calendar
-                    v-model="selectedDateFrom"
-                    dateFormat="dd-mm-yy"
-                    placeholder="From Date"
-                    class="w-36"
-                    showIcon
-                />
+                <Calendar v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" class="w-36" showIcon />
                 <span class="text-sm text-muted-color">to</span>
-                <Calendar
-                    v-model="selectedDateTo"
-                    dateFormat="dd-mm-yy"
-                    placeholder="To Date"
-                    class="w-36"
-                    showIcon
-                />
+                <Calendar v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" class="w-36" showIcon />
             </div>
         </div>
 
         <!-- Dashboard Main Layout: 2 Columns -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
             <!-- 1st Column: Sales Section -->
             <div class="space-y-6">
                 <!-- Sales Section Header -->
@@ -133,40 +140,22 @@ const formattedDateTo = computed(() => {
                     <div>
                         <!-- Status Prospect Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                            <h3
-                                class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
-                                @click="navigateToProspectingActivity"
-                            >
-                                Status Prospect
-                            </h3>
+                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer" @click="navigateToProspectingActivity">Status Prospect</h3>
                         </div>
                         <!-- Widget -->
                         <div class="widget-with-title">
-                            <StatusProspectWidget
-                                :dealerId="selectedDealer"
-                                :dateFrom="formattedDateFrom"
-                                :dateTo="formattedDateTo"
-                            />
+                            <StatusProspectWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
                         </div>
                     </div>
 
                     <div>
                         <!-- Status SPK Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                            <h3
-                                class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
-                                @click="navigateToDealingProcess"
-                            >
-                                Status SPK
-                            </h3>
+                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer" @click="navigateToDealingProcess">Status SPK</h3>
                         </div>
                         <!-- Widget -->
                         <div class="widget-with-title">
-                            <StatusSPKWidget
-                                :dealerId="selectedDealer"
-                                :dateFrom="formattedDateFrom"
-                                :dateTo="formattedDateTo"
-                            />
+                            <StatusSPKWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
                         </div>
                     </div>
                 </div>
@@ -176,56 +165,33 @@ const formattedDateTo = computed(() => {
                     <div>
                         <!-- Payment Type Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToPaymentTypeDetail">
-                            <h3 
-                                class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
-                            >
-                                Tipe Pembayaran
-                            </h3>
+                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer">Tipe Pembayaran</h3>
                         </div>
                         <!-- Widget -->
                         <div class="widget-with-title">
-                            <PaymentTypeWidget
-                                :dealerId="selectedDealer"
-                                :dateFrom="formattedDateFrom"
-                                :dateTo="formattedDateTo"
-                            />
+                            <PaymentTypeWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
                         </div>
                     </div>
 
                     <div>
                         <!-- Top Leasing Title -->
-                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200"
-                             @click="navigateToHandleLeasingDetail">
-                            <h3 
-                            class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
-                            >    Top 5 Leasing
-                            </h3>
+                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToHandleLeasingDetail">
+                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer">Top 5 Leasing</h3>
                         </div>
                         <!-- Widget -->
                         <div class="widget-with-title">
-                            <TopLeasingWidget
-                                :dealerId="selectedDealer"
-                                :dateFrom="formattedDateFrom"
-                                :dateTo="formattedDateTo"
-                            />
+                            <TopLeasingWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
                         </div>
                     </div>
 
                     <div>
                         <!-- Document Handling Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToDocumentHandlingDetail">
-                            <h3 
-                            class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
-                            >    Document Handling
-                            </h3>
+                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer">Document Handling</h3>
                         </div>
                         <!-- Widget -->
                         <div class="widget-with-title">
-                            <DocumentHandlingWidget
-                                :dealerId="selectedDealer"
-                                :dateFrom="formattedDateFrom"
-                                :dateTo="formattedDateTo"
-                            />
+                            <DocumentHandlingWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
                         </div>
                     </div>
                 </div>
@@ -242,19 +208,11 @@ const formattedDateTo = computed(() => {
                 <div>
                     <!-- Data Inbound Title -->
                     <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 cursor-pointer hover:bg-surface-50 transition-colors duration-200" @click="navigateToUnitInboundDetail">
-                        <h3 
-                            class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
-                            >    
-                            Data Inbound
-                        </h3>
+                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer">Data Inbound</h3>
                     </div>
                     <!-- Widget -->
                     <div class="widget-with-title">
-                        <UnitInboundStatusWidget
-                            :dealerId="selectedDealer"
-                            :dateFrom="formattedDateFrom"
-                            :dateTo="formattedDateTo"
-                        />
+                        <UnitInboundStatusWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
                     </div>
                 </div>
 
@@ -262,26 +220,15 @@ const formattedDateTo = computed(() => {
                 <div>
                     <!-- Delivery Process Title -->
                     <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                        <h3
-                            class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer"
-                            @click="navigateToDeliveryProcessDetail"
-                        >
-                            Delivery Process
-                        </h3>
+                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide hover:text-primary-600 transition-colors cursor-pointer" @click="navigateToDeliveryProcessDetail">Delivery Process</h3>
                     </div>
                     <!-- Widget -->
                     <div class="widget-with-title">
-                        <DeliveryProcessWidget
-                            :dealerId="selectedDealer"
-                            :dateFrom="formattedDateFrom"
-                            :dateTo="formattedDateTo"
-                        />
+                        <DeliveryProcessWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
                     </div>
                 </div>
             </div>
         </div>
-
-
     </div>
 </template>
 

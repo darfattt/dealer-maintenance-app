@@ -72,7 +72,7 @@ const fetchPaymentTypeData = async () => {
 
         if (response.data.success) {
             // Transform API response to component format
-            paymentData.value = response.data.data.map(item => ({
+            paymentData.value = response.data.data.map((item) => ({
                 type: mapPaymentType(item.tipe_pembayaran),
                 amount: parseFloat(item.total_amount) || 0,
                 color: getPaymentTypeColor(item.tipe_pembayaran)
@@ -83,11 +83,9 @@ const fetchPaymentTypeData = async () => {
 
             // Prepare chart data
             if (paymentData.value.length > 0) {
-                const labels = paymentData.value.map(item => item.type);
-                const values = paymentData.value.map(item => item.amount);
-                const colors = paymentData.value.map((_, index) =>
-                    chartColors[index % chartColors.length]
-                );
+                const labels = paymentData.value.map((item) => item.type);
+                const values = paymentData.value.map((item) => item.amount);
+                const colors = paymentData.value.map((_, index) => chartColors[index % chartColors.length]);
 
                 chartData.value = {
                     labels: labels,
@@ -119,7 +117,7 @@ const fetchPaymentTypeData = async () => {
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const label = context.label || '';
                                     const value = context.parsed;
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -154,12 +152,12 @@ const fetchPaymentTypeData = async () => {
 // Helper function to map payment type codes to labels
 const mapPaymentType = (tipeCode) => {
     const typeMap = {
-        '1': 'CASH',
-        '2': 'CREDIT',
-        '3': 'LEASING',
-        'CASH': 'CASH',
-        'CREDIT': 'CREDIT',
-        'LEASING': 'LEASING'
+        1: 'CASH',
+        2: 'CREDIT',
+        3: 'LEASING',
+        CASH: 'CASH',
+        CREDIT: 'CREDIT',
+        LEASING: 'LEASING'
     };
     return typeMap[tipeCode] || tipeCode || 'UNKNOWN';
 };
@@ -167,13 +165,13 @@ const mapPaymentType = (tipeCode) => {
 // Helper function to get color for payment type
 const getPaymentTypeColor = (paymentType) => {
     const colorMap = {
-        '1': '#10B981',      // Cash - Green
-        '2': '#3B82F6',      // Credit - Blue
-        '3': '#F59E0B',      // Leasing - Orange
-        'CASH': '#10B981',
-        'CREDIT': '#3B82F6',
-        'LEASING': '#F59E0B',
-        'OTHER': '#6B7280'
+        1: '#10B981', // Cash - Green
+        2: '#3B82F6', // Credit - Blue
+        3: '#F59E0B', // Leasing - Orange
+        CASH: '#10B981',
+        CREDIT: '#3B82F6',
+        LEASING: '#F59E0B',
+        OTHER: '#6B7280'
     };
     return colorMap[paymentType] || '#6B7280';
 };
@@ -198,9 +196,13 @@ const formatAmount = (amount) => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchPaymentTypeData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchPaymentTypeData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -221,28 +223,16 @@ onMounted(() => {
                 <!-- Pie Chart -->
                 <div class="lg:col-span-3">
                     <div class="h-80 p-2">
-                        <Chart
-                            type="pie"
-                            :data="chartData"
-                            :options="chartOptions"
-                            class="h-full w-full"
-                        />
+                        <Chart type="pie" :data="chartData" :options="chartOptions" class="h-full w-full" />
                     </div>
                 </div>
 
                 <!-- Custom Legend -->
                 <div class="lg:col-span-2 flex flex-col justify-center">
                     <div class="space-y-2">
-                        <div
-                            v-for="(item, index) in legendItems"
-                            :key="index"
-                            class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-all duration-200 hover:shadow-sm"
-                        >
+                        <div v-for="(item, index) in legendItems" :key="index" class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-all duration-200 hover:shadow-sm">
                             <div class="flex items-center space-x-2 min-w-0">
-                                <div
-                                    class="w-4 h-4 rounded-full flex-shrink-0 shadow-sm"
-                                    :style="{ backgroundColor: item.color }"
-                                ></div>
+                                <div class="w-4 h-4 rounded-full flex-shrink-0 shadow-sm" :style="{ backgroundColor: item.color }"></div>
                                 <span class="font-medium text-xs text-surface-700 truncate">{{ item.label }}</span>
                             </div>
                             <div class="text-right ml-2 flex-shrink-0">

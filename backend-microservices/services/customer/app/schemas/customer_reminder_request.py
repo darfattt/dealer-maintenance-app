@@ -49,20 +49,17 @@ class ReminderType(str, Enum):
 class BulkReminderCustomerData(BaseModel):
     """Schema for individual customer data in bulk reminder"""
     
-    nama_pemilik: str = Field(..., min_length=1, max_length=255, description="Vehicle owner name")
     nama_pelanggan: str = Field(..., min_length=1, max_length=255, description="Customer name")
     nomor_telepon_pelanggan: str = Field(..., min_length=8, max_length=20, description="Customer phone number")
-    nama_pembawa: str = Field(..., min_length=1, max_length=255, description="Person bringing vehicle")
-    no_telepon_pembawa: str = Field(..., min_length=8, max_length=20, description="Person phone number")
     nomor_mesin: str = Field(..., min_length=1, max_length=50, description="Engine number")
     nomor_polisi: str = Field(..., min_length=1, max_length=20, description="License plate number")
     tipe_unit: str = Field(..., min_length=1, max_length=100, description="Unit type")
     tanggal_beli: str = Field(..., description="Purchase date in YYYY-MM-DD format")
     tanggal_expired_kpb: str = Field(..., description="KPB expiry date in YYYY-MM-DD format")
     
-    @field_validator('nomor_telepon_pelanggan', 'no_telepon_pembawa')
+    @field_validator('nomor_telepon_pelanggan')
     @classmethod
-    def validate_phone_numbers(cls, v):
+    def validate_phone_number(cls, v):
         """Validate phone number format"""
         # Remove common phone number prefixes and spaces
         cleaned = v.replace('+62', '0').replace(' ', '').replace('-', '')
@@ -96,11 +93,8 @@ class BulkReminderRequest(BaseModel):
                 "filter_data": "H-7 dari expired KPB",
                 "data": [
                     {
-                        "nama_pemilik": "Firman",
                         "nama_pelanggan": "Firman",
                         "nomor_telepon_pelanggan": "628561111112",
-                        "nama_pembawa": "Budi",
-                        "no_telepon_pembawa": "628561111112",
                         "nomor_mesin": "JB22E1572318",
                         "nomor_polisi": "D1234XY",
                         "tipe_unit": "VARIO 125 CBS ISS",
@@ -115,7 +109,7 @@ class BulkReminderRequest(BaseModel):
 class CustomerReminderRequestCreate(BaseModel):
     """Schema for creating a customer reminder request"""
     
-    nama_pemilik: str = Field(..., min_length=1, max_length=255, description="Owner name")
+    nama_pelanggan: str = Field(..., min_length=1, max_length=255, description="Customer name")
     nomor_telepon_pelanggan: str = Field(..., min_length=8, max_length=20, description="Customer phone number")
     reminder_type: ReminderType = Field(..., description="Type of reminder")
     created_time: Optional[str] = Field(None, description="Created time in format 'DD/MM/YYYY HH:mm:ss' (optional, defaults to now)")
@@ -153,7 +147,7 @@ class CustomerReminderRequestCreate(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "nama_pemilik": "John Doe",
+                "nama_pelanggan": "John Doe",
                 "nomor_telepon_pelanggan": "082148523421",
                 "reminder_type": "SERVICE_REMINDER",
                 "dealer_id": "0009999"
@@ -234,7 +228,7 @@ class CustomerReminderRequestResponse(BaseModel):
     dealer_id: str
     request_date: str
     request_time: str
-    nama_pemilik: str
+    nama_pelanggan: str
     nomor_telepon_pelanggan: str
     request_status: str
     whatsapp_status: str
@@ -255,7 +249,7 @@ class WhatsAppReminderRequest(BaseModel):
     
     dealer_id: str
     phone_number: str
-    nama_pemilik: str
+    nama_pelanggan: str
     reminder_type: ReminderType
     custom_message: Optional[str] = Field(None, description="Custom message content (optional)")
     
@@ -264,7 +258,7 @@ class WhatsAppReminderRequest(BaseModel):
             "example": {
                 "dealer_id": "0009999",
                 "phone_number": "082148523421",
-                "nama_pemilik": "John Doe",
+                "nama_pelanggan": "John Doe",
                 "reminder_type": "SERVICE_REMINDER",
                 "custom_message": "Jangan lupa service rutin kendaraan Anda minggu ini"
             }

@@ -9,7 +9,19 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
+from app.utils.phone_masking import mask_phone_number
+
 Base = declarative_base()
+
+# Import Indonesian timezone utility function
+def _get_indonesia_timezone_utc():
+    """Get current Indonesian time as UTC for database storage"""
+    try:
+        from app.utils.timezone_utils import get_indonesia_utc_now
+        return get_indonesia_utc_now()
+    except ImportError:
+        # Fallback to standard UTC if timezone utils not available
+        return datetime.utcnow()
 
 
 class CustomerValidationRequest(Base):
@@ -50,11 +62,11 @@ class CustomerValidationRequest(Base):
     # Fonnte API response
     fonnte_response = Column(JSON, nullable=True)
     
-    # Audit fields
+    # Audit fields - using Indonesian timezone
     created_by = Column(String(100), nullable=True)
-    created_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_date = Column(DateTime, default=_get_indonesia_timezone_utc, nullable=False)
     last_modified_by = Column(String(100), nullable=True)
-    last_modified_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_modified_date = Column(DateTime, default=_get_indonesia_timezone_utc, onupdate=_get_indonesia_timezone_utc, nullable=False)
     
     def __repr__(self):
         return f"<CustomerValidationRequest(id={self.id}, dealer_id={self.dealer_id}, nama_pembawa={self.nama_pembawa})>"
@@ -78,6 +90,29 @@ class CustomerValidationRequest(Base):
             "whatsapp_status": self.whatsapp_status,
             "whatsapp_message": self.whatsapp_message,
             "fonnte_response": self.fonnte_response,
+            "created_by": self.created_by,
+            "created_date": self.created_date.isoformat() if self.created_date else None,
+            "last_modified_by": self.last_modified_by,
+            "last_modified_date": self.last_modified_date.isoformat() if self.last_modified_date else None,
+        }
+    
+    def to_safe_dict(self):
+        """Convert customer validation request to dictionary with masked phone number"""
+        return {
+            "id": str(self.id),
+            "request_date": self.request_date.isoformat() if self.request_date else None,
+            "request_time": self.request_time.isoformat() if self.request_time else None,
+            "nama_pembawa": self.nama_pembawa,
+            "nomor_telepon_pembawa": mask_phone_number(self.nomor_telepon_pembawa),
+            "tipe_unit": self.tipe_unit,
+            "nomor_polisi": self.nomor_polisi,
+            "kode_ahass": self.kode_ahass,
+            "nama_ahass": self.nama_ahass,
+            "alamat_ahass": self.alamat_ahass,
+            "nomor_mesin": self.nomor_mesin,
+            "request_status": self.request_status,
+            "whatsapp_status": self.whatsapp_status,
+            "whatsapp_message": self.whatsapp_message,
             "created_by": self.created_by,
             "created_date": self.created_date.isoformat() if self.created_date else None,
             "last_modified_by": self.last_modified_by,

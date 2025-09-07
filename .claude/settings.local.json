@@ -10,7 +10,22 @@
       "Bash(mkdir:*)",
       "Bash(docker-compose up:*)",
       "Bash(docker compose:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(sed:*)",
+      "Bash(cp:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(curl:*)",
+      "Bash(chmod:*)",
+      "Bash(find:*)",
+      "Bash(npm run lint:*)",
+      "Bash(docker-compose:*)",
+      "Bash(for file in DocumentHandlingDetail.vue DealingProcess.vue ProspectingActivity.vue)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(timeout 30s npm run build)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)"
     ],
     "deny": []
   }

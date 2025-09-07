@@ -53,7 +53,7 @@ const fetchSebaranData = async () => {
 
         if (response.data.success) {
             const data = response.data.data;
-            
+
             if (data.length === 0) {
                 error.value = 'No sebaran prospect data found for the selected criteria';
                 regionData.value = [];
@@ -63,7 +63,7 @@ const fetchSebaranData = async () => {
 
             // Calculate percentages for each region
             const totalCount = response.data.total_records;
-            
+
             // Transform API response to component format
             regionData.value = data.map((item, index) => ({
                 name: item.nama_kecamatan || `Kecamatan ${item.kode_kecamatan}`,
@@ -75,22 +75,24 @@ const fetchSebaranData = async () => {
                 x: item.latitude ? parseFloat(item.latitude) * 10 : (index + 1) * 15,
                 y: item.longitude ? parseFloat(item.longitude) * 10 : (index + 1) * 20
             }));
-            
+
             // Create scatter plot data for map-like visualization
-            const scatterData = regionData.value.map(region => ({
+            const scatterData = regionData.value.map((region) => ({
                 x: region.x,
                 y: region.y,
                 r: Math.max(8, region.percentage * 1.2) // Bubble size based on percentage
             }));
 
             chartData.value = {
-                datasets: [{
-                    label: 'Sebaran Prospect by Kecamatan',
-                    data: scatterData,
-                    backgroundColor: regionData.value.map(r => r.color),
-                    borderColor: regionData.value.map(r => r.color),
-                    borderWidth: 2
-                }]
+                datasets: [
+                    {
+                        label: 'Sebaran Prospect by Kecamatan',
+                        data: scatterData,
+                        backgroundColor: regionData.value.map((r) => r.color),
+                        borderColor: regionData.value.map((r) => r.color),
+                        borderWidth: 2
+                    }
+                ]
             };
 
             chartOptions.value = {
@@ -102,11 +104,11 @@ const fetchSebaranData = async () => {
                     },
                     tooltip: {
                         callbacks: {
-                            title: function(context) {
+                            title: function (context) {
                                 const index = context[0].dataIndex;
                                 return regionData.value[index]?.name || '';
                             },
-                            label: function(context) {
+                            label: function (context) {
                                 const index = context.dataIndex;
                                 const region = regionData.value[index];
                                 return `${region?.count} prospects (${region?.percentage}%)`;
@@ -141,9 +143,13 @@ const fetchSebaranData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchSebaranData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchSebaranData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -158,7 +164,7 @@ onMounted(() => {
                 <span class="text-sm font-bold uppercase">SEBARAN DATA PROSPECT</span>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -173,14 +179,9 @@ onMounted(() => {
                         <div class="text-center mb-2">
                             <h3 class="text-sm font-semibold text-muted-color">Prospect Distribution by Kecamatan</h3>
                         </div>
-                        
+
                         <div v-if="Object.keys(chartData).length > 0" class="h-48">
-                            <Chart
-                                type="bubble"
-                                :data="chartData"
-                                :options="chartOptions"
-                                class="h-full"
-                            />
+                            <Chart type="bubble" :data="chartData" :options="chartOptions" class="h-full" />
                         </div>
                     </div>
                 </div>
@@ -188,28 +189,14 @@ onMounted(() => {
                 <!-- Legend -->
                 <div class="lg:col-span-1 flex flex-col justify-center">
                     <div class="space-y-3">
-                        <div
-                            v-for="(region, index) in regionData"
-                            :key="index"
-                            class="flex items-center justify-between p-2 rounded border border-surface-200 hover:bg-surface-50 transition-colors"
-                        >
+                        <div v-for="(region, index) in regionData" :key="index" class="flex items-center justify-between p-2 rounded border border-surface-200 hover:bg-surface-50 transition-colors">
                             <div class="flex items-center space-x-2">
-                                <div
-                                    class="w-4 h-4 rounded-full border-2 border-white shadow-sm"
-                                    :style="{ backgroundColor: region.color }"
-                                ></div>
+                                <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm" :style="{ backgroundColor: region.color }"></div>
                                 <span class="text-xs font-medium">{{ region.name }}</span>
                             </div>
                             <div class="text-right">
-                                <div class="text-xs text-muted-color mb-1">
-                                    {{ region.count }} prospects
-                                </div>
-                                <div 
-                                    class="font-bold text-sm px-2 py-1 rounded text-white"
-                                    :style="{ backgroundColor: region.color }"
-                                >
-                                    {{ region.percentage }}%
-                                </div>
+                                <div class="text-xs text-muted-color mb-1">{{ region.count }} prospects</div>
+                                <div class="font-bold text-sm px-2 py-1 rounded text-white" :style="{ backgroundColor: region.color }">{{ region.percentage }}%</div>
                             </div>
                         </div>
                     </div>

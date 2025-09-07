@@ -11,6 +11,11 @@ const router = createRouter({
             children: [
                 {
                     path: '/',
+                    name: 'home',
+                    component: () => import('@/views/CustomerValidationRequest.vue')
+                },
+                {
+                    path: '/dashboard',
                     name: 'dashboard',
                     component: () => import('@/views/Dashboard.vue')
                 },
@@ -68,6 +73,16 @@ const router = createRouter({
                     path: '/customer-reminders',
                     name: 'customer-reminders',
                     component: () => import('@/views/CustomerReminderRequest.vue')
+                },
+                {
+                    path: '/customer-satisfaction',
+                    name: 'customer-satisfaction',
+                    component: () => import('@/views/CustomerSatisfaction.vue')
+                },
+                {
+                    path: '/sentiment-analysis',
+                    name: 'sentiment-analysis',
+                    component: () => import('@/views/SentimentAnalysis.vue')
                 }
             ]
         },

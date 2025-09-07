@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.repositories.customer_reminder_request_repository import CustomerReminderRequestRepository
 from app.repositories.dealer_config_repository import DealerConfigRepository
 from app.repositories.customer_reminder_processing_repository import CustomerReminderProcessingRepository
+from app.repositories.whatsapp_template_repository import WhatsAppTemplateRepository
 from app.services.whatsapp_service import WhatsAppService
 from app.schemas.customer_reminder_request import (
     CustomerReminderRequestCreate,
@@ -33,6 +34,7 @@ class CustomerReminderController:
         self.reminder_repo = CustomerReminderRequestRepository(db)
         self.dealer_repo = DealerConfigRepository(db)
         self.processing_repo = CustomerReminderProcessingRepository(db)
+        self.template_repo = WhatsAppTemplateRepository(db)
         self.whatsapp_service = WhatsAppService(self.dealer_repo)
     
     def _determine_whatsapp_status(self, whatsapp_response) -> str:
@@ -62,69 +64,8 @@ class CustomerReminderController:
         # If no status field or unclear, default to ERROR
         return 'ERROR'
     
-    def _create_reminder_message_template(self, nama_pemilik: str, reminder_type: ReminderType, dealer_name: str, custom_message: Optional[str] = None) -> str:
-        """Create WhatsApp message template based on reminder type"""
-        
-        if custom_message:
-            return f"Halo {nama_pemilik},\n\n{custom_message}\n\nTerima kasih,\n{dealer_name}"
-        
-        templates = {
-            ReminderType.SERVICE_REMINDER: f"""Halo {nama_pemilik},
-
-Ini adalah pengingat untuk servis rutin kendaraan Anda. Jangan lupa untuk melakukan perawatan berkala agar kendaraan selalu dalam kondisi prima.
-
-Silakan hubungi kami untuk membuat jadwal servis.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.PAYMENT_REMINDER: f"""Halo {nama_pemilik},
-
-Ini adalah pengingat bahwa Anda memiliki pembayaran yang jatuh tempo. Mohon segera lakukan pembayaran untuk menghindari keterlambatan.
-
-Silakan hubungi kami jika ada pertanyaan.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.APPOINTMENT_REMINDER: f"""Halo {nama_pemilik},
-
-Ini adalah pengingat untuk janji temu Anda dengan kami. Mohon hadir tepat waktu sesuai jadwal yang telah ditentukan.
-
-Jika ada perubahan jadwal, mohon hubungi kami segera.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.MAINTENANCE_REMINDER: f"""Halo {nama_pemilik},
-
-Saatnya untuk melakukan maintenance rutin kendaraan Anda. Perawatan berkala sangat penting untuk menjaga performa dan keamanan kendaraan.
-
-Hubungi kami untuk menjadwalkan maintenance.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.FOLLOW_UP_REMINDER: f"""Halo {nama_pemilik},
-
-Kami ingin menindaklanjuti layanan yang telah Anda terima. Apakah ada yang bisa kami bantu atau perbaiki?
-
-Kepuasan Anda adalah prioritas kami.
-
-Terima kasih,
-{dealer_name}""",
-            
-            ReminderType.CUSTOM_REMINDER: f"""Halo {nama_pemilik},
-
-Kami ingin mengingatkan Anda tentang layanan kami. Jangan ragu untuk menghubungi kami jika membutuhkan bantuan.
-
-Terima kasih,
-{dealer_name}"""
-        }
-        
-        return templates.get(reminder_type, templates[ReminderType.CUSTOM_REMINDER])
     
-    async def add_bulk_reminders(self, request_data: BulkReminderRequest, dealer_id: str) -> BulkReminderResponse:
+    async def add_bulk_reminders(self, request_data: BulkReminderRequest, dealer_id: str, created_by: str = 'api') -> BulkReminderResponse:
         """Handle bulk customer reminder creation"""
         try:
             # Step 1: Validate dealer exists
@@ -148,7 +89,7 @@ Terima kasih,
             
             # Step 3: Create processing tracker
             processing_tracker = self.processing_repo.create_processing_tracker(
-                created_by='api'
+                created_by=created_by
             )
             transaction_id = processing_tracker.transaction_id
             
@@ -173,14 +114,19 @@ Terima kasih,
                         reminder_type=request_data.filter_data,
                         dealer_id=dealer_id,
                         transaction_id=transaction_id,
-                        created_by='api'
+                        created_by=created_by
                     )
                     
-                    # Send WhatsApp message to customer
+                    # Send WhatsApp message to customer using enhanced template formatting
                     whatsapp_message = self._create_bulk_reminder_message_template(
-                        nama_pemilik=customer_data.nama_pemilik,
+                        customer_data=customer_data,
                         reminder_target=request_data.filter_target,
                         reminder_type=request_data.filter_data,
+                        ahass_data={
+                            "kode_ahass": request_data.kode_ahass,
+                            "nama_ahass": request_data.nama_ahass,
+                            "alamat_ahass": request_data.alamat_ahass
+                        },
                         dealer_name=self.dealer_repo.get_dealer_name(dealer_id) or "Dealer"
                     )
                     
@@ -189,7 +135,7 @@ Terima kasih,
                         whatsapp_response = await self._send_bulk_reminder_whatsapp(
                             dealer_id=dealer_id,
                             phone_number=customer_data.nomor_telepon_pelanggan,
-                            nama_pemilik=customer_data.nama_pemilik,
+                            nama_pelanggan=customer_data.nama_pelanggan,
                             message=whatsapp_message
                         )
                         
@@ -204,33 +150,33 @@ Terima kasih,
                             whatsapp_status=whatsapp_status,
                             whatsapp_message=whatsapp_message,
                             fonnte_response=whatsapp_response.response_data,
-                            modified_by='system'
+                            modified_by=created_by
                         )
                         
                         if whatsapp_response.success:
                             successful_reminders += 1
-                            logger.info(f"WhatsApp reminder sent successfully for customer {customer_data.nama_pemilik}")
+                            logger.info(f"WhatsApp reminder sent successfully for customer {customer_data.nama_pelanggan}")
                         else:
                             failed_reminders += 1
-                            logger.error(f"WhatsApp reminder failed for customer {customer_data.nama_pemilik}")
+                            logger.error(f"WhatsApp reminder failed for customer {customer_data.nama_pelanggan}")
                         
                         # Update processing progress
                         progress = round((successful_reminders + failed_reminders) / total_customers * 100)
                         self.processing_repo.update_progress(
                             transaction_id=transaction_id,
                             progress=progress,
-                            modified_by='system'
+                            modified_by=created_by
                         )
                             
                     except Exception as e:
                         failed_reminders += 1
-                        logger.error(f"Error sending WhatsApp for customer {customer_data.nama_pemilik}: {str(e)}")
+                        logger.error(f"Error sending WhatsApp for customer {customer_data.nama_pelanggan}: {str(e)}")
                         self.reminder_repo.update_status(
                             request_id=str(db_request.id),
                             request_status='FAILED',
                             whatsapp_status='ERROR',
                             fonnte_response={"error": str(e)},
-                            modified_by='system'
+                            modified_by=created_by
                         )
                         
                         # Update processing progress
@@ -238,19 +184,19 @@ Terima kasih,
                         self.processing_repo.update_progress(
                             transaction_id=transaction_id,
                             progress=progress,
-                            modified_by='system'
+                            modified_by=created_by
                         )
                         
                 except Exception as e:
                     failed_reminders += 1
-                    logger.error(f"Error processing customer {customer_data.nama_pemilik}: {str(e)}")
+                    logger.error(f"Error processing customer {customer_data.nama_pelanggan}: {str(e)}")
                     
                     # Update processing progress even on error
                     progress = round((successful_reminders + failed_reminders) / total_customers * 100)
                     self.processing_repo.update_progress(
                         transaction_id=transaction_id,
                         progress=progress,
-                        modified_by='system'
+                        modified_by=created_by
                     )
             
             # Mark processing as completed
@@ -258,7 +204,7 @@ Terima kasih,
                 transaction_id=transaction_id,
                 status='completed',
                 progress=100,
-                modified_by='system'
+                modified_by=created_by
             )
             
             # Calculate success rate
@@ -289,10 +235,32 @@ Terima kasih,
                 data=None
             )
     
-    def _create_bulk_reminder_message_template(self, nama_pemilik: str, reminder_target: str, reminder_type: str, dealer_name: str) -> str:
-        """Create WhatsApp message template for bulk reminders"""
-        # For now, return a basic template. Will be enhanced later based on reminder_target and reminder_type
-        return f"""Halo {nama_pemilik},
+    def _create_bulk_reminder_message_template(
+        self, 
+        customer_data,
+        reminder_target: str, 
+        reminder_type: str, 
+        ahass_data: Dict[str, Any],
+        dealer_name: str
+    ) -> str:
+        """Create WhatsApp message template for bulk reminders using enhanced database templates"""
+        
+        # Try to get template from database with complete customer data
+        formatted_message = self.template_repo.format_template_with_customer_data(
+            reminder_target=reminder_target,
+            reminder_type=reminder_type,
+            customer_data=customer_data,
+            ahass_data=ahass_data,
+            dealer_name=dealer_name
+        )
+        
+        if formatted_message:
+            return formatted_message
+        
+        # Fallback to basic template if no database template found
+        logger.warning(f"No template found for {reminder_target} - {reminder_type}, using fallback")
+        customer_name = getattr(customer_data, 'nama_pelanggan', 'Bpk/Ibu')
+        return f"""Halo {customer_name},
 
 Ini adalah pengingat dari {dealer_name} terkait {reminder_target}.
 
@@ -303,12 +271,12 @@ Terima kasih atas perhatian Anda.
 Salam,
 {dealer_name}"""
     
-    async def _send_bulk_reminder_whatsapp(self, dealer_id: str, phone_number: str, nama_pemilik: str, message: str):
+    async def _send_bulk_reminder_whatsapp(self, dealer_id: str, phone_number: str, nama_pelanggan: str, message: str):
         """Send WhatsApp message for bulk reminder using Fonnte API"""
         return await self.whatsapp_service.send_reminder_message(
             dealer_id=dealer_id,
             phone_number=phone_number,
-            customer_name=nama_pemilik,
+            customer_name=nama_pelanggan,
             message=message
         )
 
@@ -324,7 +292,7 @@ Salam,
         whatsapp_msg_request = WhatsAppMessageRequest(
             dealer_id=request.dealer_id,
             phone_number=request.phone_number,
-            customer_name=request.nama_pemilik,
+            customer_name=request.nama_pelanggan,
             unit_type="",  # Not applicable for reminders
             license_plate=""  # Not applicable for reminders
         )
@@ -363,7 +331,7 @@ Salam,
             return {
                 "success": True,
                 "message": "Reminder found",
-                "data": reminder.to_dict()
+                "data": reminder.to_safe_dict()
             }
             
         except Exception as e:
@@ -437,7 +405,8 @@ Salam,
         self, 
         dealer_id: str,
         date_from: Optional[str] = None,
-        date_to: Optional[str] = None
+        date_to: Optional[str] = None,
+        reminder_target: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get dealer reminder statistics with breakdown by type and status"""
         try:
@@ -464,20 +433,31 @@ Salam,
             whatsapp_stats = self.reminder_repo.get_whatsapp_status_stats(
                 dealer_id=dealer_id,
                 date_from=parsed_date_from,
-                date_to=parsed_date_to
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
             )
             
             # Get reminder type statistics
             reminder_type_stats = self.reminder_repo.get_reminder_type_stats(
                 dealer_id=dealer_id,
                 date_from=parsed_date_from,
-                date_to=parsed_date_to
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
+            )
+            
+            # Get reminder target statistics
+            reminder_target_stats = self.reminder_repo.get_reminder_target_stats(
+                dealer_id=dealer_id,
+                date_from=parsed_date_from,
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
             )
             
             # Combine all stats
             combined_stats = {
                 **whatsapp_stats,
-                "reminder_type_breakdown": reminder_type_stats
+                "reminder_type_breakdown": reminder_type_stats,
+                "reminder_target_breakdown": reminder_target_stats
             }
             
             return {
@@ -516,6 +496,106 @@ Salam,
             
         except Exception as e:
             logger.error(f"Error getting reminders for transaction {transaction_id}: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}",
+                "data": None
+            }
+    
+    def get_reminder_type_whatsapp_status_stats(
+        self, 
+        dealer_id: str,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        reminder_target: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get statistics grouped by reminder_type and whatsapp_status (cross-tabulation)"""
+        try:
+            # Validate dealer exists (bypass for now, similar to get_reminder_stats)
+            print("Bypassing dealer validation for reminder type whatsapp status stats...")
+            
+            # Parse date strings if provided
+            parsed_date_from = None
+            parsed_date_to = None
+            
+            if date_from:
+                try:
+                    parsed_date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+                except ValueError:
+                    logger.warning(f"Invalid date_from format: {date_from}")
+            
+            if date_to:
+                try:
+                    parsed_date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+                except ValueError:
+                    logger.warning(f"Invalid date_to format: {date_to}")
+            
+            # Get cross-tabulation statistics
+            stats = self.reminder_repo.get_reminder_type_whatsapp_status_stats(
+                dealer_id=dealer_id,
+                date_from=parsed_date_from,
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
+            )
+            
+            return {
+                "success": True,
+                "message": "Reminder type and WhatsApp status statistics retrieved",
+                "data": stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting reminder type whatsapp status stats for {dealer_id}: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}",
+                "data": None
+            }
+    
+    def get_tipe_unit_stats(
+        self, 
+        dealer_id: str,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        reminder_target: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get statistics grouped by tipe_unit (vehicle type)"""
+        try:
+            # Validate dealer exists (bypass for now, similar to get_reminder_stats)
+            print("Bypassing dealer validation for tipe unit stats...")
+            
+            # Parse date strings if provided
+            parsed_date_from = None
+            parsed_date_to = None
+            
+            if date_from:
+                try:
+                    parsed_date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+                except ValueError:
+                    logger.warning(f"Invalid date_from format: {date_from}")
+            
+            if date_to:
+                try:
+                    parsed_date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+                except ValueError:
+                    logger.warning(f"Invalid date_to format: {date_to}")
+            
+            # Get tipe_unit statistics
+            stats = self.reminder_repo.get_tipe_unit_stats(
+                dealer_id=dealer_id,
+                date_from=parsed_date_from,
+                date_to=parsed_date_to,
+                reminder_target=reminder_target
+            )
+            
+            return {
+                "success": True,
+                "message": "Vehicle type statistics retrieved",
+                "data": stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting tipe unit stats for {dealer_id}: {str(e)}")
             return {
                 "success": False,
                 "message": f"Error: {str(e)}",

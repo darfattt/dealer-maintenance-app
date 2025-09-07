@@ -38,7 +38,7 @@ const chartOptions = ref({
         },
         tooltip: {
             callbacks: {
-                label: function(context) {
+                label: function (context) {
                     return `PO Created: ${context.parsed.y}`;
                 }
             }
@@ -110,7 +110,7 @@ const fetchPOCreationData = async () => {
         }
     } catch (err) {
         console.error('Error fetching PO creation data:', err);
-        
+
         // Mock data for development
         const mockData = [
             { month: 'Jan', count: 350 },
@@ -126,7 +126,7 @@ const fetchPOCreationData = async () => {
             { month: 'Nov', count: 0 },
             { month: 'Dec', count: 0 }
         ];
-        
+
         poCreationData.value = mockData;
         totalRecords.value = mockData.reduce((sum, item) => sum + item.count, 0);
         updateChartData(mockData);
@@ -138,24 +138,28 @@ const fetchPOCreationData = async () => {
 
 const updateChartData = (data) => {
     chartData.value = {
-        labels: data.map(item => item.month),
+        labels: data.map((item) => item.month),
         datasets: [
             {
-                data: data.map(item => item.count),
+                data: data.map((item) => item.count),
                 backgroundColor: '#F59E0B', // Amber color matching the design
                 borderColor: '#D97706',
                 borderWidth: 1,
                 borderRadius: 4,
-                borderSkipped: false,
+                borderSkipped: false
             }
         ]
     };
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchPOCreationData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchPOCreationData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -168,11 +172,9 @@ onMounted(() => {
         <template #content>
             <!-- Total Records Info -->
             <div v-if="totalRecords > 0" class="flex justify-end mb-4">
-                <small class="text-muted-color">
-                    Total: {{ totalRecords.toLocaleString() }}
-                </small>
+                <small class="text-muted-color"> Total: {{ totalRecords.toLocaleString() }} </small>
             </div>
-            
+
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}
@@ -185,17 +187,11 @@ onMounted(() => {
 
             <!-- Chart -->
             <div v-else-if="!error && poCreationData.length > 0" class="h-64">
-                <Chart 
-                    type="bar" 
-                    :data="chartData" 
-                    :options="chartOptions"
-                    class="h-full"
-                />
+                <Chart type="bar" :data="chartData" :options="chartOptions" class="h-full" />
             </div>
 
             <!-- No Data State -->
-            <div v-else-if="!loading && !error && poCreationData.length === 0" 
-                 class="flex flex-col items-center justify-center h-64 text-surface-500">
+            <div v-else-if="!loading && !error && poCreationData.length === 0" class="flex flex-col items-center justify-center h-64 text-surface-500">
                 <i class="pi pi-chart-bar text-4xl mb-4"></i>
                 <p class="text-lg font-medium">No PO Creation Data</p>
                 <p class="text-sm">No data available for the selected period</p>

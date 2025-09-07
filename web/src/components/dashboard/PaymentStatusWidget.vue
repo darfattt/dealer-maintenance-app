@@ -34,17 +34,17 @@ const effectiveDealerId = computed(() => {
 
 // Default colors for payment status chart
 const statusColors = {
-    'New': '#4CAF50',
-    'Process': '#FF9800',
-    'Accepted': '#FFC107',
-    'Close': '#E0E0E0'
+    New: '#4CAF50',
+    Process: '#FF9800',
+    Accepted: '#FFC107',
+    Close: '#E0E0E0'
 };
 
 const statusBorderColors = {
-    'New': '#388E3C',
-    'Process': '#F57C00',
-    'Accepted': '#FFA000',
-    'Close': '#BDBDBD'
+    New: '#388E3C',
+    Process: '#F57C00',
+    Accepted: '#FFA000',
+    Close: '#BDBDBD'
 };
 
 // Methods
@@ -84,10 +84,10 @@ const fetchPaymentStatusData = async () => {
         }
 
         // Transform API data to chart format
-        const labels = apiData.map(item => item.status_label || 'Unknown');
-        const data = apiData.map(item => item.count);
-        const backgroundColor = labels.map(label => statusColors[label] || '#9E9E9E');
-        const borderColor = labels.map(label => statusBorderColors[label] || '#757575');
+        const labels = apiData.map((item) => item.status_label || 'Unknown');
+        const data = apiData.map((item) => item.count);
+        const backgroundColor = labels.map((label) => statusColors[label] || '#9E9E9E');
+        const borderColor = labels.map((label) => statusBorderColors[label] || '#757575');
 
         // Setup chart data
         chartData.value = {
@@ -114,7 +114,7 @@ const fetchPaymentStatusData = async () => {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return `${context.label}: ${context.parsed.x}`;
                         }
                     }
@@ -145,7 +145,6 @@ const fetchPaymentStatusData = async () => {
                 }
             }
         };
-
     } catch (err) {
         console.error('Error fetching payment status data:', err);
         error.value = err.response?.data?.message || err.message || 'Failed to fetch payment status data';
@@ -155,9 +154,13 @@ const fetchPaymentStatusData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchPaymentStatusData();
-}, { immediate: false });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchPaymentStatusData();
+    },
+    { immediate: false }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -182,12 +185,7 @@ onMounted(() => {
 
                 <!-- Horizontal Bar Chart -->
                 <div v-else class="h-48">
-                    <Chart 
-                        type="bar" 
-                        :data="chartData" 
-                        :options="chartOptions"
-                        class="w-full h-full"
-                    />
+                    <Chart type="bar" :data="chartData" :options="chartOptions" class="w-full h-full" />
                 </div>
             </div>
 

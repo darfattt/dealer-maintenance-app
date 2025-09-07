@@ -71,7 +71,6 @@ const fetchData = async (page = 1, perPage = 20) => {
         } else {
             throw new Error(response.data?.message || 'Invalid response format');
         }
-
     } catch (err) {
         console.error('Error fetching payment data:', err);
 
@@ -112,19 +111,28 @@ const formatCurrency = (amount) => {
 
 const getStatusSeverity = (status) => {
     switch (status) {
-        case 'New': return 'info';
-        case 'Process': return 'warning';
-        case 'Accepted': return 'success';
-        case 'Done': return 'secondary';
-        default: return 'info';
+        case 'New':
+            return 'info';
+        case 'Process':
+            return 'warning';
+        case 'Accepted':
+            return 'success';
+        case 'Done':
+            return 'secondary';
+        default:
+            return 'info';
     }
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    first.value = 0;
-    fetchData(1, rows.value);
-}, { immediate: false });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        first.value = 0;
+        fetchData(1, rows.value);
+    },
+    { immediate: false }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -143,7 +151,7 @@ onMounted(() => {
                 </div>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -152,66 +160,58 @@ onMounted(() => {
 
             <div v-if="!error" class="space-y-4">
                 <!-- Data Table -->
-                <DataTable 
-                    :value="data" 
-                    :loading="loading" 
-                    stripedRows 
-                    size="small" 
-                    class="text-xs"
-                    :scrollable="true"
-                    scrollHeight="400px"
-                >
+                <DataTable :value="data" :loading="loading" stripedRows size="small" class="text-xs" :scrollable="true" scrollHeight="400px">
                     <Column field="no" header="No" style="width: 60px">
                         <template #body="{ data, index }">
                             {{ first + index + 1 }}
                         </template>
                     </Column>
-                    
+
                     <Column field="id_invoice" header="ID Invoice" style="min-width: 120px">
                         <template #body="{ data }">
                             <span class="font-mono text-xs">{{ data.id_invoice }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="id_customer" header="ID Customer" style="min-width: 120px">
                         <template #body="{ data }">
                             <span class="font-mono text-xs">{{ data.id_customer }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="amount" header="Amount" style="min-width: 140px">
                         <template #body="{ data }">
                             <span class="font-semibold text-green-600">{{ formatCurrency(data.amount) }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="tipe_pembayaran" header="Tipe Pembayaran" style="min-width: 120px">
                         <template #body="{ data }">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                  :class="data.tipe_pembayaran === 'Cash' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium" :class="data.tipe_pembayaran === 'Cash' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'">
                                 {{ data.tipe_pembayaran }}
                             </span>
                         </template>
                     </Column>
-                    
+
                     <Column field="cara_bayar" header="Cara Bayar" style="min-width: 100px">
                         <template #body="{ data }">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                  :class="data.cara_bayar === 'Cash' ? 'bg-green-100 text-green-800' : 'bg-cyan-100 text-cyan-800'">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium" :class="data.cara_bayar === 'Cash' ? 'bg-green-100 text-green-800' : 'bg-cyan-100 text-cyan-800'">
                                 {{ data.cara_bayar }}
                             </span>
                         </template>
                     </Column>
-                    
+
                     <Column field="status" header="Status" style="min-width: 100px">
                         <template #body="{ data }">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                  :class="{
-                                      'bg-blue-100 text-blue-800': data.status === 'New',
-                                      'bg-yellow-100 text-yellow-800': data.status === 'Process',
-                                      'bg-green-100 text-green-800': data.status === 'Accepted',
-                                      'bg-gray-100 text-gray-800': data.status === 'Done'
-                                  }">
+                            <span
+                                class="px-2 py-1 rounded-full text-xs font-medium"
+                                :class="{
+                                    'bg-blue-100 text-blue-800': data.status === 'New',
+                                    'bg-yellow-100 text-yellow-800': data.status === 'Process',
+                                    'bg-green-100 text-green-800': data.status === 'Accepted',
+                                    'bg-gray-100 text-gray-800': data.status === 'Done'
+                                }"
+                            >
                                 {{ data.status }}
                             </span>
                         </template>
@@ -220,14 +220,12 @@ onMounted(() => {
 
                 <!-- Pagination -->
                 <div class="flex justify-between items-center pt-4 border-t border-surface-200">
-                    <div class="text-xs text-muted-color">
-                        Showing {{ first + 1 }} to {{ Math.min(first + rows, totalRecords) }} of {{ totalRecords }} entries
-                    </div>
-                    <Paginator 
-                        :first="first" 
-                        :rows="rows" 
-                        :totalRecords="totalRecords" 
-                        :rowsPerPageOptions="[10, 20, 50]" 
+                    <div class="text-xs text-muted-color">Showing {{ first + 1 }} to {{ Math.min(first + rows, totalRecords) }} of {{ totalRecords }} entries</div>
+                    <Paginator
+                        :first="first"
+                        :rows="rows"
+                        :totalRecords="totalRecords"
+                        :rowsPerPageOptions="[10, 20, 50]"
                         @page="onPageChange"
                         template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
                         class="text-xs"

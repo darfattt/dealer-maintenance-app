@@ -87,14 +87,14 @@ const fetchSTNKDiterimaData = async () => {
         }
     } catch (err) {
         console.error('Error fetching STNK Diterima data:', err);
-        
+
         // Use mock data as fallback
         stnkDiterimaData.value = {
             count: 224,
             trend: 'up',
             percentage: 5
         };
-        
+
         // Don't show error for mock data
         error.value = '';
     } finally {
@@ -103,9 +103,13 @@ const fetchSTNKDiterimaData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchSTNKDiterimaData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchSTNKDiterimaData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -129,9 +133,7 @@ onMounted(() => {
             <!-- Content -->
             <div v-else class="text-center">
                 <!-- Title -->
-                <h4 class="text-sm font-semibold text-surface-700 mb-4 uppercase tracking-wide">
-                    STNK Diterima Konsumen
-                </h4>
+                <h4 class="text-sm font-semibold text-surface-700 mb-4 uppercase tracking-wide">STNK Diterima Konsumen</h4>
 
                 <!-- Main Count -->
                 <div class="mb-4">
@@ -143,9 +145,7 @@ onMounted(() => {
                 <!-- Trend Indicator -->
                 <div class="flex justify-center items-center space-x-2">
                     <i :class="[trendIcon, trendColor, 'text-sm']"></i>
-                    <span :class="[trendColor, 'text-sm font-medium']">
-                        {{ Math.abs(stnkDiterimaData.percentage) }}%
-                    </span>
+                    <span :class="[trendColor, 'text-sm font-medium']"> {{ Math.abs(stnkDiterimaData.percentage) }}% </span>
                 </div>
             </div>
         </template>

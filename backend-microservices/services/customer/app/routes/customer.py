@@ -44,20 +44,13 @@ async def validate_customer(
     Authentication: Requires Authorization: Bearer <token> header with valid JWT token
     """
     try:
-        # Use dealer_id from authenticated user context
-        dealer_id = current_user.dealer_id
-        
-        if not dealer_id:
-            logger.warning(f"User {current_user.email} does not have a dealer_id")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User is not associated with a dealer"
-            )
+        # Use kode_ahass as dealer_id
+        dealer_id = request.kode_ahass
         
         logger.info(f"Processing customer validation for dealer {dealer_id}, user {current_user.email}")
         
         controller = CustomerController(db)
-        result = await controller.validate_customer(request, dealer_id)
+        result = await controller.validate_customer(request, dealer_id, created_by=current_user.email)
         
         logger.info(f"Customer validation processed for dealer {dealer_id}, customer {request.nama_pembawa}")
         
@@ -76,6 +69,7 @@ async def validate_customer(
 
 @router.get(
     "/request/{request_id}",
+    include_in_schema=False,
     summary="Get customer validation request by ID",
     description="Retrieve a specific customer validation request by its ID"
 )
@@ -188,6 +182,7 @@ async def get_dealer_stats(
 
 @router.post(
     "/dealer/{dealer_id}/test-whatsapp",
+    include_in_schema=False,
     summary="Test WhatsApp configuration",
     description="Test the Fonnte WhatsApp configuration for a dealer"
 )

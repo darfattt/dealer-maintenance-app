@@ -32,7 +32,7 @@ const effectiveDealerId = computed(() => {
 
 const formattedRevenue = computed(() => {
     if (!totalRevenue.value) return 'Rp 0';
-    
+
     // Format number with Indonesian currency format
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -74,7 +74,6 @@ const fetchRevenueData = async () => {
         } else {
             throw new Error(response.data?.message || 'Invalid response format');
         }
-
     } catch (err) {
         console.error('Error fetching revenue data:', err);
         if (err.response) {
@@ -90,9 +89,13 @@ const fetchRevenueData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchRevenueData();
-}, { immediate: false });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchRevenueData();
+    },
+    { immediate: false }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -121,12 +124,8 @@ onMounted(() => {
                     <div class="revenue-amount text-4xl md:text-5xl font-bold text-surface-900 mb-2">
                         {{ formattedRevenue }}
                     </div>
-                    <div class="revenue-label text-sm text-muted-color uppercase tracking-wide">
-                        Total Revenue
-                    </div>
-                    <div class="revenue-period text-xs text-muted-color mt-1">
-                        {{ props.dateFrom }} to {{ props.dateTo }}
-                    </div>
+                    <div class="revenue-label text-sm text-muted-color uppercase tracking-wide">Total Revenue</div>
+                    <div class="revenue-period text-xs text-muted-color mt-1">{{ props.dateFrom }} to {{ props.dateTo }}</div>
                 </div>
             </div>
 
@@ -156,7 +155,7 @@ onMounted(() => {
     .revenue-amount {
         font-size: 2rem !important;
     }
-    
+
     .revenue-container {
         min-height: 180px;
     }

@@ -36,7 +36,7 @@ const effectiveDealerId = computed(() => {
 const mockTrenRevenueData = {
     months: ['Jan', 'Feb', 'March', 'Apr', 'May', 'Jun'],
     revenue_bars: [50, 35, 60, 30, 25, 35], // Bar chart data (in millions)
-    revenue_line: [52, 38, 58, 28, 22, 37]  // Line chart data (in millions)
+    revenue_line: [52, 38, 58, 28, 22, 37] // Line chart data (in millions)
 };
 
 // Methods
@@ -67,7 +67,7 @@ const fetchTrenRevenueData = async () => {
         } else {
             throw new Error(response.data.message || 'Failed to fetch data');
         }
-        
+
         // Setup chart data with mixed chart types
         chartData.value = {
             labels: data.months,
@@ -104,7 +104,7 @@ const fetchTrenRevenueData = async () => {
             maintainAspectRatio: false,
             interaction: {
                 mode: 'index',
-                intersect: false,
+                intersect: false
             },
             plugins: {
                 legend: {
@@ -119,7 +119,7 @@ const fetchTrenRevenueData = async () => {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const label = context.dataset.label || '';
                             const value = context.parsed.y;
                             return `${label}: ${value}M`;
@@ -151,14 +151,13 @@ const fetchTrenRevenueData = async () => {
                         font: {
                             size: 10
                         },
-                        callback: function(value) {
+                        callback: function (value) {
                             return value + 'M';
                         }
                     }
                 }
             }
         };
-
     } catch (err) {
         console.error('Error fetching revenue trend data:', err);
         error.value = 'Failed to fetch revenue trend data';
@@ -202,7 +201,7 @@ const fetchTrenRevenueData = async () => {
             maintainAspectRatio: false,
             interaction: {
                 mode: 'index',
-                intersect: false,
+                intersect: false
             },
             plugins: {
                 legend: {
@@ -217,7 +216,7 @@ const fetchTrenRevenueData = async () => {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const label = context.dataset.label || '';
                             const value = context.parsed.y;
                             return `${label}: ${value}M`;
@@ -249,7 +248,7 @@ const fetchTrenRevenueData = async () => {
                         font: {
                             size: 10
                         },
-                        callback: function(value) {
+                        callback: function (value) {
                             return value + 'M';
                         }
                     }
@@ -262,9 +261,13 @@ const fetchTrenRevenueData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchTrenRevenueData();
-}, { immediate: false });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchTrenRevenueData();
+    },
+    { immediate: false }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -289,12 +292,7 @@ onMounted(() => {
 
                 <!-- Mixed Chart (Line + Bar) -->
                 <div v-else class="h-64">
-                    <Chart 
-                        type="bar" 
-                        :data="chartData" 
-                        :options="chartOptions"
-                        class="w-full h-full"
-                    />
+                    <Chart type="bar" :data="chartData" :options="chartOptions" class="w-full h-full" />
                 </div>
             </div>
 

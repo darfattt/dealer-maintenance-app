@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { useDealers } from '@/composables/useDealers';
 import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
 import Card from 'primevue/card';
@@ -10,19 +11,28 @@ import Paginator from 'primevue/paginator';
 import Tag from 'primevue/tag';
 import ProgressSpinner from 'primevue/progressspinner';
 import CustomerService from '@/service/CustomerService';
+import { formatIndonesiaDate, formatIndonesiaTime, formatDateForAPI, getCurrentMonthIndonesia } from '@/utils/dateFormatter';
 
 const authStore = useAuthStore();
 
-// Filter controls
-const selectedDealer = ref('12284');
-const selectedDateFrom = ref(new Date(new Date().getFullYear(), 0, 1));
-const selectedDateTo = ref(new Date());
+// Use dealers composable for dynamic dealer loading
+const { dealerOptions, isLoading: dealersLoading, hasError: dealersError } = useDealers();
 
-// Dealer options
-const dealerOptions = ref([
-    { label: 'Sample Dealer (12284)', value: '12284' },
-    { label: 'Test Dealer (00999)', value: '00999' }
-]);
+// Filter controls - Use dealer from auth for DEALER_USER, fallback to first available dealer
+const getInitialDealer = () => {
+    if (authStore.userRole === 'DEALER_USER') {
+        return authStore.userDealerId;
+    }
+    // For non-DEALER_USER, we'll set the dealer once dealers are loaded
+    return '';
+};
+
+const selectedDealer = ref(getInitialDealer());
+// Use Indonesia timezone for date initialization
+const { firstDay: currentYearFirstDay } = getCurrentMonthIndonesia();
+const currentYearStart = new Date(currentYearFirstDay.getFullYear(), 0, 1);
+const selectedDateFrom = ref(currentYearStart);
+const selectedDateTo = ref(new Date());
 
 // Check if user is DEALER_USER role
 const isDealerUser = computed(() => {
@@ -34,15 +44,13 @@ const showDealerDropdown = computed(() => {
     return !isDealerUser.value;
 });
 
-// Computed properties for formatted dates
+// Computed properties for formatted dates (using Indonesia timezone)
 const formattedDateFrom = computed(() => {
-    if (!selectedDateFrom.value) return '';
-    return selectedDateFrom.value.toISOString().split('T')[0];
+    return formatDateForAPI(selectedDateFrom.value);
 });
 
 const formattedDateTo = computed(() => {
-    if (!selectedDateTo.value) return '';
-    return selectedDateTo.value.toISOString().split('T')[0];
+    return formatDateForAPI(selectedDateTo.value);
 });
 
 // Data states
@@ -64,15 +72,11 @@ const pageSize = ref(10);
 // Load stats
 const loadStats = async () => {
     if (!selectedDealer.value) return;
-    
+
     statsLoading.value = true;
     try {
-        const response = await CustomerService.getCustomerStats(
-            selectedDealer.value,
-            formattedDateFrom.value,
-            formattedDateTo.value
-        );
-        
+        const response = await CustomerService.getCustomerStats(selectedDealer.value, formattedDateFrom.value, formattedDateTo.value);
+
         if (response.success && response.data) {
             const data = response.data;
             stats.value = {
@@ -99,7 +103,7 @@ const loadStats = async () => {
 // Load requests table data
 const loadRequests = async (page = 0) => {
     if (!selectedDealer.value) return;
-    
+
     loading.value = true;
     try {
         const response = await CustomerService.getCustomerRequests(selectedDealer.value, {
@@ -108,7 +112,7 @@ const loadRequests = async (page = 0) => {
             dateFrom: formattedDateFrom.value,
             dateTo: formattedDateTo.value
         });
-        
+
         if (response.success && response.data) {
             requests.value = response.data.items || [];
             totalRecords.value = response.data.total || 0;
@@ -125,7 +129,14 @@ const loadRequests = async (page = 0) => {
 
 // Handle pagination
 const onPageChange = (event) => {
-    loadRequests(event.page);
+    // Update page size if it changed
+    if (event.rows && event.rows !== pageSize.value) {
+        pageSize.value = event.rows;
+        // Reset to first page when page size changes
+        loadRequests(0);
+    } else {
+        loadRequests(event.page);
+    }
 };
 
 // Get status severity for Tag component
@@ -158,23 +169,37 @@ const getStatusLabel = (status) => {
     }
 };
 
-// Format date for display
+// Format date for display (using Indonesia timezone)
 const formatDate = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('id-ID');
+    return formatIndonesiaDate(date);
 };
 
-// Format time for display
+// Format time for display (using Indonesia timezone)
 const formatTime = (time) => {
-    if (!time) return '';
-    return time;
+    return formatIndonesiaTime(time);
 };
+
+// Watch for dealers to be loaded and set initial dealer for non-DEALER_USER
+watch(
+    dealerOptions,
+    (newDealers) => {
+        if (newDealers.length > 0 && !selectedDealer.value && authStore.userRole !== 'DEALER_USER') {
+            // Set first dealer as default for non-DEALER_USER roles
+            selectedDealer.value = newDealers[0].value;
+        }
+    },
+    { immediate: true }
+);
 
 // Watch for filter changes
-watch([selectedDealer, formattedDateFrom, formattedDateTo], () => {
-    loadStats();
-    loadRequests(0);
-}, { deep: true });
+watch(
+    [selectedDealer, formattedDateFrom, formattedDateTo],
+    () => {
+        loadStats();
+        loadRequests(0);
+    },
+    { deep: true }
+);
 
 // Initial load
 onMounted(() => {
@@ -196,28 +221,18 @@ onMounted(() => {
                     :options="dealerOptions"
                     optionLabel="label"
                     optionValue="value"
-                    placeholder="Select Dealer"
+                    :placeholder="dealersLoading ? 'Loading dealers...' : dealersError ? 'Error loading dealers' : 'Select Dealer'"
+                    :loading="dealersLoading"
+                    :disabled="dealersLoading || dealersError"
                     class="w-48"
                 />
             </div>
 
             <!-- Date Range Filters -->
             <div class="flex items-center space-x-2">
-                <Calendar
-                    v-model="selectedDateFrom"
-                    dateFormat="dd-mm-yy"
-                    placeholder="From Date"
-                    class="w-36"
-                    showIcon
-                />
+                <Calendar v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" class="w-36" showIcon />
                 <span class="text-sm text-muted-color">to</span>
-                <Calendar
-                    v-model="selectedDateTo"
-                    dateFormat="dd-mm-yy"
-                    placeholder="To Date"
-                    class="w-36"
-                    showIcon
-                />
+                <Calendar v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" class="w-36" showIcon />
             </div>
         </div>
 
@@ -227,14 +242,12 @@ onMounted(() => {
             <Card class="text-center">
                 <template #content>
                     <div v-if="statsLoading" class="flex justify-center">
-                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                        <ProgressSpinner style="width: 30px; height: 30px" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Terkirim</h3>
-                        <div class="text-3xl font-bold text-green-600 mb-1">
-                            {{ stats.delivered_count }}/{{ stats.total_requests }}
-                        </div>
-                        <p class="text-sm text-surface-500">WhatsApp Messages</p>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Terkirim</h3>
+                        <div class="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">{{ stats.delivered_count }}/{{ stats.total_requests }}</div>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">WhatsApp Messages</p>
                     </div>
                 </template>
             </Card>
@@ -243,14 +256,12 @@ onMounted(() => {
             <Card class="text-center">
                 <template #content>
                     <div v-if="statsLoading" class="flex justify-center">
-                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                        <ProgressSpinner style="width: 30px; height: 30px" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Tidak Terkirim</h3>
-                        <div class="text-3xl font-bold text-red-600 mb-1">
-                            {{ stats.failed_count }}/{{ stats.total_requests }}
-                        </div>
-                        <p class="text-sm text-surface-500">WhatsApp Messages</p>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Tidak Terkirim</h3>
+                        <div class="text-3xl font-bold text-red-600 dark:text-red-400 mb-1">{{ stats.failed_count }}/{{ stats.total_requests }}</div>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">WhatsApp Messages</p>
                     </div>
                 </template>
             </Card>
@@ -259,14 +270,12 @@ onMounted(() => {
             <Card class="text-center">
                 <template #content>
                     <div v-if="statsLoading" class="flex justify-center">
-                        <ProgressSpinner style="width: 30px; height: 30px;" />
+                        <ProgressSpinner style="width: 30px; height: 30px" />
                     </div>
                     <div v-else>
-                        <h3 class="text-lg font-semibold text-surface-900 mb-2">Summary Data terkirim</h3>
-                        <div class="text-3xl font-bold text-primary-600 mb-1">
-                            {{ stats.delivery_percentage }}%
-                        </div>
-                        <p class="text-sm text-surface-500">Success Rate</p>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">Summary Data terkirim</h3>
+                        <div class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-1">{{ stats.delivery_percentage }}%</div>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">Success Rate</p>
                     </div>
                 </template>
             </Card>
@@ -275,16 +284,10 @@ onMounted(() => {
         <!-- Details Table -->
         <Card>
             <template #title>
-                <h2 class="text-xl font-bold text-surface-900">Customer Validation Requests</h2>
+                <h2 class="text-xl font-bold text-surface-900 dark:text-surface-100">Customer Validation Requests</h2>
             </template>
             <template #content>
-                <DataTable
-                    :value="requests"
-                    :loading="loading"
-                    responsiveLayout="scroll"
-                    :paginator="false"
-                    class="p-datatable-customers"
-                >
+                <DataTable :value="requests" :loading="loading" responsiveLayout="scroll" :paginator="false" class="p-datatable-customers">
                     <Column field="request_date" header="Request Date">
                         <template #body="slotProps">
                             {{ formatDate(slotProps.data.request_date) }}
@@ -298,9 +301,9 @@ onMounted(() => {
                     <Column field="nama_pembawa" header="Nama Pembawa" />
                     <Column field="nomor_telepon_pembawa" header="No. Telepon" />
                     <Column field="nomor_polisi" header="No. Polisi" />
-                    <Column field="kode_ahass" header="Kode AHASS" />
-                    <Column field="nama_ahass" header="Nama AHASS" />
-                    <Column field="alamat_ahass" header="Alamat AHASS" style="max-width: 200px;">
+                    <Column v-if="!isDealerUser" field="kode_ahass" header="Kode AHASS" />
+                    <Column v-if="!isDealerUser" field="nama_ahass" header="Nama AHASS" />
+                    <Column v-if="!isDealerUser" field="alamat_ahass" header="Alamat AHASS" style="max-width: 200px">
                         <template #body="slotProps">
                             <div class="text-ellipsis overflow-hidden whitespace-nowrap" :title="slotProps.data.alamat_ahass">
                                 {{ slotProps.data.alamat_ahass }}
@@ -310,23 +313,13 @@ onMounted(() => {
                     <Column field="nomor_mesin" header="Nomor Mesin" />
                     <Column field="whatsapp_status" header="Status WhatsApp">
                         <template #body="slotProps">
-                            <Tag 
-                                :value="getStatusLabel(slotProps.data.whatsapp_status)" 
-                                :severity="getStatusSeverity(slotProps.data.whatsapp_status)"
-                            />
+                            <Tag :value="getStatusLabel(slotProps.data.whatsapp_status)" :severity="getStatusSeverity(slotProps.data.whatsapp_status)" />
                         </template>
                     </Column>
                 </DataTable>
 
                 <!-- Pagination -->
-                <Paginator
-                    v-if="totalRecords > pageSize"
-                    :rows="pageSize"
-                    :totalRecords="totalRecords"
-                    :rowsPerPageOptions="[10, 20, 50]"
-                    @page="onPageChange"
-                    class="mt-4"
-                />
+                <Paginator :first="currentPage * pageSize" :rows="pageSize" :totalRecords="totalRecords" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
             </template>
         </Card>
     </div>
@@ -371,7 +364,7 @@ onMounted(() => {
     :deep(.p-datatable-customers) {
         font-size: 0.875rem;
     }
-    
+
     :deep(.p-datatable-customers .p-datatable-tbody > tr > td) {
         padding: 0.5rem 0.75rem;
     }

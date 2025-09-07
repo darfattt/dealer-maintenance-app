@@ -71,14 +71,14 @@ const fetchDocumentHistoryData = async (page = 1, perPageValue = perPage.value) 
         }
     } catch (err) {
         console.error('Error fetching document history data:', err);
-        
+
         // Use mock data as fallback
         const mockData = generateMockDocumentHistoryData(page, perPageValue);
         documentHistoryData.value = mockData.data;
         totalRecords.value = mockData.totalRecords;
         totalPages.value = Math.ceil(mockData.totalRecords / perPageValue);
         currentPage.value = page;
-        
+
         // Don't show error for mock data
         error.value = '';
     } finally {
@@ -91,7 +91,7 @@ const generateMockDocumentHistoryData = (page, perPageValue) => {
     const startIndex = (page - 1) * perPageValue;
     const data = [];
 
-    for (let i = 0; i < perPageValue && (startIndex + i) < totalRecords; i++) {
+    for (let i = 0; i < perPageValue && startIndex + i < totalRecords; i++) {
         const index = startIndex + i + 1;
         data.push({
             no: index,
@@ -132,10 +132,14 @@ const filterData = () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    currentPage.value = 1;
-    fetchDocumentHistoryData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        currentPage.value = 1;
+        fetchDocumentHistoryData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -149,28 +153,12 @@ onMounted(() => {
             <div class="flex justify-between items-center">
                 <span class="text-sm font-bold uppercase">DATA HISTORY</span>
                 <div class="flex items-center space-x-2">
-                    <Button 
-                        icon="pi pi-filter" 
-                        size="small" 
-                        text 
-                        severity="secondary"
-                        class="p-1"
-                        @click="filterData"
-                        :disabled="loading"
-                    />
-                    <Button 
-                        icon="pi pi-download" 
-                        size="small" 
-                        text 
-                        severity="secondary"
-                        class="p-1"
-                        @click="exportData"
-                        :disabled="loading || documentHistoryData.length === 0"
-                    />
+                    <Button icon="pi pi-filter" size="small" text severity="secondary" class="p-1" @click="filterData" :disabled="loading" />
+                    <Button icon="pi pi-download" size="small" text severity="secondary" class="p-1" @click="exportData" :disabled="loading || documentHistoryData.length === 0" />
                 </div>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -179,22 +167,13 @@ onMounted(() => {
 
             <!-- Data Table -->
             <div v-if="!error" class="space-y-4">
-                <DataTable 
-                    :value="documentHistoryData" 
-                    :loading="loading"
-                    :paginator="false"
-                    :rows="perPage"
-                    :first="paginatorFirst"
-                    stripedRows
-                    size="small"
-                    class="text-xs"
-                >
+                <DataTable :value="documentHistoryData" :loading="loading" :paginator="false" :rows="perPage" :first="paginatorFirst" stripedRows size="small" class="text-xs">
                     <Column field="no" header="No" style="width: 60px">
                         <template #body="{ data }">
                             <span class="font-medium">{{ data.no }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="id_spk" header="ID SPK" style="width: 120px">
                         <template #body="{ data }">
                             <div class="truncate max-w-xs font-mono text-xs" :title="data.id_spk">
@@ -202,7 +181,7 @@ onMounted(() => {
                             </div>
                         </template>
                     </Column>
-                    
+
                     <Column field="id_so" header="ID SO" style="width: 120px">
                         <template #body="{ data }">
                             <div class="truncate max-w-xs font-mono text-xs" :title="data.id_so">
@@ -210,45 +189,47 @@ onMounted(() => {
                             </div>
                         </template>
                     </Column>
-                    
+
                     <Column field="tgl_pengajuan_stnk" header="Tgl Pengajuan STNK" style="width: 140px">
                         <template #body="{ data }">
                             <span class="text-xs">{{ data.tgl_pengajuan_stnk }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="status_faktur_stnk" header="Status Faktur STNK" style="width: 130px">
                         <template #body="{ data }">
-                            <span class="text-xs px-2 py-1 rounded-full text-white"
-                                  :class="{
-                                      'bg-green-500': data.status_faktur_stnk === 'Approved',
-                                      'bg-red-500': data.status_faktur_stnk === 'Rejected',
-                                      'bg-yellow-500': data.status_faktur_stnk === 'Pending',
-                                      'bg-blue-500': data.status_faktur_stnk === 'In Process'
-                                  }">
+                            <span
+                                class="text-xs px-2 py-1 rounded-full text-white"
+                                :class="{
+                                    'bg-green-500': data.status_faktur_stnk === 'Approved',
+                                    'bg-red-500': data.status_faktur_stnk === 'Rejected',
+                                    'bg-yellow-500': data.status_faktur_stnk === 'Pending',
+                                    'bg-blue-500': data.status_faktur_stnk === 'In Process'
+                                }"
+                            >
                                 {{ data.status_faktur_stnk }}
                             </span>
                         </template>
                     </Column>
-                    
+
                     <Column field="nomor_stnk" header="Nomor STNK" style="width: 120px">
                         <template #body="{ data }">
                             <span class="text-xs font-mono">{{ data.nomor_stnk }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="plat_nomor" header="Plat Nomor" style="width: 120px">
                         <template #body="{ data }">
                             <span class="text-xs font-mono">{{ data.plat_nomor }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="tgl_terima_stnk" header="Tgl Terima STNK" style="width: 130px">
                         <template #body="{ data }">
                             <span class="text-xs">{{ data.tgl_terima_stnk }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="nama_penerima_stnk" header="Nama Penerima STNK" style="min-width: 150px">
                         <template #body="{ data }">
                             <div class="truncate max-w-xs text-xs" :title="data.nama_penerima_stnk">
@@ -256,13 +237,13 @@ onMounted(() => {
                             </div>
                         </template>
                     </Column>
-                    
+
                     <Column field="tgl_terima_bpkb" header="Tgl Terima BPKB" style="width: 130px">
                         <template #body="{ data }">
                             <span class="text-xs">{{ data.tgl_terima_bpkb }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column field="nama_penerima_bpkb" header="Nama Penerima BPKB" style="min-width: 150px">
                         <template #body="{ data }">
                             <div class="truncate max-w-xs text-xs" :title="data.nama_penerima_bpkb">
@@ -274,9 +255,7 @@ onMounted(() => {
 
                 <!-- Custom Pagination -->
                 <div class="flex justify-between items-center pt-4 border-t border-surface-200">
-                    <div class="text-xs text-muted-color">
-                        Showing {{ paginatorFirst + 1 }} to {{ Math.min(paginatorFirst + perPage, totalRecords) }} of {{ totalRecords }} entries
-                    </div>
+                    <div class="text-xs text-muted-color">Showing {{ paginatorFirst + 1 }} to {{ Math.min(paginatorFirst + perPage, totalRecords) }} of {{ totalRecords }} entries</div>
                     <Paginator
                         :first="paginatorFirst"
                         :rows="perPage"

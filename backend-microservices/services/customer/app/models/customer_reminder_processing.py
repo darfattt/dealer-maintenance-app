@@ -10,6 +10,16 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+# Import Indonesian timezone utility function
+def _get_indonesia_timezone_utc():
+    """Get current Indonesian time as UTC for database storage"""
+    try:
+        from app.utils.timezone_utils import get_indonesia_utc_now
+        return get_indonesia_utc_now()
+    except ImportError:
+        # Fallback to standard UTC if timezone utils not available
+        return datetime.utcnow()
+
 
 class CustomerReminderProcessing(Base):
     """Customer reminder processing tracker model"""
@@ -29,11 +39,11 @@ class CustomerReminderProcessing(Base):
     progress = Column(Integer, nullable=False, default=0)  # 0-100 percentage
     status = Column(String(20), nullable=False, default='inprogress')  # 'inprogress' or 'completed'
     
-    # Audit fields
+    # Audit fields - using Indonesian timezone
     created_by = Column(String(100), nullable=True)
-    created_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_date = Column(DateTime, default=_get_indonesia_timezone_utc, nullable=False)
     last_modified_by = Column(String(100), nullable=True)
-    last_modified_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_modified_date = Column(DateTime, default=_get_indonesia_timezone_utc, onupdate=_get_indonesia_timezone_utc, nullable=False)
     
     def __repr__(self):
         return f"<CustomerReminderProcessing(id={self.id}, transaction_id={self.transaction_id}, status={self.status}, progress={self.progress})>"

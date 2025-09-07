@@ -17,7 +17,7 @@ if utils_path not in sys.path:
     sys.path.append(utils_path)
 
 from app.config import settings
-from app.routes import dashboard_router, health_router
+from app.routes import dashboard_router, health_router, admin_dashboard_router
 from utils.database import DatabaseManager
 from utils.logger import setup_logger
 
@@ -116,6 +116,7 @@ async def general_exception_handler(request, exc):
 # Include routers
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1")
+app.include_router(admin_dashboard_router, prefix="/api/v1")
 
 
 # Root endpoint

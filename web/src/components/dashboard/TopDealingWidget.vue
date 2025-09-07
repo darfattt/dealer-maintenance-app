@@ -52,7 +52,7 @@ const fetchTopDealingData = async () => {
 
         if (response.data.success) {
             const data = response.data.data;
-            
+
             if (data.length === 0) {
                 error.value = 'No top dealing units data found for the selected criteria';
                 topDealingData.value = [];
@@ -68,7 +68,6 @@ const fetchTopDealingData = async () => {
                 brand: 'Honda', // Default brand
                 image: getUnitImage(item.kode_tipe_unit)
             }));
-            
         } else {
             error.value = response.data.message || 'Failed to fetch top dealing units data';
         }
@@ -83,25 +82,29 @@ const fetchTopDealingData = async () => {
 // Helper function to get unit image based on type
 const getUnitImage = (kodeUnit) => {
     const unitImages = {
-        'SCOOPY': '/assets/images/motor.png',
-        'VARIO': '/assets/images/motor.png', 
-        'BEAT': '/assets/images/motor.png',
-        'PCX': '/assets/images/motor.png',
-        'GENIO': '/assets/images/motor.png',
-        'CB150R': '/assets/images/motor.png',
-        'CBR150R': '/assets/images/motor.png',
-        'CRF150L': '/assets/images/motor.png',
-        'FORZA': '/assets/images/motor.png',
-        'ADV': '/assets/images/motor.png'
+        SCOOPY: '/assets/images/motor.png',
+        VARIO: '/assets/images/motor.png',
+        BEAT: '/assets/images/motor.png',
+        PCX: '/assets/images/motor.png',
+        GENIO: '/assets/images/motor.png',
+        CB150R: '/assets/images/motor.png',
+        CBR150R: '/assets/images/motor.png',
+        CRF150L: '/assets/images/motor.png',
+        FORZA: '/assets/images/motor.png',
+        ADV: '/assets/images/motor.png'
     };
-    
+
     return unitImages[kodeUnit] || '/assets/images/motor.png';
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchTopDealingData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchTopDealingData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -114,7 +117,7 @@ onMounted(() => {
         <template #title>
             <span>Top Dealing</span>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -123,19 +126,10 @@ onMounted(() => {
 
             <!-- Top Dealing Items -->
             <div v-if="!error && topDealingData.length > 0" class="space-y-4">
-                <div
-                    v-for="item in topDealingData"
-                    :key="item.id"
-                    class="flex items-center space-x-4 p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors"
-                >
+                <div v-for="item in topDealingData" :key="item.id" class="flex items-center space-x-4 p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors">
                     <!-- Motorcycle Image -->
                     <div class="flex-shrink-0">
-                        <img
-                            :src="item.image"
-                            :alt="item.name"
-                            class="w-20 h-16 object-contain rounded"
-                            @error="$event.target.src = '/assets/images/motor.png'"
-                        />
+                        <img :src="item.image" :alt="item.name" class="w-20 h-16 object-contain rounded" @error="$event.target.src = '/assets/images/motor.png'" />
                     </div>
 
                     <!-- Details -->

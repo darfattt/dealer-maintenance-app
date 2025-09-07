@@ -53,8 +53,8 @@ const totalCount = computed(() => {
 
 const stackedBarData = computed(() => {
     if (totalCount.value === 0) return [];
-    
-    return poStatusData.value.map(item => ({
+
+    return poStatusData.value.map((item) => ({
         ...item,
         percentage: Math.round((item.count / totalCount.value) * 100)
     }));
@@ -90,14 +90,13 @@ const fetchPOStatusData = async () => {
                 return;
             }
 
-            poStatusData.value = data.map(item => ({
+            poStatusData.value = data.map((item) => ({
                 status: item.status_label?.toUpperCase() || 'UNKNOWN',
                 count: item.count,
                 color: statusColorMapping[item.status_label]?.color || '#9CA3AF',
                 bgColor: statusColorMapping[item.status_label]?.bgColor || '#F3F4F6',
                 originalStatus: item.status_code
             }));
-
         } else {
             error.value = response.data.message || 'Failed to fetch PO status data';
         }
@@ -143,9 +142,13 @@ const forceRefresh = () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchPOStatusData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchPOStatusData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -175,12 +178,10 @@ onMounted(() => {
                     :disabled="loading"
                     title="Refresh data"
                 > -->
-                    <i></i>
-                    
+                <i></i>
+
                 <!-- </button> -->
-                <small class="text-muted-color">
-                    Total Records: {{ totalRecords.toLocaleString() }}
-                </small>
+                <small class="text-muted-color"> Total Records: {{ totalRecords.toLocaleString() }} </small>
             </div>
 
             <!-- Stacked Bar Chart -->
@@ -208,25 +209,15 @@ onMounted(() => {
 
                 <!-- Legend Below -->
                 <div class="grid grid-cols-1 gap-3">
-                    <div
-                        v-for="(item, index) in poStatusData"
-                        :key="index"
-                        class="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200"
-                    >
+                    <div v-for="(item, index) in poStatusData" :key="index" class="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200">
                         <div class="flex items-center space-x-3">
-                            <div
-                                class="w-4 h-4 rounded flex-shrink-0"
-                                :style="{ backgroundColor: item.color }"
-                            ></div>
+                            <div class="w-4 h-4 rounded flex-shrink-0" :style="{ backgroundColor: item.color }"></div>
                             <span class="font-medium text-gray-700 text-sm uppercase tracking-wide">
                                 {{ item.status }}
                             </span>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <span
-                                class="text-lg font-bold px-3 py-1 rounded-md text-white"
-                                :style="{ backgroundColor: item.color }"
-                            >
+                            <span class="text-lg font-bold px-3 py-1 rounded-md text-white" :style="{ backgroundColor: item.color }">
                                 {{ item.count }}
                             </span>
                         </div>
@@ -248,8 +239,7 @@ onMounted(() => {
             </div>
 
             <!-- No Data State -->
-            <div v-else-if="!loading && !error && poStatusData.length === 0" 
-                 class="flex flex-col items-center justify-center h-64 text-surface-500">
+            <div v-else-if="!loading && !error && poStatusData.length === 0" class="flex flex-col items-center justify-center h-64 text-surface-500">
                 <i class="pi pi-file-o text-4xl mb-4"></i>
                 <p class="text-lg font-medium">No PO Status Data</p>
                 <p class="text-sm">No data available for the selected period</p>

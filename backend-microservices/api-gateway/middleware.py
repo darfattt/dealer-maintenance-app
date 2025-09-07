@@ -109,10 +109,19 @@ class AuthMiddleware:
 class ProxyMiddleware:
     """Proxy middleware for routing requests to services"""
     
-    def __init__(self, service_routes: Dict[str, str], timeout: int = 30):
+    def __init__(self, service_routes: Dict[str, str], timeout: int = 30, file_upload_timeout: int = 300):
         self.service_routes = service_routes
         self.timeout = timeout
-        self.client = httpx.AsyncClient(timeout=timeout)
+        self.file_upload_timeout = file_upload_timeout
+        self.client = httpx.AsyncClient()  # Don't set default timeout, we'll set it per request
+        
+        # File upload endpoint patterns
+        self.file_upload_patterns = [
+            "/api/v1/customer/customer-satisfaction/upload",
+            "/api/v1/customer/reminder/upload",
+            "/v1/customer/customer-satisfaction/upload",
+            "/v1/customer/reminder/upload"
+        ]
     
     def get_target_service(self, path: str) -> Optional[str]:
         """Get target service URL for given path"""
@@ -120,6 +129,10 @@ class ProxyMiddleware:
             if path.startswith(route_prefix):
                 return service_url
         return None
+    
+    def is_file_upload_request(self, path: str) -> bool:
+        """Check if the request is a file upload endpoint"""
+        return any(pattern in path for pattern in self.file_upload_patterns)
     
     async def proxy_request(self, request: Request) -> Response:
         """Proxy request to target service"""
@@ -153,6 +166,8 @@ class ProxyMiddleware:
         if request.url.query:
             target_url += f"?{request.url.query}"
         
+        logger.info(f"🎯 Proxying {method} {path} -> {target_url}")
+        
         try:
             # Get request body
             body = await request.body()
@@ -162,12 +177,18 @@ class ProxyMiddleware:
             headers.pop("host", None)
             headers.pop("content-length", None)
             
-            # Make request to target service
+            # Determine timeout based on request type
+            request_timeout = self.file_upload_timeout if self.is_file_upload_request(path) else self.timeout
+            
+            logger.info(f"Using timeout: {request_timeout}s for {'file upload' if self.is_file_upload_request(path) else 'regular'} request")
+            
+            # Make request to target service with dynamic timeout
             response = await self.client.request(
                 method=request.method,
                 url=target_url,
                 headers=headers,
-                content=body
+                content=body,
+                timeout=request_timeout
             )
             
             # Return response
@@ -184,11 +205,11 @@ class ProxyMiddleware:
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                 detail="Service timeout"
             )
-        except httpx.ConnectError:
-            logger.error(f"Connection error when proxying to {target_url}")
+        except httpx.ConnectError as e:
+            logger.error(f"Connection error when proxying to {target_url}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Service unavailable"
+                detail=f"Service unavailable: {target_service}"
             )
         except Exception as e:
             logger.error(f"Error proxying request to {target_url}: {str(e)}")

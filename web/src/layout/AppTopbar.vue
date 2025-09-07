@@ -39,7 +39,7 @@ const handleLogout = async () => {
                 <i class="pi pi-bars"></i>
             </button>
             <router-link to="/" class="layout-topbar-logo">
-                <svg viewBox="0 0 54 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- <svg viewBox="0 0 54 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
                         fill-rule="evenodd"
                         clip-rule="evenodd"
@@ -55,7 +55,8 @@ const handleLogout = async () => {
                             fill="var(--primary-color)"
                         />
                     </g>
-                </svg>
+                </svg> -->
+                <img src="/assets/images/logo-transparent.png" alt="Logo" class="w-16 shrink-0 mx-auto" />
 
                 <span></span>
             </router-link>
@@ -87,18 +88,18 @@ const handleLogout = async () => {
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <div v-if="authStore.isAuthenticated" class="layout-topbar-action text-sm">
+                    <!-- <div v-if="authStore.isAuthenticated" class="layout-topbar-action text-sm">
                         <i class="pi pi-user"></i>
                         <span>{{ authStore.userName }}</span>
-                    </div>
-                    <button type="button" class="layout-topbar-action">
+                    </div> -->
+                    <!-- <button type="button" class="layout-topbar-action">
                         <i class="pi pi-calendar"></i>
                         <span>Calendar</span>
                     </button>
                     <button type="button" class="layout-topbar-action">
                         <i class="pi pi-inbox"></i>
                         <span>Messages</span>
-                    </button>
+                    </button> -->
                     <button v-if="authStore.isAuthenticated" type="button" class="layout-topbar-action" @click="handleLogout">
                         <i class="pi pi-sign-out"></i>
                         <span>Logout</span>

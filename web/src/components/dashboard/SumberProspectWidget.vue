@@ -32,7 +32,7 @@ const colorMapping = [
     '#10B981', // Green
     '#F59E0B', // Amber
     '#EF4444', // Red
-    '#8B5CF6'  // Purple
+    '#8B5CF6' // Purple
 ];
 
 // Methods
@@ -72,7 +72,7 @@ const fetchSumberProspectData = async () => {
             prospectSources.value = data.map((item, index) => {
                 const sumberLabel = item.sumber_label || item.sumber_prospect || 'Unknown';
                 const percentage = totalCount > 0 ? ((item.count / totalCount) * 100).toFixed(1) : 0;
-                
+
                 return {
                     source: sumberLabel,
                     count: item.count,
@@ -82,7 +82,6 @@ const fetchSumberProspectData = async () => {
             });
 
             // Data is already sorted by count descending from API (top 5)
-
         } else {
             error.value = response.data.message || 'Failed to fetch sumber prospect data';
         }
@@ -95,9 +94,13 @@ const fetchSumberProspectData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchSumberProspectData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchSumberProspectData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -110,12 +113,10 @@ onMounted(() => {
         <template #title>
             <div class="flex justify-between items-center">
                 <span class="text-sm font-bold uppercase">TOP 5 SUMBER PROSPECT</span>
-                <small v-if="totalRecords > 0" class="text-muted-color">
-                    Total Records: {{ totalRecords }}
-                </small>
+                <small v-if="totalRecords > 0" class="text-muted-color"> Total Records: {{ totalRecords }} </small>
             </div>
         </template>
-        
+
         <template #content>
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
@@ -124,29 +125,15 @@ onMounted(() => {
 
             <!-- Prospect Sources List -->
             <div v-if="!error && prospectSources.length > 0" class="space-y-3">
-                <div
-                    v-for="(source, index) in prospectSources"
-                    :key="index"
-                    class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors"
-                >
+                <div v-for="(source, index) in prospectSources" :key="index" class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors">
                     <div class="flex items-center space-x-3">
-                        <div
-                            class="w-4 h-4 rounded-full"
-                            :style="{ backgroundColor: source.color }"
-                        ></div>
+                        <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: source.color }"></div>
                         <span class="font-medium text-sm">{{ source.source }}</span>
                     </div>
                     <div class="text-right">
                         <div class="flex flex-col items-end space-y-1">
-                            <div 
-                                class="font-bold text-lg px-3 py-1 rounded-full text-white"
-                                :style="{ backgroundColor: source.color }"
-                            >
-                                {{ source.percentage }}%
-                            </div>
-                            <small class="text-muted-color text-xs">
-                                {{ source.count }} records
-                            </small>
+                            <div class="font-bold text-lg px-3 py-1 rounded-full text-white" :style="{ backgroundColor: source.color }">{{ source.percentage }}%</div>
+                            <small class="text-muted-color text-xs"> {{ source.count }} records </small>
                         </div>
                     </div>
                 </div>

@@ -29,33 +29,33 @@ const totalRecords = ref(0);
 // Colors for top leasing companies
 const chartColors = [
     '#3B82F6', // Blue
-    '#10B981', // Green  
+    '#10B981', // Green
     '#F59E0B', // Amber
     '#EF4444', // Red
-    '#8B5CF6', // Purple
+    '#8B5CF6' // Purple
 ];
 
 // Company logos mapping (can be enhanced later)
 const companyLogos = {
-    'default': '🏦',
-    'adira': '🏛️',
-    'bca': '🏬',
-    'mega': '🏪',
-    'summit': '🏢',
-    'federal': '🏦'
+    default: '🏦',
+    adira: '🏛️',
+    bca: '🏬',
+    mega: '🏪',
+    summit: '🏢',
+    federal: '🏦'
 };
 
 // Get company logo based on name
 const getCompanyLogo = (companyName) => {
     if (!companyName) return companyLogos.default;
-    
+
     const name = companyName.toLowerCase();
     if (name.includes('adira')) return companyLogos.adira;
     if (name.includes('bca')) return companyLogos.bca;
     if (name.includes('mega')) return companyLogos.mega;
     if (name.includes('summit')) return companyLogos.summit;
     if (name.includes('federal')) return companyLogos.federal;
-    
+
     return companyLogos.default;
 };
 
@@ -110,9 +110,13 @@ const fetchTopLeasingData = async () => {
 };
 
 // Watch for prop changes
-watch([() => props.dealerId, () => props.dateFrom, () => props.dateTo], () => {
-    fetchTopLeasingData();
-}, { deep: true });
+watch(
+    [() => props.dealerId, () => props.dateFrom, () => props.dateTo],
+    () => {
+        fetchTopLeasingData();
+    },
+    { deep: true }
+);
 
 // Lifecycle
 onMounted(() => {
@@ -125,11 +129,9 @@ onMounted(() => {
         <template #content>
             <!-- Total Records Info -->
             <div v-if="totalRecords > 0" class="flex justify-end mb-4">
-                <small class="text-muted-color">
-                    Total: {{ totalRecords }}
-                </small>
+                <small class="text-muted-color"> Total: {{ totalRecords }} </small>
             </div>
-            
+
             <!-- Error Message -->
             <Message v-if="error" severity="warn" :closable="false" class="mb-4">
                 {{ error }}
@@ -137,11 +139,7 @@ onMounted(() => {
 
             <!-- Leasing Data -->
             <div v-if="!error && leasingData.length > 0" class="space-y-3">
-                <div
-                    v-for="(leasing, index) in leasingData"
-                    :key="index"
-                    class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors"
-                >
+                <div v-for="(leasing, index) in leasingData" :key="index" class="flex items-center justify-between p-3 rounded-lg border border-surface-200 hover:bg-surface-50 transition-colors">
                     <div class="flex items-center space-x-3">
                         <div class="text-2xl">{{ leasing.logo }}</div>
                         <div>
@@ -149,10 +147,7 @@ onMounted(() => {
                         </div>
                     </div>
                     <div class="text-right">
-                        <div 
-                            class="text-2xl font-bold"
-                            :style="{ color: leasing.color }"
-                        >
+                        <div class="text-2xl font-bold" :style="{ color: leasing.color }">
                             {{ leasing.count }}
                         </div>
                     </div>
