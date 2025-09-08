@@ -63,14 +63,14 @@ class H23DashboardRepository:
                     # Handle YYYY-MM-DD format
                     and_(
                         func.length(PKBData.created_time) >= 10,
-                        func.substr(PKBData.created_time, 1, 10).op('~')(r'^\\d{4}-\\d{2}-\\d{2}$'),
+                        func.substr(PKBData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
                         func.to_date(func.substr(PKBData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from_str, 'YYYY-MM-DD'),
                         func.to_date(func.substr(PKBData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to_str, 'YYYY-MM-DD')
                     ),
                     # Handle DD/MM/YYYY format
                     and_(
                         func.length(PKBData.created_time) >= 10,
-                        func.substr(PKBData.created_time, 1, 10).op('~')(r'^\\d{2}/\\d{2}/\\d{4}$'),
+                        func.substr(PKBData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
                         func.to_date(func.substr(PKBData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from_str, 'YYYY-MM-DD'),
                         func.to_date(func.substr(PKBData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to_str, 'YYYY-MM-DD')
                     )
@@ -191,7 +191,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(PKBData.created_time) >= 10,
-                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\\d{4}-\\d{2}-\\d{2}$'),
+                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -201,7 +201,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(PKBData.created_time) >= 10,
-                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\\d{2}/\\d{2}/\\d{4}$'),
+                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -284,7 +284,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(PKBData.created_time) >= 10,
-                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\\d{4}-\\d{2}-\\d{2}$'),
+                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -294,7 +294,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(PKBData.created_time) >= 10,
-                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\\d{2}/\\d{2}/\\d{4}$'),
+                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -370,7 +370,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(PKBData.created_time) >= 10,
-                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\\d{4}-\\d{2}-\\d{2}$'),
+                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -380,7 +380,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(PKBData.created_time) >= 10,
-                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\\d{2}/\\d{2}/\\d{4}$'),
+                    func.substr(PKBData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(PKBData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -425,7 +425,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(WorkshopInvoiceData.created_time) >= 10,
-                    func.substr(WorkshopInvoiceData.created_time, 1, 10).op('~')(r'^\\d{4}-\\d{2}-\\d{2}$'),
+                    func.substr(WorkshopInvoiceData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
                     func.to_date(func.substr(WorkshopInvoiceData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(WorkshopInvoiceData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -435,7 +435,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(WorkshopInvoiceData.created_time) >= 10,
-                    func.substr(WorkshopInvoiceData.created_time, 1, 10).op('~')(r'^\\d{2}/\\d{2}/\\d{4}$'),
+                    func.substr(WorkshopInvoiceData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
                     func.to_date(func.substr(WorkshopInvoiceData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(WorkshopInvoiceData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -498,7 +498,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(WorkshopInvoiceData.created_time) >= 10,
-                    func.substr(WorkshopInvoiceData.created_time, 1, 10).op('~')(r'^\\d{4}-\\d{2}-\\d{2}$'),
+                    func.substr(WorkshopInvoiceData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
                     func.to_date(func.substr(WorkshopInvoiceData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(WorkshopInvoiceData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -508,7 +508,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(WorkshopInvoiceData.created_time) >= 10,
-                    func.substr(WorkshopInvoiceData.created_time, 1, 10).op('~')(r'^\\d{2}/\\d{2}/\\d{4}$'),
+                    func.substr(WorkshopInvoiceData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
                     func.to_date(func.substr(WorkshopInvoiceData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(WorkshopInvoiceData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -575,7 +575,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(DPHLOData.created_time) >= 10,
-                    func.substr(DPHLOData.created_time, 1, 10).op('~')(r'^\\d{4}-\\d{2}-\\d{2}$'),
+                    func.substr(DPHLOData.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
                     func.to_date(func.substr(DPHLOData.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(DPHLOData.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
@@ -585,7 +585,7 @@ class H23DashboardRepository:
             date_conditions.append(
                 and_(
                     func.length(DPHLOData.created_time) >= 10,
-                    func.substr(DPHLOData.created_time, 1, 10).op('~')(r'^\\d{2}/\\d{2}/\\d{4}$'),
+                    func.substr(DPHLOData.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
                     func.to_date(func.substr(DPHLOData.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
                     func.to_date(func.substr(DPHLOData.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
                 )
