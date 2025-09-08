@@ -16,7 +16,14 @@ const model = ref([
         label: 'Home',
         items: [
             // Hide Dashboard for DEALER_USER role
-            ...(!isDealerUser.value ? [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/dashboard' }] : [])
+            ...(!isDealerUser.value ? [{
+                label: 'Dashboard',
+                icon: 'pi pi-fw pi-home',
+                items: [
+                    { label: 'H1', icon: 'pi pi-fw pi-chart-bar', to: '/h1-dashboard' },
+                    { label: 'H23', icon: 'pi pi-fw pi-chart-line', to: '/h23-dashboard' }
+                ]
+            }] : [])
         ]
     },
     {

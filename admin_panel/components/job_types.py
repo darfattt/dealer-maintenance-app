@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 # Job type mapping: code -> label
 JOB_TYPE_MAPPING = {
     "prospect": "Prospect", #prospect_data ProspectData
-    "pkb": "Manage WO - PKB",
+    "pkb": "Manage WO - PKB",  #H23 Manage Work Order pkb/read
     "parts_inbound": "Part Inbound - PINB",
     "leasing": "Handle Leasing Requirement", #leasing_data LeasingData
     "doch_read": "Manage Document Handling", #document_handling_data DocumentHandlingData
@@ -17,8 +17,8 @@ JOB_TYPE_MAPPING = {
     "inv1_read": "Manage Billing Process", #billing_process_data BillingProcessData
     "mdinvh1_read": "Unit Invoice (MD to Dealer)",
     "prsl_read": "Manage Parts Sales",
-    "dphlo_read": "DP HLO",
-    "inv2_read": "Nota Jasa Bengkel & Nota Suku Cadang",
+    "dphlo_read": "DP HLO", #H23
+    "inv2_read": "Nota Jasa Bengkel & Nota Suku Cadang", #H23 - Pembayaran inv2/read
     "unpaidhlo_read": "Unpaid HLO",
     "mdinvh3_read": "Parts Invoice (MD to Dealer)",
     "spk_read": "Manage Dealing Process" #spk_dealing_process_data SPKDealingProcessData

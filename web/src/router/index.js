@@ -15,9 +15,14 @@ const router = createRouter({
                     component: () => import('@/views/CustomerValidationRequest.vue')
                 },
                 {
-                    path: '/dashboard',
-                    name: 'dashboard',
-                    component: () => import('@/views/Dashboard.vue')
+                    path: '/h1-dashboard',
+                    name: 'h1-dashboard',
+                    component: () => import('@/views/H1Dashboard.vue')
+                },
+                {
+                    path: '/h23-dashboard',
+                    name: 'h23-dashboard',
+                    component: () => import('@/views/H23Dashboard.vue')
                 },
                 {
                     path: '/prospecting-activity',
