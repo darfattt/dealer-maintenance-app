@@ -148,32 +148,31 @@ watch(
                     <h2 class="text-xl font-bold text-surface-900 uppercase tracking-wide">Pembayaran</h2>
                 </div>
 
-                <!-- Pembayaran Section 1: NJB & NSC (2 columns) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <!-- NJB Title -->
-                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Nota Jasa Bengkel</h3>
-                        </div>
-                        <!-- Widget -->
-                        <div class="widget-with-title">
-                            <NJBWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
-                        </div>
+                <!-- Pembayaran Section 1: NJB (1 row) -->
+                <div>
+                    <!-- NJB Title -->
+                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Nota Jasa Bengkel</h3>
                     </div>
-
-                    <div>
-                        <!-- NSC Title -->
-                        <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Nota Suku Cadang</h3>
-                        </div>
-                        <!-- Widget -->
-                        <div class="widget-with-title">
-                            <NSCWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
-                        </div>
+                    <!-- Widget -->
+                    <div class="widget-with-title">
+                        <NJBWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
                     </div>
                 </div>
 
-                <!-- Pembayaran Section 2: HLO (1 column) -->
+                <!-- Pembayaran Section 2: NSC (1 row) -->
+                <div>
+                    <!-- NSC Title -->
+                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Nota Suku Cadang</h3>
+                    </div>
+                    <!-- Widget -->
+                    <div class="widget-with-title">
+                        <NSCWidget :dealerId="selectedDealer" :dateFrom="formattedDateFrom" :dateTo="formattedDateTo" />
+                    </div>
+                </div>
+
+                <!-- Pembayaran Section 3: HLO (1 row) -->
                 <div>
                     <!-- HLO Title -->
                     <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">

@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
+import h23DashboardService from '@/service/H23DashboardService';
 
 // Props from parent dashboard
 const props = defineProps({
@@ -36,22 +36,16 @@ const fetchHLOData = async () => {
     error.value = '';
 
     try {
-        const response = await axios.get('/api/v1/h23-dashboard/pembayaran/hlo-statistics', {
-            params: {
-                dealer_id: props.dealerId,
-                date_from: props.dateFrom,
-                date_to: props.dateTo
-            }
-        });
+        const response = await h23DashboardService.getHLOStatistics(props.dealerId, props.dateFrom, props.dateTo);
 
-        if (response.data.success) {
+        if (response.success) {
             hloData.value = {
-                total_hlo_documents: response.data.total_hlo_documents,
-                total_parts: response.data.total_parts,
-                total_records: response.data.total_records
+                total_hlo_documents: response.total_hlo_documents,
+                total_parts: response.total_parts,
+                total_records: response.total_records
             };
         } else {
-            error.value = response.data.message || 'Failed to fetch HLO data';
+            error.value = response.message || 'Failed to fetch HLO data';
         }
     } catch (err) {
         console.error('Error fetching HLO data:', err);
@@ -90,7 +84,7 @@ onMounted(() => {
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <!-- HLO Documents -->
                     <div class="text-center">
-                        <div class="text-2xl md:text-3xl font-bold text-purple-600 mb-1">
+                        <div class="text-3xl md:text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
                             {{ hloData.total_hlo_documents }}
                         </div>
                         <div class="text-xs text-muted-color">Documents</div>
@@ -98,7 +92,7 @@ onMounted(() => {
                     
                     <!-- Total Parts -->
                     <div class="text-center">
-                        <div class="text-2xl md:text-3xl font-bold text-indigo-600 mb-1">
+                        <div class="text-3xl md:text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">
                             {{ hloData.total_parts }}
                         </div>
                         <div class="text-xs text-muted-color">Parts</div>
@@ -106,16 +100,16 @@ onMounted(() => {
                 </div>
                 
                 <!-- Visual Element and Summary -->
-                <div class="text-center">
+                <!-- <div class="text-center">
                     <div class="inline-flex items-center justify-center w-16 h-16 bg-purple-50 rounded-full mb-3">
                         <i class="pi pi-list text-2xl text-purple-600"></i>
                     </div>
                     
-                    <!-- Total Records -->
+                    
                     <div class="text-sm text-muted-color">
                         Total: {{ hloData.total_records }} HLO records
                     </div>
-                </div>
+                </div> -->
             </div>
 
             <!-- Loading State -->
@@ -128,16 +122,16 @@ onMounted(() => {
             <div v-if="!loading && !error && Object.keys(hloData).length === 0" class="text-center py-8">
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="text-center">
-                        <div class="text-2xl md:text-3xl font-bold text-gray-400 mb-1">0</div>
+                        <div class="text-3xl md:text-4xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
                         <div class="text-xs text-muted-color">Documents</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-2xl md:text-3xl font-bold text-gray-400 mb-1">0</div>
+                        <div class="text-3xl md:text-4xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
                         <div class="text-xs text-muted-color">Parts</div>
                     </div>
                 </div>
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-50 rounded-full mb-3">
-                    <i class="pi pi-list text-2xl text-gray-400"></i>
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full mb-3">
+                    <i class="pi pi-list text-2xl text-gray-400 dark:text-gray-500"></i>
                 </div>
                 <p class="text-muted-color text-sm">No HLO data available</p>
             </div>
@@ -157,14 +151,14 @@ onMounted(() => {
 
 /* Responsive font sizes */
 @media (max-width: 768px) {
-    .text-2xl {
-        font-size: 1.5rem;
-        line-height: 2rem;
-    }
-    
-    .md\:text-3xl {
+    .text-3xl {
         font-size: 1.75rem;
         line-height: 2.25rem;
+    }
+    
+    .md\:text-4xl {
+        font-size: 2rem;
+        line-height: 2.5rem;
     }
 }
 

@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
+import h23DashboardService from '@/service/H23DashboardService';
 
 // Props from parent dashboard
 const props = defineProps({
@@ -53,21 +53,15 @@ const fetchNJBData = async () => {
     error.value = '';
 
     try {
-        const response = await axios.get('/api/v1/h23-dashboard/pembayaran/njb-statistics', {
-            params: {
-                dealer_id: props.dealerId,
-                date_from: props.dateFrom,
-                date_to: props.dateTo
-            }
-        });
+        const response = await h23DashboardService.getNJBStatistics(props.dealerId, props.dateFrom, props.dateTo);
 
-        if (response.data.success) {
+        if (response.success) {
             njbData.value = {
-                total_amount: response.data.total_amount,
-                total_records: response.data.total_records
+                total_amount: response.total_amount,
+                total_records: response.total_records
             };
         } else {
-            error.value = response.data.message || 'Failed to fetch NJB data';
+            error.value = response.message || 'Failed to fetch NJB data';
         }
     } catch (err) {
         console.error('Error fetching NJB data:', err);
@@ -101,25 +95,36 @@ onMounted(() => {
             </Message>
 
             <!-- NJB Data -->
-            <div v-if="!error && Object.keys(njbData).length > 0" class="text-center py-6">
-                <!-- Main Amount Display -->
-                <div class="mb-4">
-                    <div class="text-3xl md:text-4xl font-bold text-blue-600 leading-tight mb-2">
-                        {{ formatCurrency(njbData.total_amount) }}
+            <div v-if="!error && Object.keys(njbData).length > 0" class="py-4">
+                <!-- Main Statistics Display -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <!-- Amount -->
+                    <div class="text-center">
+                        <div class="text-2xl md:text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
+                            {{ formatCurrency(njbData.total_amount) }}
+                        </div>
+                        <div class="text-xs text-muted-color">Amount</div>
+                    </div>
+                    
+                    <!-- Total Records -->
+                    <div class="text-center">
+                        <div class="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">
+                            {{ njbData.total_records }}
+                        </div>
+                        <div class="text-xs text-muted-color">Records</div>
                     </div>
                 </div>
                 
-                <!-- Records Information -->
-                <div class="text-sm text-muted-color">
-                    <span>{{ njbData.total_records }} NJB records</span>
-                </div>
-                
-                <!-- Visual Element - icon or graphic representation -->
-                <div class="mt-4">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full">
+                <!-- Visual Element and Summary -->
+                <!-- <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-3">
                         <i class="pi pi-file-edit text-2xl text-blue-600"></i>
                     </div>
-                </div>
+                    
+                    <div class="text-sm text-muted-color">
+                        Total: {{ njbData.total_records }} NJB records
+                    </div>
+                </div> -->
             </div>
 
             <!-- Loading State -->
@@ -130,15 +135,20 @@ onMounted(() => {
 
             <!-- No Data State -->
             <div v-if="!loading && !error && Object.keys(njbData).length === 0" class="text-center py-8">
-                <div class="text-3xl md:text-4xl font-bold text-gray-400 leading-tight mb-2">
-                    Rp 0
-                </div>
-                <p class="text-muted-color text-sm">No NJB data available</p>
-                <div class="mt-4">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-50 rounded-full">
-                        <i class="pi pi-file-edit text-2xl text-gray-400"></i>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="text-center">
+                        <div class="text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-500 mb-1">Rp 0</div>
+                        <div class="text-xs text-muted-color">Amount</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
+                        <div class="text-xs text-muted-color">Records</div>
                     </div>
                 </div>
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full mb-3">
+                    <i class="pi pi-file-edit text-2xl text-gray-400 dark:text-gray-500"></i>
+                </div>
+                <p class="text-muted-color text-sm">No NJB data available</p>
             </div>
         </template>
     </Card>
@@ -152,21 +162,25 @@ onMounted(() => {
 
 .p-card :deep(.p-card-content) {
     padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 /* Responsive font sizes */
 @media (max-width: 768px) {
-    .text-3xl {
+    .text-2xl {
+        font-size: 1.5rem;
+        line-height: 2rem;
+    }
+    
+    .md\:text-3xl {
         font-size: 1.75rem;
         line-height: 2.25rem;
     }
-    
-    .md\:text-4xl {
-        font-size: 2rem;
-        line-height: 2.5rem;
+}
+
+/* Grid responsive adjustments */
+@media (max-width: 640px) {
+    .grid.grid-cols-2 {
+        gap: 1rem;
     }
 }
 </style>

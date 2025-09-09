@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
+import h23DashboardService from '@/service/H23DashboardService';
 
 // Props from parent dashboard
 const props = defineProps({
@@ -36,23 +36,17 @@ const fetchTotalUnitEntryData = async () => {
     error.value = '';
 
     try {
-        const response = await axios.get('/api/v1/h23-dashboard/work-order/total-unit-entry', {
-            params: {
-                dealer_id: props.dealerId,
-                date_from: props.dateFrom,
-                date_to: props.dateTo
-            }
-        });
+        const response = await h23DashboardService.getTotalUnitEntry(props.dealerId, props.dateFrom, props.dateTo);
 
-        if (response.data.success) {
+        if (response.success) {
             unitEntryData.value = {
-                count: response.data.count,
-                previous_count: response.data.previous_count,
-                trend: response.data.trend,
-                percentage: response.data.percentage
+                count: response.count,
+                previous_count: response.previous_count,
+                trend: response.trend,
+                percentage: response.percentage
             };
         } else {
-            error.value = response.data.message || 'Failed to fetch total unit entry data';
+            error.value = response.message || 'Failed to fetch total unit entry data';
         }
     } catch (err) {
         console.error('Error fetching total unit entry data:', err);
@@ -105,9 +99,9 @@ onMounted(() => {
 
             <!-- Unit Entry Data -->
             <div v-if="!error && Object.keys(unitEntryData).length > 0" class="text-center py-6">
-                <div class="relative inline-block">
+                <div class="relative inline-block mb-4">
                     <div
-                        class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto bg-blue-50 text-blue-600"
+                        class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400"
                     >
                         {{ unitEntryData.count }}
                     </div>
@@ -122,11 +116,11 @@ onMounted(() => {
                 </div>
                 
                 <!-- Trend Information -->
-                <div class="mt-4 text-sm text-muted-color">
+                <div class="text-sm text-muted-color">
                     <div v-if="unitEntryData.trend !== 'stable'" class="flex items-center justify-center space-x-2">
                         <span :class="{ 
-                            'text-green-600': unitEntryData.trend === 'up', 
-                            'text-red-600': unitEntryData.trend === 'down' 
+                            'text-green-600 dark:text-green-400': unitEntryData.trend === 'up', 
+                            'text-red-600 dark:text-red-400': unitEntryData.trend === 'down' 
                         }">
                             <i :class="getTrendIcon(unitEntryData.trend)" class="mr-1"></i>
                             {{ unitEntryData.percentage.toFixed(1) }}%
@@ -146,11 +140,11 @@ onMounted(() => {
             </div>
 
             <!-- No Data State -->
-            <div v-if="!loading && !error && Object.keys(unitEntryData).length === 0" class="text-center py-8">
-                <div class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto bg-gray-50 text-gray-400">
+            <div v-if="!loading && !error && Object.keys(unitEntryData).length === 0" class="text-center py-6">
+                <div class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 mb-4">
                     0
                 </div>
-                <p class="text-muted-color text-sm mt-4">No data available</p>
+                <p class="text-muted-color text-sm">No data available</p>
             </div>
         </template>
     </Card>

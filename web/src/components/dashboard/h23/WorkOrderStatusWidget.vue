@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
-import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
+import h23DashboardService from '@/service/H23DashboardService';
 
 // Props from parent dashboard
 const props = defineProps({
@@ -55,18 +55,12 @@ const fetchWorkOrderStatusData = async () => {
     error.value = '';
 
     try {
-        const response = await axios.get('/api/v1/h23-dashboard/work-order/status-counts', {
-            params: {
-                dealer_id: props.dealerId,
-                date_from: props.dateFrom,
-                date_to: props.dateTo
-            }
-        });
+        const response = await h23DashboardService.getWorkOrderStatusCounts(props.dealerId, props.dateFrom, props.dateTo);
 
-        if (response.data.success) {
-            statusData.value = response.data.data || [];
+        if (response.success) {
+            statusData.value = response.data || [];
         } else {
-            error.value = response.data.message || 'Failed to fetch work order status data';
+            error.value = response.message || 'Failed to fetch work order status data';
         }
     } catch (err) {
         console.error('Error fetching work order status data:', err);
@@ -100,16 +94,16 @@ onMounted(() => {
             </Message>
 
             <!-- Status Chart -->
-            <div v-if="!error && statusData.length > 0" class="py-4">
+            <div v-if="!error && statusData.length > 0" class="py-2">
                 <!-- Chart Container -->
-                <div class="flex items-end justify-center space-x-4 h-48 mb-4">
+                <div class="flex items-end justify-center space-x-4 h-56 mb-3">
                     <div 
                         v-for="(item, index) in statusData" 
                         :key="index"
                         class="flex flex-col items-center space-y-2 flex-1 max-w-16"
                     >
                         <!-- Bar -->
-                        <div class="relative w-full flex flex-col justify-end h-32">
+                        <div class="relative w-full flex flex-col justify-end h-40">
                             <div 
                                 class="w-full rounded-t-md transition-all duration-300 hover:opacity-80 relative"
                                 :style="{ 
@@ -119,14 +113,14 @@ onMounted(() => {
                                 }"
                             >
                                 <!-- Count Display -->
-                                <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-surface-900">
+                                <div class="absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs font-bold text-surface-900 dark:text-surface-0">
                                     {{ item.count }}
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Status Label -->
-                        <div class="text-xs font-medium text-surface-700 text-center leading-tight">
+                        <div class="text-xs font-medium text-surface-700 dark:text-surface-300 text-center leading-tight">
                             {{ item.status_label }}
                         </div>
                     </div>
@@ -145,14 +139,14 @@ onMounted(() => {
             </div>
 
             <!-- No Data State -->
-            <div v-if="!loading && !error && statusData.length === 0" class="text-center py-8">
-                <div class="flex items-end justify-center space-x-4 h-48 mb-4">
+            <div v-if="!loading && !error && statusData.length === 0" class="text-center py-6">
+                <div class="flex items-end justify-center space-x-4 h-56 mb-3">
                     <!-- Empty bars placeholder -->
                     <div v-for="n in 5" :key="n" class="flex flex-col items-center space-y-2 flex-1 max-w-16">
-                        <div class="w-full h-32 flex flex-col justify-end">
-                            <div class="w-full bg-gray-200 rounded-t-md h-5"></div>
+                        <div class="w-full h-40 flex flex-col justify-end">
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-t-md h-5"></div>
                         </div>
-                        <div class="text-xs text-gray-400">--</div>
+                        <div class="text-xs text-gray-400 dark:text-gray-500">--</div>
                     </div>
                 </div>
                 <p class="text-muted-color text-sm">No status data available</p>
@@ -168,7 +162,7 @@ onMounted(() => {
 }
 
 .p-card :deep(.p-card-content) {
-    padding: 1.5rem;
+    padding: 1rem;
 }
 
 /* Bar chart hover effects */

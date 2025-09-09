@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import axios from 'axios';
 import Card from 'primevue/card';
 import Message from 'primevue/message';
+import h23DashboardService from '@/service/H23DashboardService';
 
 // Props from parent dashboard
 const props = defineProps({
@@ -53,21 +53,15 @@ const fetchWorkOrderRevenueData = async () => {
     error.value = '';
 
     try {
-        const response = await axios.get('/api/v1/h23-dashboard/work-order/revenue', {
-            params: {
-                dealer_id: props.dealerId,
-                date_from: props.dateFrom,
-                date_to: props.dateTo
-            }
-        });
+        const response = await h23DashboardService.getWorkOrderRevenue(props.dealerId, props.dateFrom, props.dateTo);
 
-        if (response.data.success) {
+        if (response.success) {
             revenueData.value = {
-                total_revenue: response.data.total_revenue,
-                total_records: response.data.total_records
+                total_revenue: response.total_revenue,
+                total_records: response.total_records
             };
         } else {
-            error.value = response.data.message || 'Failed to fetch work order revenue data';
+            error.value = response.message || 'Failed to fetch work order revenue data';
         }
     } catch (err) {
         console.error('Error fetching work order revenue data:', err);
@@ -101,15 +95,15 @@ onMounted(() => {
             </Message>
 
             <!-- Revenue Data -->
-            <div v-if="!error && Object.keys(revenueData).length > 0" class="text-center py-8">
-                <div class="mb-2">
-                    <div class="text-4xl md:text-5xl font-bold text-green-600 leading-tight">
+            <div v-if="!error && Object.keys(revenueData).length > 0" class="text-center py-6">
+                <div class="mb-4">
+                    <div class="text-4xl md:text-5xl font-bold text-green-600 dark:text-green-400 leading-tight">
                         {{ formatCurrency(revenueData.total_revenue) }}
                     </div>
                 </div>
                 
                 <!-- Records Information -->
-                <div class="mt-4 text-sm text-muted-color">
+                <div class="text-sm text-muted-color">
                     <span>{{ revenueData.total_records }} work orders</span>
                 </div>
             </div>
@@ -121,11 +115,13 @@ onMounted(() => {
             </div>
 
             <!-- No Data State -->
-            <div v-if="!loading && !error && Object.keys(revenueData).length === 0" class="text-center py-8">
-                <div class="text-4xl md:text-5xl font-bold text-gray-400 leading-tight">
-                    Rp 0
+            <div v-if="!loading && !error && Object.keys(revenueData).length === 0" class="text-center py-6">
+                <div class="mb-4">
+                    <div class="text-4xl md:text-5xl font-bold text-gray-400 dark:text-gray-500 leading-tight">
+                        Rp 0
+                    </div>
                 </div>
-                <p class="text-muted-color text-sm mt-4">No revenue data available</p>
+                <p class="text-muted-color text-sm">No revenue data available</p>
             </div>
         </template>
     </Card>
