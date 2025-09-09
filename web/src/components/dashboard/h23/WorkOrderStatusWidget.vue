@@ -100,7 +100,7 @@ onMounted(() => {
                     <div 
                         v-for="(item, index) in statusData" 
                         :key="index"
-                        class="flex flex-col items-center space-y-2 flex-1 max-w-16"
+                        class="flex flex-col items-center space-y-2 flex-1 max-w-24"
                     >
                         <!-- Bar -->
                         <div class="relative w-full flex flex-col justify-end h-56">
