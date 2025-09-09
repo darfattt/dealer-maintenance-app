@@ -373,15 +373,7 @@ async def get_reminders_by_transaction(
 ) -> Dict[str, Any]:
     """Get customer reminder requests by transaction ID"""
     try:
-        # Use dealer_id from authenticated user context
-        dealer_id = current_user.dealer_id
         
-        if not dealer_id:
-            logger.warning(f"User {current_user.email} does not have a dealer_id")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User is not associated with a dealer"
-            )
         controller = CustomerReminderController(db)
         result = controller.get_reminders_by_transaction_id(transaction_id)
         

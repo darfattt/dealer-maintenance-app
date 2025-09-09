@@ -131,9 +131,9 @@ onMounted(() => {
                             </div>
 
                             <!-- <div class="flex items-center justify-between mt-2 mb-8 gap-8">
-                                - <div class="flex items-center">
+                                <div class="flex items-center">
                                     <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</span>
-                                </div> -
+                                </div>
                             </div> -->
 
                             <Button type="submit" label="Sign In" class="w-full" :loading="loading" :disabled="loading" />
