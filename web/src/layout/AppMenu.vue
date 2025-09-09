@@ -8,15 +8,18 @@ const authStore = useAuthStore();
 
 // Check if user is DEALER_USER role
 const isDealerUser = computed(() => {
-    return authStore.userRole === 'DEALER_USER';
+    return authStore.userRole === 'DEALER_USER' || authStore.userRole === 'DEALER_ADMIN'  ;
 });
 
 const model = ref([
     {
         label: 'Home',
         items: [
-            // Hide Dashboard for DEALER_USER role
-            ...(!isDealerUser.value ? [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/dashboard' }] : [])
+            // Hide Dashboard items for DEALER_USER role
+            ...(!isDealerUser.value ? [
+                { label: 'H1 (Work In Progress)', icon: 'pi pi-fw pi-chart-bar', to: '/h1-dashboard' },
+                { label: 'H23', icon: 'pi pi-fw pi-chart-line', to: '/h23-dashboard' }
+            ] : [])
         ]
     },
     {
