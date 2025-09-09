@@ -3,7 +3,10 @@ import { ref, computed, watch } from 'vue';
 import { useDealers } from '@/composables/useDealers';
 import Dropdown from 'primevue/dropdown';
 import Calendar from 'primevue/calendar';
+import Button from 'primevue/button';
 import { useAuthStore } from '@/stores/auth';
+import { useToast } from 'primevue/usetoast';
+import api from '@/service/ApiService';
 
 // Import H23 specific widgets
 import TotalUnitEntryWidget from '@/components/dashboard/h23/TotalUnitEntryWidget.vue';
@@ -13,8 +16,14 @@ import NJBWidget from '@/components/dashboard/h23/NJBWidget.vue';
 import NSCWidget from '@/components/dashboard/h23/NSCWidget.vue';
 import HLOWidget from '@/components/dashboard/h23/HLOWidget.vue';
 
-// Auth store
+// Auth store and toast
 const authStore = useAuthStore();
+const toast = useToast();
+
+// Export loading states
+const isExportingWorkOrder = ref(false);
+const isExportingNJB = ref(false);
+const isExportingHLO = ref(false);
 
 // Use dealers composable for dynamic dealer loading
 const { dealerOptions, isLoading: dealersLoading, hasError: dealersError } = useDealers();
@@ -64,6 +73,240 @@ watch(
     },
     { immediate: true }
 );
+
+// Excel export functionality
+const exportWorkOrderExcel = async () => {
+    if (!selectedDealer.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Warning',
+            detail: 'Please select a dealer first',
+            life: 3000
+        });
+        return;
+    }
+
+    if (!formattedDateFrom.value || !formattedDateTo.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Warning', 
+            detail: 'Please select date range first',
+            life: 3000
+        });
+        return;
+    }
+
+    isExportingWorkOrder.value = true;
+
+    try {
+        const response = await api.get('/v1/h23-dashboard/exports/work-order-excel', {
+            params: {
+                dealer_id: selectedDealer.value,
+                date_from: formattedDateFrom.value,
+                date_to: formattedDateTo.value
+            },
+            responseType: 'blob'
+        });
+
+        // Extract filename from Content-Disposition header
+        const contentDisposition = response.headers['content-disposition'];
+        let filename = 'work-order-export.xlsx';
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+
+        // Create blob and download
+        const blob = new Blob([response.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Work Order data exported successfully',
+            life: 3000
+        });
+
+    } catch (error) {
+        console.error('Excel export error:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: error.response?.data?.detail || 'Failed to export Work Order data',
+            life: 5000
+        });
+    } finally {
+        isExportingWorkOrder.value = false;
+    }
+};
+
+// NJB Excel export functionality
+const exportNJBExcel = async () => {
+    if (!selectedDealer.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Warning',
+            detail: 'Please select a dealer first',
+            life: 3000
+        });
+        return;
+    }
+
+    if (!formattedDateFrom.value || !formattedDateTo.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Warning', 
+            detail: 'Please select date range first',
+            life: 3000
+        });
+        return;
+    }
+
+    isExportingNJB.value = true;
+
+    try {
+        const response = await api.get('/v1/h23-dashboard/exports/njb-nsc-excel', {
+            params: {
+                dealer_id: selectedDealer.value,
+                date_from: formattedDateFrom.value,
+                date_to: formattedDateTo.value
+            },
+            responseType: 'blob'
+        });
+
+        // Extract filename from Content-Disposition header
+        const contentDisposition = response.headers['content-disposition'];
+        let filename = 'njb-nsc-export.xlsx';
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+
+        // Create blob and download
+        const blob = new Blob([response.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'NJB/NSC data exported successfully',
+            life: 3000
+        });
+
+    } catch (error) {
+        console.error('NJB Excel export error:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: error.response?.data?.detail || 'Failed to export NJB/NSC data',
+            life: 5000
+        });
+    } finally {
+        isExportingNJB.value = false;
+    }
+};
+
+// HLO Excel export functionality
+const exportHLOExcel = async () => {
+    if (!selectedDealer.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Warning',
+            detail: 'Please select a dealer first',
+            life: 3000
+        });
+        return;
+    }
+
+    if (!formattedDateFrom.value || !formattedDateTo.value) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Warning', 
+            detail: 'Please select date range first',
+            life: 3000
+        });
+        return;
+    }
+
+    isExportingHLO.value = true;
+
+    try {
+        const response = await api.get('/v1/h23-dashboard/exports/hlo-excel', {
+            params: {
+                dealer_id: selectedDealer.value,
+                date_from: formattedDateFrom.value,
+                date_to: formattedDateTo.value
+            },
+            responseType: 'blob'
+        });
+
+        // Extract filename from Content-Disposition header
+        const contentDisposition = response.headers['content-disposition'];
+        let filename = 'hlo-export.xlsx';
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+
+        // Create blob and download
+        const blob = new Blob([response.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'HLO data exported successfully',
+            life: 3000
+        });
+
+    } catch (error) {
+        console.error('HLO Excel export error:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: error.response?.data?.detail || 'Failed to export HLO data',
+            life: 5000
+        });
+    } finally {
+        isExportingHLO.value = false;
+    }
+};
 </script>
 
 <template>
@@ -99,8 +342,17 @@ watch(
             <!-- 1st Column: Work Order Section -->
             <div class="space-y-6">
                 <!-- Work Order Section Header -->
-                <div class="bg-surface-0 p-4 rounded-lg border border-surface-200 shadow-sm">
+                <div class="bg-surface-0 p-4 rounded-lg border border-surface-200 shadow-sm flex justify-between items-center">
                     <h2 class="text-xl font-bold text-surface-900 uppercase tracking-wide">Work Order</h2>
+                    <Button
+                        icon="pi pi-file-excel"
+                        severity="success"
+                        size="small"
+                        :loading="isExportingWorkOrder"
+                        @click="exportWorkOrderExcel"
+                        v-tooltip="'Export to Excel'"
+                        class="p-button-outlined"
+                    />
                 </div>
 
                 <!-- Work Order Row 1: Total Unit Entry & Revenue (2 columns) -->
@@ -151,8 +403,17 @@ watch(
                 <!-- Pembayaran Section 1: NJB (1 row) -->
                 <div>
                     <!-- NJB Title -->
-                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 flex justify-between items-center">
                         <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Nota Jasa Bengkel</h3>
+                        <Button
+                            icon="pi pi-file-excel"
+                            severity="success"
+                            size="small"
+                            :loading="isExportingNJB"
+                            @click="exportNJBExcel"
+                            v-tooltip="'Export to Excel'"
+                            class="p-button-outlined"
+                        />
                     </div>
                     <!-- Widget -->
                     <div class="widget-with-title">
@@ -175,8 +436,17 @@ watch(
                 <!-- Pembayaran Section 3: HLO (1 row) -->
                 <div>
                     <!-- HLO Title -->
-                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
+                    <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 flex justify-between items-center">
                         <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Jumlah HLO</h3>
+                        <Button
+                            icon="pi pi-file-excel"
+                            severity="success"
+                            size="small"
+                            :loading="isExportingHLO"
+                            @click="exportHLOExcel"
+                            v-tooltip="'Export to Excel'"
+                            class="p-button-outlined"
+                        />
                     </div>
                     <!-- Widget -->
                     <div class="widget-with-title">

@@ -45,7 +45,7 @@ class ExcelExportRepository:
         date_conditions.append(
             and_(
                 func.length(model_class.created_time) >= 10,
-                func.substr(model_class.created_time, 1, 10).op('~')(r'^\\d{4}-\\d{2}-\\d{2}$'),
+                func.substr(model_class.created_time, 1, 10).op('~')(r'^\d{4}-\d{2}-\d{2}$'),
                 func.to_date(func.substr(model_class.created_time, 1, 10), 'YYYY-MM-DD') >= func.to_date(date_from, 'YYYY-MM-DD'),
                 func.to_date(func.substr(model_class.created_time, 1, 10), 'YYYY-MM-DD') <= func.to_date(date_to, 'YYYY-MM-DD')
             )
@@ -55,7 +55,7 @@ class ExcelExportRepository:
         date_conditions.append(
             and_(
                 func.length(model_class.created_time) >= 10,
-                func.substr(model_class.created_time, 1, 10).op('~')(r'^\\d{2}/\\d{2}/\\d{4}$'),
+                func.substr(model_class.created_time, 1, 10).op('~')(r'^\d{2}/\d{2}/\d{4}$'),
                 func.to_date(func.substr(model_class.created_time, 1, 10), 'DD/MM/YYYY') >= func.to_date(date_from, 'YYYY-MM-DD'),
                 func.to_date(func.substr(model_class.created_time, 1, 10), 'DD/MM/YYYY') <= func.to_date(date_to, 'YYYY-MM-DD')
             )
