@@ -84,7 +84,7 @@ onMounted(() => {
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <!-- HLO Documents -->
                     <div class="text-center">
-                        <div class="text-3xl md:text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
+                        <div class="text-6xl md:text-6xl font-bold text-purple-600 dark:text-purple-400 mb-1">
                             {{ hloData.total_hlo_documents }}
                         </div>
                         <div class="text-xs text-muted-color">Documents</div>
@@ -92,7 +92,7 @@ onMounted(() => {
                     
                     <!-- Total Parts -->
                     <div class="text-center">
-                        <div class="text-3xl md:text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">
+                        <div class="text-6xl md:text-6xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">
                             {{ hloData.total_parts }}
                         </div>
                         <div class="text-xs text-muted-color">Parts</div>
@@ -122,11 +122,11 @@ onMounted(() => {
             <div v-if="!loading && !error && Object.keys(hloData).length === 0" class="text-center py-8">
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="text-center">
-                        <div class="text-3xl md:text-4xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
+                        <div class="text-6xl md:text-6xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
                         <div class="text-xs text-muted-color">Documents</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-3xl md:text-4xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
+                        <div class="text-6xl md:text-6xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
                         <div class="text-xs text-muted-color">Parts</div>
                     </div>
                 </div>

@@ -343,7 +343,7 @@ const exportHLOExcel = async () => {
             <div class="space-y-6">
                 <!-- Work Order Section Header -->
                 <div class="bg-surface-0 p-4 rounded-lg border border-surface-200 shadow-sm flex justify-between items-center">
-                    <h2 class="text-xl font-bold text-surface-900 uppercase tracking-wide">Work Order</h2>
+                    <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Work Order</h2>
                     <Button
                         icon="pi pi-file-excel"
                         severity="success"
@@ -356,11 +356,11 @@ const exportHLOExcel = async () => {
                 </div>
 
                 <!-- Work Order Row 1: Total Unit Entry & Revenue (2 columns) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 work-order-row-1">
                     <div>
                         <!-- Total Unit Entry Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Total Unit Entry</h3>
+                            <h3 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Total Unit Entry</h3>
                         </div>
                         <!-- Widget -->
                         <div class="widget-with-title">
@@ -371,7 +371,7 @@ const exportHLOExcel = async () => {
                     <div>
                         <!-- Revenue Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                            <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Revenue</h3>
+                            <h3 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Revenue</h3>
                         </div>
                         <!-- Widget -->
                         <div class="widget-with-title">
@@ -381,10 +381,10 @@ const exportHLOExcel = async () => {
                 </div>
 
                 <!-- Work Order Row 2: Status Work Order (1 column) -->
-                <div>
+                <div class="work-order-row-2">
                     <!-- Status Work Order Title -->
                     <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Status Work Order</h3>
+                        <h3 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Status Work Order</h3>
                     </div>
                     <!-- Widget -->
                     <div class="widget-with-title">
@@ -397,14 +397,14 @@ const exportHLOExcel = async () => {
             <div class="space-y-6">
                 <!-- Pembayaran Section Header -->
                 <div class="bg-surface-0 p-4 rounded-lg border border-surface-200 shadow-sm">
-                    <h2 class="text-xl font-bold text-surface-900 uppercase tracking-wide">Pembayaran</h2>
+                    <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Pembayaran</h2>
                 </div>
 
                 <!-- Pembayaran Section 1: NJB (1 row) -->
                 <div>
                     <!-- NJB Title -->
                     <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 flex justify-between items-center">
-                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Nota Jasa Bengkel</h3>
+                        <h3 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Nota Jasa Bengkel</h3>
                         <Button
                             icon="pi pi-file-excel"
                             severity="success"
@@ -425,7 +425,7 @@ const exportHLOExcel = async () => {
                 <div>
                     <!-- NSC Title -->
                     <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Nota Suku Cadang</h3>
+                        <h3 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Nota Suku Cadang</h3>
                     </div>
                     <!-- Widget -->
                     <div class="widget-with-title">
@@ -437,7 +437,7 @@ const exportHLOExcel = async () => {
                 <div>
                     <!-- HLO Title -->
                     <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200 flex justify-between items-center">
-                        <h3 class="text-sm font-bold text-surface-900 uppercase tracking-wide">Jumlah HLO</h3>
+                        <h3 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Jumlah HLO</h3>
                         <Button
                             icon="pi pi-file-excel"
                             severity="success"
@@ -484,10 +484,45 @@ const exportHLOExcel = async () => {
     .grid.md\:grid-cols-2 {
         grid-template-columns: repeat(1, minmax(0, 1fr));
     }
+    
+    /* Reduce minimum heights on mobile for better space usage */
+    .work-order-row-1 .widget-with-title :deep(.p-card) {
+        min-height: 220px;
+    }
+    
+    .work-order-row-2 .widget-with-title :deep(.p-card) {
+        min-height: 300px;
+    }
 }
 
 /* Section headers styling */
 .bg-surface-0 {
     background-color: var(--surface-0);
+}
+
+/* Widget height consistency */
+/* Force equal heights for Total Unit Entry & Revenue widgets */
+.work-order-row-1 .widget-with-title :deep(.p-card) {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.work-order-row-1 .widget-with-title :deep(.p-card-content) {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+}
+
+/* Status Work Order section - accommodate larger chart */
+.work-order-row-2 .widget-with-title :deep(.p-card) {
+    min-height: 380px;
+}
+
+.work-order-row-2 .widget-with-title :deep(.p-card-content) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 </style>

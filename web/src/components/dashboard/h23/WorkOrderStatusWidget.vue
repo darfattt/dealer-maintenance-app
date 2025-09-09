@@ -96,14 +96,14 @@ onMounted(() => {
             <!-- Status Chart -->
             <div v-if="!error && statusData.length > 0" class="py-2">
                 <!-- Chart Container -->
-                <div class="flex items-end justify-center space-x-4 h-56 mb-3">
+                <div class="flex items-end justify-center space-x-4 h-72 mb-3">
                     <div 
                         v-for="(item, index) in statusData" 
                         :key="index"
                         class="flex flex-col items-center space-y-2 flex-1 max-w-16"
                     >
                         <!-- Bar -->
-                        <div class="relative w-full flex flex-col justify-end h-40">
+                        <div class="relative w-full flex flex-col justify-end h-56">
                             <div 
                                 class="w-full rounded-t-md transition-all duration-300 hover:opacity-80 relative"
                                 :style="{ 
@@ -140,10 +140,10 @@ onMounted(() => {
 
             <!-- No Data State -->
             <div v-if="!loading && !error && statusData.length === 0" class="text-center py-6">
-                <div class="flex items-end justify-center space-x-4 h-56 mb-3">
+                <div class="flex items-end justify-center space-x-4 h-72 mb-3">
                     <!-- Empty bars placeholder -->
                     <div v-for="n in 5" :key="n" class="flex flex-col items-center space-y-2 flex-1 max-w-16">
-                        <div class="w-full h-40 flex flex-col justify-end">
+                        <div class="w-full h-56 flex flex-col justify-end">
                             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-t-md h-5"></div>
                         </div>
                         <div class="text-xs text-gray-400 dark:text-gray-500">--</div>
@@ -162,7 +162,7 @@ onMounted(() => {
 }
 
 .p-card :deep(.p-card-content) {
-    padding: 1rem;
+    padding: 0.75rem;
 }
 
 /* Bar chart hover effects */

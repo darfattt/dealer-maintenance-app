@@ -111,7 +111,7 @@ onMounted(() => {
                         <div class="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">
                             {{ njbData.total_records }}
                         </div>
-                        <div class="text-xs text-muted-color">Records</div>
+                        <div class="text-xs text-muted-color">Data NJB</div>
                     </div>
                 </div>
                 
@@ -142,7 +142,7 @@ onMounted(() => {
                     </div>
                     <div class="text-center">
                         <div class="text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
-                        <div class="text-xs text-muted-color">Records</div>
+                        <div class="text-xs text-muted-color">Data NJB</div>
                     </div>
                 </div>
                 <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full mb-3">
