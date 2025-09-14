@@ -86,19 +86,8 @@ class ExcelExportRepository:
             # Build date filter conditions
             date_conditions = self._build_date_conditions(PKBData, date_from, date_to)
             
-            # Query PKB data
-            query = self.db.query(
-                PKBData.no_work_order,
-                PKBData.no_sa_form,
-                PKBData.tanggal_servis,
-                PKBData.no_polisi,
-                PKBData.no_mesin,
-                PKBData.no_rangka,
-                PKBData.nama_pembawa,
-                PKBData.no_telp_pembawa,
-                PKBData.total_biaya_service,
-                PKBData.created_time
-            ).filter(
+            # Query PKB data - get all fields
+            query = self.db.query(PKBData).filter(
                 and_(
                     PKBData.dealer_id == dealer_id,
                     date_conditions
@@ -107,19 +96,59 @@ class ExcelExportRepository:
             
             results = query.all()
             
-            # Convert to list of dictionaries
+            # Convert to list of dictionaries with all fields
             data = []
             for row in results:
                 data.append({
                     'no_work_order': row.no_work_order,
                     'no_sa_form': row.no_sa_form,
                     'tanggal_servis': row.tanggal_servis,
+                    'waktu_pkb': row.waktu_pkb,
                     'no_polisi': row.no_polisi,
-                    'no_mesin': row.no_mesin,
                     'no_rangka': row.no_rangka,
+                    'no_mesin': row.no_mesin,
+                    'kode_tipe_unit': row.kode_tipe_unit,
+                    'tahun_motor': row.tahun_motor,
+                    'informasi_bensin': row.informasi_bensin,
+                    'km_terakhir': row.km_terakhir,
+                    'tipe_coming_customer': row.tipe_coming_customer,
+                    'nama_pemilik': row.nama_pemilik,
+                    'alamat_pemilik': row.alamat_pemilik,
+                    'kode_propinsi_pemilik': row.kode_propinsi_pemilik,
+                    'kode_kota_pemilik': row.kode_kota_pemilik,
+                    'kode_kecamatan_pemilik': row.kode_kecamatan_pemilik,
+                    'kode_kelurahan_pemilik': row.kode_kelurahan_pemilik,
+                    'kode_pos_pemilik': row.kode_pos_pemilik,
                     'nama_pembawa': row.nama_pembawa,
+                    'alamat_pembawa': row.alamat_pembawa,
+                    'kode_propinsi_pembawa': row.kode_propinsi_pembawa,
+                    'kode_kota_pembawa': row.kode_kota_pembawa,
+                    'kode_kecamatan_pembawa': row.kode_kecamatan_pembawa,
+                    'kode_kelurahan_pembawa': row.kode_kelurahan_pembawa,
+                    'kode_pos_pembawa': row.kode_pos_pembawa,
                     'no_telp_pembawa': row.no_telp_pembawa,
-                    'total_biaya_service': float(row.total_biaya_service) if row.total_biaya_service else 0.0
+                    'hubungan_dengan_pemilik': row.hubungan_dengan_pemilik,
+                    'keluhan_konsumen': row.keluhan_konsumen,
+                    'rekomendasi_sa': row.rekomendasi_sa,
+                    'honda_id_sa': row.honda_id_sa,
+                    'honda_id_mekanik': row.honda_id_mekanik,
+                    'saran_mekanik': row.saran_mekanik,
+                    'asal_unit_entry': row.asal_unit_entry,
+                    'id_pit': row.id_pit,
+                    'jenis_pit': row.jenis_pit,
+                    'waktu_pendaftaran': row.waktu_pendaftaran,
+                    'waktu_selesai': row.waktu_selesai,
+                    'total_frt': row.total_frt,
+                    'set_up_pembayaran': row.set_up_pembayaran,
+                    'catatan_tambahan': row.catatan_tambahan,
+                    'konfirmasi_pekerjaan_tambahan': row.konfirmasi_pekerjaan_tambahan,
+                    'no_buku_claim_c2': row.no_buku_claim_c2,
+                    'no_work_order_job_return': row.no_work_order_job_return,
+                    'total_biaya_service': float(row.total_biaya_service) if row.total_biaya_service else 0.0,
+                    'waktu_pekerjaan': row.waktu_pekerjaan,
+                    'status_work_order': row.status_work_order,
+                    'created_time': row.created_time,
+                    'modified_time': row.modified_time
                 })
             
             logger.info(f"Retrieved {len(data)} work order records for export")
@@ -152,19 +181,8 @@ class ExcelExportRepository:
             # Build date filter conditions
             date_conditions = self._build_date_conditions(WorkshopInvoiceData, date_from, date_to)
             
-            # Query workshop invoice data
-            query = self.db.query(
-                WorkshopInvoiceData.honda_id_sa,
-                WorkshopInvoiceData.honda_id_mekanik,
-                WorkshopInvoiceData.no_work_order,
-                WorkshopInvoiceData.no_njb,
-                WorkshopInvoiceData.tanggal_njb,
-                WorkshopInvoiceData.total_harga_njb,
-                WorkshopInvoiceData.no_nsc,
-                WorkshopInvoiceData.tanggal_nsc,
-                WorkshopInvoiceData.total_harga_nsc,
-                WorkshopInvoiceData.created_time
-            ).filter(
+            # Query workshop invoice data - get all fields
+            query = self.db.query(WorkshopInvoiceData).filter(
                 and_(
                     WorkshopInvoiceData.dealer_id == dealer_id,
                     date_conditions
@@ -173,19 +191,21 @@ class ExcelExportRepository:
             
             results = query.all()
             
-            # Convert to list of dictionaries
+            # Convert to list of dictionaries with all fields
             data = []
             for row in results:
                 data.append({
-                    'honda_id_sa': row.honda_id_sa,
-                    'honda_id_mekanik': row.honda_id_mekanik,
                     'no_work_order': row.no_work_order,
                     'no_njb': row.no_njb,
                     'tanggal_njb': row.tanggal_njb,
                     'total_harga_njb': float(row.total_harga_njb) if row.total_harga_njb else 0.0,
                     'no_nsc': row.no_nsc,
                     'tanggal_nsc': row.tanggal_nsc,
-                    'total_harga_nsc': float(row.total_harga_nsc) if row.total_harga_nsc else 0.0
+                    'total_harga_nsc': float(row.total_harga_nsc) if row.total_harga_nsc else 0.0,
+                    'honda_id_sa': row.honda_id_sa,
+                    'honda_id_mekanik': row.honda_id_mekanik,
+                    'created_time': row.created_time,
+                    'modified_time': row.modified_time
                 })
             
             logger.info(f"Retrieved {len(data)} NJB/NSC records for export")
@@ -218,16 +238,23 @@ class ExcelExportRepository:
             # Build date filter conditions for DPHLOData
             date_conditions = self._build_date_conditions(DPHLOData, date_from, date_to)
             
-            # Query HLO data with parts using JOIN
+            # Query HLO data with parts using JOIN - get all fields
             query = self.db.query(
                 DPHLOData.id_hlo_document,
+                DPHLOData.no_invoice_uang_jaminan,
                 DPHLOData.tanggal_pemesanan_hlo,
                 DPHLOData.no_work_order,
                 DPHLOData.id_customer,
+                DPHLOData.created_time,
+                DPHLOData.modified_time,
                 DPHLOPart.parts_number,
                 DPHLOPart.kuantitas,
+                DPHLOPart.harga_parts,
                 DPHLOPart.total_harga_parts,
-                DPHLOData.created_time
+                DPHLOPart.uang_muka,
+                DPHLOPart.sisa_bayar,
+                DPHLOPart.created_time.label('part_created_time'),
+                DPHLOPart.modified_time.label('part_modified_time')
             ).join(
                 DPHLOPart, DPHLOData.id == DPHLOPart.dp_hlo_data_id
             ).filter(
@@ -240,17 +267,23 @@ class ExcelExportRepository:
             
             results = query.all()
             
-            # Convert to list of dictionaries
+            # Convert to list of dictionaries with all fields
             data = []
             for row in results:
                 data.append({
                     'id_hlo_document': row.id_hlo_document,
+                    'no_invoice_uang_jaminan': row.no_invoice_uang_jaminan,
                     'tanggal_pemesanan_hlo': row.tanggal_pemesanan_hlo,
                     'no_work_order': row.no_work_order,
                     'id_customer': row.id_customer,
                     'parts_number': row.parts_number,
                     'kuantitas': row.kuantitas,
-                    'total_harga_parts': float(row.total_harga_parts) if row.total_harga_parts else 0.0
+                    'harga_parts': float(row.harga_parts) if row.harga_parts else 0.0,
+                    'total_harga_parts': float(row.total_harga_parts) if row.total_harga_parts else 0.0,
+                    'uang_muka': float(row.uang_muka) if row.uang_muka else 0.0,
+                    'sisa_bayar': float(row.sisa_bayar) if row.sisa_bayar else 0.0,
+                    'created_time': row.created_time,
+                    'modified_time': row.modified_time
                 })
             
             logger.info(f"Retrieved {len(data)} HLO records (with parts) for export")

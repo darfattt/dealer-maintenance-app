@@ -88,7 +88,6 @@ const formattedDateTo = computed(() => {
     return selectedDateTo.value ? formatDateForAPI(selectedDateTo.value) : null;
 });
 
-
 // Load data
 const loadData = async () => {
     loading.value = true;
@@ -291,7 +290,6 @@ const getRatingSeverity = (rating) => {
     if (ratingNum >= 3) return 'warning';
     return 'danger';
 };
-
 
 // Overall rating card helper functions
 const getStarColor = (starPosition, rating) => {
@@ -593,8 +591,8 @@ onMounted(() => {
                         </template>
                     </Column>
 
-                     <!-- Sentiment Column -->
-                     <Column field="sentiment" header="Sentiment" style="min-width: 120px">
+                    <!-- Sentiment Column -->
+                    <Column field="sentiment" header="Sentiment" style="min-width: 120px">
                         <template #body="{ data }">
                             <div v-if="data.sentiment" class="flex align-items-center gap-2">
                                 <Tag :value="data.sentiment" :severity="getSentimentSeverity(data.sentiment)" class="text-xs" />
@@ -609,8 +607,6 @@ onMounted(() => {
                             <span class="text-sm">{{ data.indikasi_keluhan || '-' }}</span>
                         </template>
                     </Column>
-
-                   
 
                     <!-- Rating Column -->
                     <Column field="rating" header="Rating" style="min-width: 100px">
@@ -634,7 +630,7 @@ onMounted(() => {
                 </DataTable>
 
                 <!-- Pagination -->
-                <Paginator  :rows="pagination.page_size" :totalRecords="pagination.total_count" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
+                <Paginator :rows="pagination.page_size" :totalRecords="pagination.total_count" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
 
                 <!-- Simplified Latest Upload Info -->
                 <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-surface-700 dark:to-surface-800 rounded-xl border border-blue-200 dark:border-surface-600 shadow-sm">

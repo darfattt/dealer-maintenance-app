@@ -189,7 +189,6 @@ const positionedWords = computed(() => {
 
     return positions;
 });
-
 </script>
 
 <template>
@@ -239,7 +238,6 @@ const positionedWords = computed(() => {
                     <p class="text-muted-color text-sm">No sentiment themes available</p>
                 </div>
             </div>
-
         </template>
     </Card>
 </template>

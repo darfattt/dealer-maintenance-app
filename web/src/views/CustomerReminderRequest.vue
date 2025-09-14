@@ -372,16 +372,10 @@ onMounted(() => {
         <!-- Overview Section -->
         <div :class="gridClasses">
             <!-- Delivery Status Chart -->
-            <DeliveryStatusChart v-if="isAllTarget" 
-                :stats="stats" 
-                :loading="statsLoading"
-            />
+            <DeliveryStatusChart v-if="isAllTarget" :stats="stats" :loading="statsLoading" />
 
             <!-- Reminder Target Chart -->
-            <ReminderTargetChart v-if="isAllTarget" 
-                :stats="stats" 
-                :loading="statsLoading"
-            />
+            <ReminderTargetChart v-if="isAllTarget" :stats="stats" :loading="statsLoading" />
 
             <!-- Reminder Type Status Chart -->
             <ReminderTypeStatusChart v-if="!isAllTarget" :date-from="formattedDateFrom" :date-to="formattedDateTo" :dealer-id="selectedDealer" :reminder-target="selectedReminderTarget" :loading="statsLoading" />
@@ -458,15 +452,7 @@ onMounted(() => {
                 </DataTable>
 
                 <!-- Pagination -->
-                <Paginator
-                  
-                    :rows="pagination.page_size"
-                    :totalRecords="pagination.total_count"
-                    :first="(pagination.page - 1) * pagination.page_size"
-                    :rowsPerPageOptions="[10, 20, 50]"
-                    @page="onPageChange"
-                    class="mt-4"
-                />
+                <Paginator :rows="pagination.page_size" :totalRecords="pagination.total_count" :first="(pagination.page - 1) * pagination.page_size" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
             </template>
         </Card>
 

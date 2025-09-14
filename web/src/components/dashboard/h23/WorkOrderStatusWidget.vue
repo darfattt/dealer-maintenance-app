@@ -28,12 +28,12 @@ const statusData = ref([]);
 // Status color mapping for consistent styling
 const getStatusColor = (statusLabel) => {
     const colorMap = {
-        'Start': '#10B981', // green-500
-        'Pause': '#F59E0B', // amber-500
-        'Pending': '#EF4444', // red-500
-        'Finish': '#3B82F6', // blue-500
-        'Cancel': '#6B7280', // gray-500
-        'default': '#6B7280'
+        Start: '#10B981', // green-500
+        Pause: '#F59E0B', // amber-500
+        Pending: '#EF4444', // red-500
+        Finish: '#3B82F6', // blue-500
+        Cancel: '#6B7280', // gray-500
+        default: '#6B7280'
     };
     return colorMap[statusLabel] || colorMap['default'];
 };
@@ -41,7 +41,7 @@ const getStatusColor = (statusLabel) => {
 // Calculate maximum count for bar height scaling
 const maxCount = computed(() => {
     if (statusData.value.length === 0) return 1;
-    return Math.max(...statusData.value.map(item => item.count), 1);
+    return Math.max(...statusData.value.map((item) => item.count), 1);
 });
 
 // Methods
@@ -97,16 +97,12 @@ onMounted(() => {
             <div v-if="!error && statusData.length > 0" class="py-2">
                 <!-- Chart Container -->
                 <div class="flex items-end justify-center space-x-4 h-72 mb-3">
-                    <div 
-                        v-for="(item, index) in statusData" 
-                        :key="index"
-                        class="flex flex-col items-center space-y-2 flex-1 max-w-24"
-                    >
+                    <div v-for="(item, index) in statusData" :key="index" class="flex flex-col items-center space-y-2 flex-1 max-w-24">
                         <!-- Bar -->
                         <div class="relative w-full flex flex-col justify-end h-56">
-                            <div 
+                            <div
                                 class="w-full rounded-t-md transition-all duration-300 hover:opacity-80 relative"
-                                :style="{ 
+                                :style="{
                                     backgroundColor: getStatusColor(item.status_label),
                                     height: `${(item.count / maxCount) * 100}%`,
                                     minHeight: '20px'
@@ -118,7 +114,7 @@ onMounted(() => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Status Label -->
                         <div class="text-xs font-medium text-surface-700 dark:text-surface-300 text-center leading-tight">
                             {{ item.status_label }}
@@ -127,9 +123,7 @@ onMounted(() => {
                 </div>
 
                 <!-- Total Count Display -->
-                <div class="text-center text-sm text-muted-color">
-                    Total: {{ statusData.reduce((sum, item) => sum + item.count, 0) }} work orders
-                </div>
+                <div class="text-center text-sm text-muted-color">Total: {{ statusData.reduce((sum, item) => sum + item.count, 0) }} work orders</div>
             </div>
 
             <!-- Loading State -->
@@ -175,7 +169,7 @@ onMounted(() => {
     .space-x-4 > * + * {
         margin-left: 0.5rem;
     }
-    
+
     .max-w-16 {
         max-width: 3rem;
     }
