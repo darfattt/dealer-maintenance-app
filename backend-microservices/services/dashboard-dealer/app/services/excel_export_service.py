@@ -6,7 +6,7 @@ import io
 import os
 import sys
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 
 # Add utils to path
@@ -181,6 +181,8 @@ class ExcelExportService:
         Returns:
             str: Generated filename
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Convert UTC to Indonesian time (WIB = GMT+7)
+        indonesia_time = datetime.now() + timedelta(hours=7)
+        timestamp = indonesia_time.strftime("%Y%m%d_%H%M%S")
         filename = f"{export_type}_Export_{dealer_id}_{date_from.replace('-', '')}_{date_to.replace('-', '')}_{timestamp}.xlsx"
         return filename
