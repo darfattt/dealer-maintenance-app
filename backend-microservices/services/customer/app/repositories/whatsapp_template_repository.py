@@ -79,12 +79,7 @@ class WhatsAppTemplateRepository:
         try:
             template = self.db.query(WhatsAppTemplate).filter(
                 and_(
-                    WhatsAppTemplate.reminder_target == reminder_target,
-                    or_(
-                        WhatsAppTemplate.reminder_type.is_(None),
-                        WhatsAppTemplate.reminder_type == '',
-                        WhatsAppTemplate.reminder_type == 'N/A'
-                    )
+                    WhatsAppTemplate.reminder_target == reminder_target
                 )
             ).first()
 
@@ -113,14 +108,15 @@ class WhatsAppTemplateRepository:
         Returns:
             WhatsAppTemplate object or None
         """
+        logger.info(f"target : {reminder_target}")
         # Check if this is a target-only category
         if reminder_target in self.TARGET_ONLY_CATEGORIES:
-            logger.debug(f"Using target-only query for {reminder_target}")
+            logger.info(f"Using target-only query for {reminder_target}")
             return self.get_template_by_target_only(reminder_target)
 
         # Check if this is a KPB category
         if reminder_target in self.KPB_CATEGORIES:
-            logger.debug(f"Using full query for KPB target {reminder_target}")
+            logger.info(f"Using full query for KPB target {reminder_target}")
 
             # Try exact match first
             template = self.get_template(reminder_target, reminder_type)
@@ -137,128 +133,6 @@ class WhatsAppTemplateRepository:
         # No template found for this category
         logger.warning(f"No template found for {reminder_target} - {reminder_type}")
         return None
-    
-    def get_all_templates(self) -> List[WhatsAppTemplate]:
-        """Get all WhatsApp templates"""
-        try:
-            return self.db.query(WhatsAppTemplate).order_by(
-                WhatsAppTemplate.reminder_target,
-                WhatsAppTemplate.reminder_type
-            ).all()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error getting all templates: {str(e)}")
-            return []
-    
-    def upsert_template(
-        self,
-        reminder_target: str,
-        reminder_type: str,
-        template: str,
-        modified_by: Optional[str] = None
-    ) -> Optional[WhatsAppTemplate]:
-        """
-        Insert or update template data
-        
-        Args:
-            reminder_target: Target category
-            reminder_type: Type of reminder
-            template: Template content
-            modified_by: User who modified the template
-            
-        Returns:
-            WhatsAppTemplate object or None on error
-        """
-        try:
-            # Check if template already exists
-            existing_template = self.get_template(reminder_target, reminder_type)
-            
-            if existing_template:
-                # Update existing template
-                existing_template.template = template
-                existing_template.last_modified_by = modified_by or 'system'
-                existing_template.last_modified_date = datetime.utcnow()
-                
-                self.db.commit()
-                logger.info(f"Updated template for {reminder_target} - {reminder_type}")
-                return existing_template
-            else:
-                # Create new template
-                new_template = WhatsAppTemplate(
-                    reminder_target=reminder_target,
-                    reminder_type=reminder_type,
-                    template=template,
-                    created_by=modified_by or 'system',
-                    last_modified_by=modified_by or 'system'
-                )
-                
-                self.db.add(new_template)
-                self.db.commit()
-                self.db.refresh(new_template)
-                
-                logger.info(f"Created new template for {reminder_target} - {reminder_type}")
-                return new_template
-                
-        except SQLAlchemyError as e:
-            logger.error(f"Database error upserting template for {reminder_target} - {reminder_type}: {str(e)}")
-            self.db.rollback()
-            return None
-    
-    def bulk_upsert_templates(self, templates_data: List[Dict[str, str]]) -> bool:
-        """
-        Bulk upsert multiple templates
-        
-        Args:
-            templates_data: List of dictionaries with template data
-                Each dict should have: reminder_target, reminder_type, template
-                
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            success_count = 0
-            for template_data in templates_data:
-                result = self.upsert_template(
-                    reminder_target=template_data['reminder_target'],
-                    reminder_type=template_data['reminder_type'],
-                    template=template_data['template'],
-                    modified_by=template_data.get('created_by', 'system')
-                )
-                if result:
-                    success_count += 1
-            
-            logger.info(f"Bulk upsert completed: {success_count}/{len(templates_data)} templates processed")
-            return success_count == len(templates_data)
-            
-        except Exception as e:
-            logger.error(f"Error in bulk upsert templates: {str(e)}")
-            return False
-    
-    def get_templates_by_target(self, reminder_target: str) -> List[WhatsAppTemplate]:
-        """Get all templates for a specific reminder target"""
-        try:
-            return self.db.query(WhatsAppTemplate).filter(
-                WhatsAppTemplate.reminder_target == reminder_target
-            ).order_by(WhatsAppTemplate.reminder_type).all()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error getting templates for target {reminder_target}: {str(e)}")
-            return []
-    
-    def delete_template(self, reminder_target: str, reminder_type: str) -> bool:
-        """Delete a specific template"""
-        try:
-            template = self.get_template(reminder_target, reminder_type)
-            if template:
-                self.db.delete(template)
-                self.db.commit()
-                logger.info(f"Deleted template for {reminder_target} - {reminder_type}")
-                return True
-            else:
-                logger.warning(f"Template not found for deletion: {reminder_target} - {reminder_type}")
-                return False
-        except SQLAlchemyError as e:
-            logger.error(f"Database error deleting template: {str(e)}")
-            self.db.rollback()
-            return False
     
     @staticmethod
     def _extract_customer_data_dict(customer_data: Union[BulkReminderCustomerData, Dict[str, Any]]) -> Dict[str, Any]:
@@ -348,106 +222,13 @@ class WhatsAppTemplateRepository:
             logger.error(f"Error formatting template with customer data: {str(e)}")
             return None
     
-    def format_template(
-        self,
-        reminder_target: str,
-        reminder_type: str,
-        **kwargs
-    ) -> Optional[str]:
-        """
-        Get and format template with provided parameters (legacy method)
-        
-        Args:
-            reminder_target: Target category
-            reminder_type: Type of reminder
-            **kwargs: Template parameters (e.g., nama_pemilik, dealer_name)
-            
-        Returns:
-            Formatted message string or None if template not found
-        """
-        template = self.get_template_with_fallback(reminder_target, reminder_type)
-        if template:
-            return template.format_template(**kwargs)
-        return None
-    
-    def backup_existing_templates(self) -> List[Dict[str, Any]]:
-        """
-        Create backup of existing templates before replacement
-        
-        Returns:
-            List of existing templates as dictionaries
-        """
-        try:
-            existing_templates = self.get_all_templates()
-            backup_data = [template.to_dict() for template in existing_templates]
-            logger.info(f"Backed up {len(backup_data)} existing templates")
-            return backup_data
-        except Exception as e:
-            logger.error(f"Error backing up templates: {str(e)}")
-            return []
-    
-    def replace_all_templates(self, templates_data: List[Dict[str, str]], backup_first: bool = True) -> bool:
-        """
-        Replace all existing templates with new template data
-        
-        Args:
-            templates_data: List of template dictionaries
-            backup_first: Whether to backup existing templates first
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Backup existing templates if requested
-            backup_data = []
-            if backup_first:
-                backup_data = self.backup_existing_templates()
-            
-            # Delete all existing templates
-            deleted_count = self.db.query(WhatsAppTemplate).delete()
-            logger.info(f"Deleted {deleted_count} existing templates")
-            
-            # Insert new templates
-            success_count = 0
-            for template_data in templates_data:
-                try:
-                    new_template = WhatsAppTemplate(
-                        reminder_target=template_data['reminder_target'],
-                        reminder_type=template_data['reminder_type'],
-                        template=template_data['template'],
-                        created_by=template_data.get('created_by', 'excel_import')
-                    )
-                    
-                    self.db.add(new_template)
-                    success_count += 1
-                    
-                except Exception as e:
-                    logger.error(f"Error inserting template {template_data.get('reminder_target', 'Unknown')} - {template_data.get('reminder_type', 'Unknown')}: {str(e)}")
-                    continue
-            
-            # Commit all changes
-            self.db.commit()
-            logger.info(f"Successfully replaced templates: {success_count}/{len(templates_data)} inserted")
-            
-            return success_count == len(templates_data)
-            
-        except Exception as e:
-            logger.error(f"Error replacing templates: {str(e)}")
-            self.db.rollback()
-            
-            # If backup exists, could potentially restore here
-            if backup_data:
-                logger.info(f"Backup available with {len(backup_data)} templates for manual recovery")
-            
-            return False
-    
     def update_templates_from_excel(self, excel_templates_data: List[Dict[str, str]]) -> Dict[str, Any]:
         """
         Update templates from Excel data with detailed reporting
-        
+
         Args:
             excel_templates_data: Template data from Excel file
-            
+
         Returns:
             Dictionary with update results and statistics
         """
@@ -459,32 +240,51 @@ class WhatsAppTemplateRepository:
             'backup_created': False,
             'message': ''
         }
-        
+
         try:
             logger.info(f"Starting template update from Excel with {len(excel_templates_data)} templates")
-            
-            # Create backup
-            backup_data = self.backup_existing_templates()
-            result['backup_created'] = len(backup_data) > 0
-            
-            # Replace all templates
-            success = self.replace_all_templates(excel_templates_data, backup_first=False)  # Already backed up
-            
-            if success:
+
+            # Delete all existing templates
+            deleted_count = self.db.query(WhatsAppTemplate).delete()
+            logger.info(f"Deleted {deleted_count} existing templates")
+
+            # Insert new templates
+            success_count = 0
+            for template_data in excel_templates_data:
+                try:
+                    new_template = WhatsAppTemplate(
+                        reminder_target=template_data['reminder_target'],
+                        reminder_type=template_data['reminder_type'],
+                        template=template_data['template'],
+                        created_by=template_data.get('created_by', 'excel_import')
+                    )
+
+                    self.db.add(new_template)
+                    success_count += 1
+
+                except Exception as e:
+                    logger.error(f"Error inserting template {template_data.get('reminder_target', 'Unknown')} - {template_data.get('reminder_type', 'Unknown')}: {str(e)}")
+                    result['errors'].append(str(e))
+                    continue
+
+            # Commit all changes
+            self.db.commit()
+            result['successfully_updated'] = success_count
+            logger.info(f"Successfully replaced templates: {success_count}/{len(excel_templates_data)} inserted")
+
+            if success_count == len(excel_templates_data):
                 result['success'] = True
-                result['successfully_updated'] = len(excel_templates_data)
                 result['message'] = f"Successfully updated {len(excel_templates_data)} templates from Excel"
-                logger.info(result['message'])
             else:
-                result['message'] = "Failed to update some templates from Excel"
-                result['errors'].append("Not all templates were successfully updated")
-            
+                result['message'] = f"Partially updated: {success_count}/{len(excel_templates_data)} templates from Excel"
+
         except Exception as e:
             error_msg = f"Error updating templates from Excel: {str(e)}"
             logger.error(error_msg)
             result['errors'].append(error_msg)
             result['message'] = error_msg
-        
+            self.db.rollback()
+
         return result
     
     def get_template_statistics(self) -> Dict[str, Any]:
