@@ -17,7 +17,22 @@ logger = logging.getLogger(__name__)
 
 class WhatsAppTemplateRepository:
     """Repository for WhatsApp template operations"""
-    
+
+    # Target categories for different query strategies
+    TARGET_ONLY_CATEGORIES = {
+        "Non KPB",
+        "Booking Service",
+        "Ultah Konsumen",
+        "Selesai Service"
+    }
+
+    KPB_CATEGORIES = {
+        "KPB-1",
+        "KPB-2",
+        "KPB-3",
+        "KPB-4"
+    }
+
     def __init__(self, db: Session):
         self.db = db
     
@@ -50,42 +65,77 @@ class WhatsAppTemplateRepository:
         except SQLAlchemyError as e:
             logger.error(f"Database error getting template for {reminder_target} - {reminder_type}: {str(e)}")
             return None
-    
+
+    def get_template_by_target_only(self, reminder_target: str) -> Optional[WhatsAppTemplate]:
+        """
+        Get template by reminder_target only (for templates without specific reminder_type)
+
+        Args:
+            reminder_target: Target category (e.g., "Booking Service", "Non KPB")
+
+        Returns:
+            WhatsAppTemplate object or None if not found
+        """
+        try:
+            template = self.db.query(WhatsAppTemplate).filter(
+                and_(
+                    WhatsAppTemplate.reminder_target == reminder_target,
+                    or_(
+                        WhatsAppTemplate.reminder_type.is_(None),
+                        WhatsAppTemplate.reminder_type == '',
+                        WhatsAppTemplate.reminder_type == 'N/A'
+                    )
+                )
+            ).first()
+
+            if template:
+                logger.debug(f"Found target-only template for {reminder_target}")
+            else:
+                logger.debug(f"No target-only template found for {reminder_target}")
+
+            return template
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting target-only template for {reminder_target}: {str(e)}")
+            return None
+
     def get_template_with_fallback(self, reminder_target: str, reminder_type: str) -> Optional[WhatsAppTemplate]:
         """
-        Get template with fallback logic:
-        1. Try exact match (reminder_target + reminder_type)
-        2. If not found and reminder_type is "N/A", try reminder_target + "N/A"
-        3. If still not found, try generic template
-        
+        Get template with simplified category-based logic:
+        1. If target is in TARGET_ONLY_CATEGORIES → query by target only
+        2. If target is in KPB_CATEGORIES → try exact match, then with "N/A"
+        3. Otherwise → return None
+
         Args:
             reminder_target: Target category
             reminder_type: Type of reminder
-            
+
         Returns:
             WhatsAppTemplate object or None
         """
-        # Try exact match first
-        template = self.get_template(reminder_target, reminder_type)
-        if template:
-            return template
-        
-        # If reminder_type is not "N/A", try with "N/A" for the same target
-        if reminder_type != "N/A":
-            logger.info(f"Trying fallback with reminder_type 'N/A' for target {reminder_target}")
-            template = self.get_template(reminder_target, "N/A")
+        # Check if this is a target-only category
+        if reminder_target in self.TARGET_ONLY_CATEGORIES:
+            logger.debug(f"Using target-only query for {reminder_target}")
+            return self.get_template_by_target_only(reminder_target)
+
+        # Check if this is a KPB category
+        if reminder_target in self.KPB_CATEGORIES:
+            logger.debug(f"Using full query for KPB target {reminder_target}")
+
+            # Try exact match first
+            template = self.get_template(reminder_target, reminder_type)
             if template:
                 return template
-        
-        # Try generic fallback templates
-        fallback_targets = ["Non KPB", "Booking Service"]
-        for fallback_target in fallback_targets:
-            logger.info(f"Trying fallback target: {fallback_target}")
-            template = self.get_template(fallback_target, "N/A")
-            if template:
-                return template
-        
-        logger.error(f"No template found even with fallbacks for {reminder_target} - {reminder_type}")
+
+            # Try with "N/A" if not already "N/A"
+            if reminder_type != "N/A":
+                logger.info(f"Trying fallback with reminder_type 'N/A' for KPB target {reminder_target}")
+                template = self.get_template(reminder_target, "N/A")
+                if template:
+                    return template
+
+        # No template found for this category
+        logger.warning(f"No template found for {reminder_target} - {reminder_type}")
         return None
     
     def get_all_templates(self) -> List[WhatsAppTemplate]:

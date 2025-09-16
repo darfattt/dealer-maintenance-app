@@ -256,20 +256,11 @@ class CustomerReminderController:
         
         if formatted_message:
             return formatted_message
-        
-        # Fallback to basic template if no database template found
-        logger.warning(f"No template found for {reminder_target} - {reminder_type}, using fallback")
-        customer_name = getattr(customer_data, 'nama_pelanggan', 'Bpk/Ibu')
-        return f"""Halo {customer_name},
 
-Ini adalah pengingat dari {dealer_name} terkait {reminder_target}.
-
-{reminder_type}
-
-Terima kasih atas perhatian Anda.
-
-Salam,
-{dealer_name}"""
+        # Raise error if no database template found
+        error_msg = f"No WhatsApp template found for reminder_target='{reminder_target}' and reminder_type='{reminder_type}'. Please configure the template in the database."
+        logger.error(error_msg)
+        raise ValueError(error_msg)
     
     async def _send_bulk_reminder_whatsapp(self, dealer_id: str, phone_number: str, nama_pelanggan: str, message: str):
         """Send WhatsApp message for bulk reminder using Fonnte API"""

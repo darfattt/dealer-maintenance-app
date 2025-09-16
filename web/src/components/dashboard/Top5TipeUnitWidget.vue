@@ -75,33 +75,7 @@ const fetchTipeUnitData = async () => {
         }
     } catch (err) {
         console.error('Error fetching tipe unit data:', err);
-
-        // Use mock data as fallback
-        const mockData = {
-            'VARIO 125 CBS ISS': 45,
-            'Beat Street': 32,
-            'PCX 160': 28,
-            'Scoopy Sporty': 15,
-            'ADV 160': 12
-        };
-
-        const totalUnits = Object.values(mockData).reduce((sum, count) => sum + count, 0);
-
-        topUnits.value = Object.entries(mockData).map(([unitName, count], index) => {
-            const percentage = ((count / totalUnits) * 100).toFixed(1);
-
-            return {
-                id: index + 1,
-                rank: index + 1,
-                name: unitName,
-                image: getUnitImage(unitName),
-                totalUnits: count,
-                percentage: parseFloat(percentage),
-                description: `${count} Units (${percentage}%)`
-            };
-        });
-
-        error.value = 'Using sample data - API unavailable';
+        error.value = 'Error API';
     } finally {
         loading.value = false;
     }
