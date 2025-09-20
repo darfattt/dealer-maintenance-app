@@ -15,8 +15,9 @@ class ReminderTarget(str, Enum):
     KPB_3 = "KPB-3"
     KPB_4 = "KPB-4"
     NON_KPB = "Non KPB"
-    BOOKING_SERVICE = "Booking Service"
+    BOOKING_SERVICE = "Booking Servis"
     ULTAH_KONSUMEN = "Ultah Konsumen"
+    SELESAI_SERVICE = "Selesai Servis"
 
 
 class ReminderType(str, Enum):
@@ -339,3 +340,99 @@ class CustomerReminderStatsResponse(BaseModel):
                 }
             }
         }
+
+
+# Utility functions for category classification
+def get_target_only_categories() -> set:
+    """
+    Get set of reminder targets that use target-only query strategy
+    (without specific reminder_type matching)
+
+    Returns:
+        set: Reminder target values that use target-only queries
+    """
+    return {
+        ReminderTarget.NON_KPB.value,
+        ReminderTarget.BOOKING_SERVICE.value,
+        ReminderTarget.ULTAH_KONSUMEN.value,
+        ReminderTarget.SELESAI_SERVICE.value
+    }
+
+
+def get_kpb_categories() -> set:
+    """
+    Get set of KPB reminder targets that use full query strategy
+    (with specific reminder_type matching and fallback to N/A)
+
+    Returns:
+        set: KPB reminder target values
+    """
+    return {
+        ReminderTarget.KPB_1.value,
+        ReminderTarget.KPB_2.value,
+        ReminderTarget.KPB_3.value,
+        ReminderTarget.KPB_4.value
+    }
+
+
+class ReminderTargetOption(BaseModel):
+    """Schema for reminder target dropdown option"""
+
+    label: str = Field(..., description="Display label for the option")
+    value: str = Field(..., description="Value for the option")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "label": "KPB 1",
+                "value": "KPB-1"
+            }
+        }
+
+
+class ReminderTargetResponse(BaseModel):
+    """Schema for reminder target options response"""
+
+    success: bool = Field(..., description="Success status")
+    data: List[ReminderTargetOption] = Field(..., description="List of reminder target options")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "data": [
+                    {"label": "All Targets", "value": ""},
+                    {"label": "KPB 1", "value": "KPB-1"},
+                    {"label": "KPB 2", "value": "KPB-2"}
+                ]
+            }
+        }
+
+
+def get_reminder_target_options() -> List[ReminderTargetOption]:
+    """
+    Get reminder target options for frontend dropdown
+
+    Returns:
+        List[ReminderTargetOption]: List of reminder target options including "All Targets"
+    """
+    options = [
+        ReminderTargetOption(label="All Targets", value="")
+    ]
+
+    # Add options from enum with user-friendly labels
+    target_labels = {
+        ReminderTarget.KPB_1.value: "KPB 1",
+        ReminderTarget.KPB_2.value: "KPB 2",
+        ReminderTarget.KPB_3.value: "KPB 3",
+        ReminderTarget.KPB_4.value: "KPB 4",
+        ReminderTarget.NON_KPB.value: "Non KPB",
+        ReminderTarget.BOOKING_SERVICE.value: "Booking Servis",
+        ReminderTarget.ULTAH_KONSUMEN.value: "Ultah Konsumen",
+        ReminderTarget.SELESAI_SERVICE.value: "Selesai Servis"
+    }
+
+    for target_value, target_label in target_labels.items():
+        options.append(ReminderTargetOption(label=target_label, value=target_value))
+
+    return options

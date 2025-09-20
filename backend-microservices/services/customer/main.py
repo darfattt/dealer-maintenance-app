@@ -230,7 +230,7 @@ async def _initialize_whatsapp_templates(session):
 #                 'created_by': 'system'
 #             },
 #             {
-#                 'reminder_target': 'Booking Service',
+#                 'reminder_target': 'Booking Servis',
 #                 'reminder_type': 'N/A',
 #                 'template': '''Halo {nama_pemilik},
 

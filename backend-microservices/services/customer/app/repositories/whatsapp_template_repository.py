@@ -10,7 +10,7 @@ from sqlalchemy import and_, or_
 import logging
 
 from app.models.whatsapp_template import WhatsAppTemplate
-from app.schemas.customer_reminder_request import BulkReminderCustomerData
+from app.schemas.customer_reminder_request import BulkReminderCustomerData, get_target_only_categories, get_kpb_categories
 
 logger = logging.getLogger(__name__)
 
@@ -18,83 +18,114 @@ logger = logging.getLogger(__name__)
 class WhatsAppTemplateRepository:
     """Repository for WhatsApp template operations"""
 
-    # Target categories for different query strategies
-    TARGET_ONLY_CATEGORIES = {
-        "Non KPB",
-        "Booking Service",
-        "Ultah Konsumen",
-        "Selesai Service"
-    }
-
-    KPB_CATEGORIES = {
-        "KPB-1",
-        "KPB-2",
-        "KPB-3",
-        "KPB-4"
-    }
-
     def __init__(self, db: Session):
         self.db = db
     
-    def get_template(self, reminder_target: str, reminder_type: str) -> Optional[WhatsAppTemplate]:
+    def get_template(self, reminder_target: str, reminder_type: str, dealer_id: Optional[str] = None) -> Optional[WhatsAppTemplate]:
         """
-        Get template by reminder_target and reminder_type
-        
+        Get template by reminder_target and reminder_type, with optional dealer_id filtering
+
         Args:
             reminder_target: Target category (e.g., "KPB-1", "Non KPB")
             reminder_type: Type of reminder (e.g., "H+30 tanggal beli (by WA)", "N/A")
-            
+            dealer_id: Optional dealer ID for dealer-specific templates
+
         Returns:
             WhatsAppTemplate object or None if not found
         """
         try:
-            template = self.db.query(WhatsAppTemplate).filter(
+            # Build query with base filters
+            query = self.db.query(WhatsAppTemplate).filter(
                 and_(
                     WhatsAppTemplate.reminder_target == reminder_target,
                     WhatsAppTemplate.reminder_type == reminder_type
                 )
-            ).first()
-            
-            if template:
-                logger.debug(f"Found template for {reminder_target} - {reminder_type}")
+            )
+
+            # If dealer_id is provided, prioritize dealer-specific templates, then global
+            if dealer_id:
+                # First try dealer-specific template
+                dealer_template = query.filter(WhatsAppTemplate.dealer_id == dealer_id).first()
+                if dealer_template:
+                    logger.debug(f"Found dealer-specific template for {reminder_target} - {reminder_type} (dealer: {dealer_id})")
+                    return dealer_template
+
+                # Fallback to global template (dealer_id is NULL)
+                global_template = query.filter(WhatsAppTemplate.dealer_id.is_(None)).first()
+                if global_template:
+                    logger.debug(f"Found global template for {reminder_target} - {reminder_type} (fallback from dealer: {dealer_id})")
+                    return global_template
             else:
-                logger.warning(f"No template found for {reminder_target} - {reminder_type}")
-                
-            return template
-            
-        except SQLAlchemyError as e:
-            logger.error(f"Database error getting template for {reminder_target} - {reminder_type}: {str(e)}")
+                # No dealer_id specified, just get any template (preferably global)
+                template = query.filter(WhatsAppTemplate.dealer_id.is_(None)).first()
+                if template:
+                    logger.debug(f"Found global template for {reminder_target} - {reminder_type}")
+                    return template
+
+                # If no global template, get any template
+                template = query.first()
+                if template:
+                    logger.debug(f"Found template for {reminder_target} - {reminder_type}")
+                    return template
+
+            logger.warning(f"No template found for {reminder_target} - {reminder_type} (dealer: {dealer_id})")
             return None
 
-    def get_template_by_target_only(self, reminder_target: str) -> Optional[WhatsAppTemplate]:
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting template for {reminder_target} - {reminder_type} (dealer: {dealer_id}): {str(e)}")
+            return None
+
+    def get_template_by_target_only(self, reminder_target: str, dealer_id: Optional[str] = None) -> Optional[WhatsAppTemplate]:
         """
         Get template by reminder_target only (for templates without specific reminder_type)
 
         Args:
-            reminder_target: Target category (e.g., "Booking Service", "Non KPB")
+            reminder_target: Target category (e.g., "Booking Servis", "Non KPB")
+            dealer_id: Optional dealer ID for dealer-specific templates
 
         Returns:
             WhatsAppTemplate object or None if not found
         """
         try:
-            template = self.db.query(WhatsAppTemplate).filter(
-                and_(
-                    WhatsAppTemplate.reminder_target == reminder_target
-                )
-            ).first()
+            # Build query with base filter
+            query = self.db.query(WhatsAppTemplate).filter(
+                WhatsAppTemplate.reminder_target == reminder_target
+            )
 
-            if template:
-                logger.debug(f"Found target-only template for {reminder_target}")
+            # If dealer_id is provided, prioritize dealer-specific templates, then global
+            if dealer_id:
+                # First try dealer-specific template
+                dealer_template = query.filter(WhatsAppTemplate.dealer_id == dealer_id).first()
+                if dealer_template:
+                    logger.debug(f"Found dealer-specific target-only template for {reminder_target} (dealer: {dealer_id})")
+                    return dealer_template
+
+                # Fallback to global template (dealer_id is NULL)
+                global_template = query.filter(WhatsAppTemplate.dealer_id.is_(None)).first()
+                if global_template:
+                    logger.debug(f"Found global target-only template for {reminder_target} (fallback from dealer: {dealer_id})")
+                    return global_template
             else:
-                logger.debug(f"No target-only template found for {reminder_target}")
+                # No dealer_id specified, just get any template (preferably global)
+                template = query.filter(WhatsAppTemplate.dealer_id.is_(None)).first()
+                if template:
+                    logger.debug(f"Found global target-only template for {reminder_target}")
+                    return template
 
-            return template
+                # If no global template, get any template
+                template = query.first()
+                if template:
+                    logger.debug(f"Found target-only template for {reminder_target}")
+                    return template
 
-        except SQLAlchemyError as e:
-            logger.error(f"Database error getting target-only template for {reminder_target}: {str(e)}")
+            logger.debug(f"No target-only template found for {reminder_target} (dealer: {dealer_id})")
             return None
 
-    def get_template_with_fallback(self, reminder_target: str, reminder_type: str) -> Optional[WhatsAppTemplate]:
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting target-only template for {reminder_target} (dealer: {dealer_id}): {str(e)}")
+            return None
+
+    def get_template_with_fallback(self, reminder_target: str, reminder_type: str, dealer_id: Optional[str] = None) -> Optional[WhatsAppTemplate]:
         """
         Get template with simplified category-based logic:
         1. If target is in TARGET_ONLY_CATEGORIES → query by target only
@@ -104,34 +135,35 @@ class WhatsAppTemplateRepository:
         Args:
             reminder_target: Target category
             reminder_type: Type of reminder
+            dealer_id: Optional dealer ID for dealer-specific templates
 
         Returns:
             WhatsAppTemplate object or None
         """
-        logger.info(f"target : {reminder_target}")
+        logger.info(f"target : {reminder_target} (dealer: {dealer_id})")
         # Check if this is a target-only category
-        if reminder_target in self.TARGET_ONLY_CATEGORIES:
-            logger.info(f"Using target-only query for {reminder_target}")
-            return self.get_template_by_target_only(reminder_target)
+        if reminder_target in get_target_only_categories():
+            logger.info(f"Using target-only query for {reminder_target} (dealer: {dealer_id})")
+            return self.get_template_by_target_only(reminder_target, dealer_id)
 
         # Check if this is a KPB category
-        if reminder_target in self.KPB_CATEGORIES:
-            logger.info(f"Using full query for KPB target {reminder_target}")
+        if reminder_target in get_kpb_categories():
+            logger.info(f"Using full query for KPB target {reminder_target} (dealer: {dealer_id})")
 
             # Try exact match first
-            template = self.get_template(reminder_target, reminder_type)
+            template = self.get_template(reminder_target, reminder_type, dealer_id)
             if template:
                 return template
 
             # Try with "N/A" if not already "N/A"
             if reminder_type != "N/A":
-                logger.info(f"Trying fallback with reminder_type 'N/A' for KPB target {reminder_target}")
-                template = self.get_template(reminder_target, "N/A")
+                logger.info(f"Trying fallback with reminder_type 'N/A' for KPB target {reminder_target} (dealer: {dealer_id})")
+                template = self.get_template(reminder_target, "N/A", dealer_id)
                 if template:
                     return template
 
         # No template found for this category
-        logger.warning(f"No template found for {reminder_target} - {reminder_type}")
+        logger.warning(f"No template found for {reminder_target} - {reminder_type} (dealer: {dealer_id})")
         return None
     
     @staticmethod
@@ -178,29 +210,31 @@ class WhatsAppTemplateRepository:
         customer_data: Union[BulkReminderCustomerData, Dict[str, Any]],
         ahass_data: Optional[Dict[str, Any]] = None,
         dealer_name: Optional[str] = None,
+        dealer_id: Optional[str] = None,
         **additional_kwargs
     ) -> Optional[str]:
         """
         Get and format template with comprehensive customer data
-        
+
         Args:
             reminder_target: Target category
-            reminder_type: Type of reminder  
+            reminder_type: Type of reminder
             customer_data: Customer data object or dictionary
             ahass_data: AHASS information dictionary
             dealer_name: Dealer name
+            dealer_id: Optional dealer ID for dealer-specific templates
             **additional_kwargs: Any additional template parameters
-            
+
         Returns:
             Formatted message string or None if template not found
         """
-        template = self.get_template_with_fallback(reminder_target, reminder_type)
+        template = self.get_template_with_fallback(reminder_target, reminder_type, dealer_id)
         if not template:
             return None
-        
+
         # Extract customer data
         extracted_data = self._extract_customer_data_dict(customer_data)
-        
+
         # Add AHASS data if provided
         if ahass_data:
             extracted_data.update({
@@ -208,14 +242,14 @@ class WhatsAppTemplateRepository:
                 'nama_ahass': ahass_data.get('nama_ahass'),
                 'alamat_ahass': ahass_data.get('alamat_ahass'),
             })
-        
+
         # Add dealer information
         if dealer_name:
             extracted_data['dealer_name'] = dealer_name
-        
+
         # Add any additional parameters
         extracted_data.update(additional_kwargs)
-        
+
         try:
             return template.format_template(**extracted_data)
         except Exception as e:
