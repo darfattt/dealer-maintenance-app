@@ -88,12 +88,12 @@ const loadSourceTemplateCount = async () => {
 
 // Perform copy operation
 const copyTemplates = async () => {
-    console.log('Form data before validation:', {
-        sourceDealerId: copyForm.sourceDealerId,
-        targetDealerId: copyForm.targetDealerId,
-        overwriteExisting: copyForm.overwriteExisting,
-        canProceedCopy: canProceedCopy.value
-    });
+    // console.log('Form data before validation:', {
+    //     sourceDealerId: copyForm.sourceDealerId,
+    //     targetDealerId: copyForm.targetDealerId,
+    //     overwriteExisting: copyForm.overwriteExisting,
+    //     canProceedCopy: canProceedCopy.value
+    // });
 
     if (!canProceedCopy.value) return;
 
@@ -116,11 +116,11 @@ const copyTemplates = async () => {
             return;
         }
 
-        console.log('Form data before API call:', {
-            source_dealer_id: copyForm.sourceDealerId,
-            target_dealer_id: copyForm.targetDealerId,
-            overwrite_existing: copyForm.overwriteExisting
-        });
+        // console.log('Form data before API call:', {
+        //     source_dealer_id: copyForm.sourceDealerId,
+        //     target_dealer_id: copyForm.targetDealerId,
+        //     overwrite_existing: copyForm.overwriteExisting
+        // });
         const response = await WhatsAppTemplateService.copyTemplates({
             source_dealer_id: copyForm.sourceDealerId,
             target_dealer_id: copyForm.targetDealerId,

@@ -24,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
                     'Content-Type': 'application/json'
                 }
             });
-            console.log('Login response:', response.data);
+            // console.log('Login response:', response.data);
             const { access_token, refresh_token, user: userData } = response.data;
 
             // Store tokens
