@@ -4,17 +4,21 @@ Customer reminder API routes
 
 import logging
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.controllers.customer_reminder_controller import CustomerReminderController
+from app.repositories.api_request_log_repository import ApiRequestLogRepository
+from app.services.request_logging_service import RequestLoggingService
 from app.schemas.customer_reminder_request import (
     CustomerReminderRequestCreate,
     CustomerReminderResponse,
     CustomerReminderRequestResponse,
     CustomerReminderStatsResponse,
     BulkReminderRequest,
-    BulkReminderResponse
+    BulkReminderResponse,
+    ReminderTargetResponse
 )
 from app.dependencies import get_db, get_current_user, UserContext
 
@@ -31,22 +35,44 @@ router = APIRouter(prefix="/reminder", tags=["Customer Reminder"])
 )
 async def add_bulk_reminders(
     request: BulkReminderRequest,
+    fastapi_request: Request,
+    background_tasks: BackgroundTasks,
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> BulkReminderResponse:
     """
     Create bulk customer reminders and send WhatsApp notifications
-    
+
     This endpoint:
     1. Validates JWT Bearer token authentication (user identification)
     2. Validates dealer exists and has Fonnte configuration
     3. Stores multiple reminder requests in the database
     4. Sends WhatsApp reminder messages to customers
     5. Returns a success confirmation with processing statistics
-    
+
     Authentication: Requires Authorization: Bearer <token> header with valid JWT token
     """
+    start_time = datetime.utcnow()
+    log_repository = ApiRequestLogRepository(db)
+    logging_service = RequestLoggingService(log_repository)
+    log_id = None
+
     try:
+        # Start async request logging
+        client_ip = fastapi_request.client.host if fastapi_request.client else None
+        headers_dict = dict(fastapi_request.headers)
+
+        log_id = await logging_service.log_request_start(
+            request_name="add_bulk_reminders",
+            request_method="POST",
+            endpoint="/v1/reminder/add-bulk",
+            dealer_id=request.kode_ahass,
+            request_payload=request.dict(),
+            request_headers=headers_dict,
+            request_ip=client_ip,
+            user_email=current_user.email
+        )
+
         # Use kode_ahass as dealer_id
         dealer_id = request.kode_ahass
         
@@ -54,16 +80,47 @@ async def add_bulk_reminders(
         
         controller = CustomerReminderController(db)
         result = await controller.add_bulk_reminders(request, dealer_id, created_by=current_user.email)
-        
+
         logger.info(f"Bulk customer reminders processed for dealer {dealer_id}, total customers: {len(request.data)}")
-        
+
+        # Log successful completion
+        if log_id:
+            background_tasks.add_task(
+                logging_service.log_request_completion,
+                log_id=log_id,
+                response_status="success" if result.status == 1 else "partial_success",
+                response_code=200,
+                start_time=start_time,
+                response_data={"status": result.status, "message_keys": list(result.message.keys()) if result.message else []}
+            )
+
         return result
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions
+
+    except HTTPException as he:
+        # Log HTTP exceptions
+        if log_id:
+            background_tasks.add_task(
+                logging_service.log_request_error,
+                log_id=log_id,
+                error_message=str(he.detail),
+                response_code=he.status_code,
+                start_time=start_time
+            )
         raise
     except Exception as e:
-        logger.error(f"Error processing bulk customer reminders: {str(e)}")
+        error_msg = f"Error processing bulk customer reminders: {str(e)}"
+        logger.error(error_msg)
+
+        # Log unexpected errors
+        if log_id:
+            background_tasks.add_task(
+                logging_service.log_request_error,
+                log_id=log_id,
+                error_message=error_msg,
+                response_code=500,
+                start_time=start_time
+            )
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error while processing request"
@@ -355,6 +412,32 @@ async def test_reminder_whatsapp_config(
         raise
     except Exception as e:
         logger.error(f"Error testing reminder WhatsApp config for dealer {current_user.dealer_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.get(
+    "/targets",
+    response_model=ReminderTargetResponse,
+    summary="Get available reminder targets",
+    description="Get list of available reminder targets for frontend dropdown"
+)
+def get_reminder_targets(db: Session = Depends(get_db)) -> ReminderTargetResponse:
+    """
+    Get available reminder targets for frontend dropdown
+
+    This endpoint returns a list of all available reminder targets from the enum
+    for use in frontend dropdown components. No authentication required as this
+    is static configuration data.
+    """
+    try:
+        controller = CustomerReminderController(db)
+        return controller.get_reminder_targets()
+
+    except Exception as e:
+        logger.error(f"Error getting reminder targets: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

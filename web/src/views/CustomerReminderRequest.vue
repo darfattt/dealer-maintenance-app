@@ -42,17 +42,10 @@ const selectedDateFrom = ref(currentYearStart);
 const selectedDateTo = ref(new Date());
 const selectedReminderTarget = ref('');
 
-// Reminder target options (matching backend reminder_target field values)
-const reminderTargetOptions = ref([
-    { label: 'All Targets', value: '' },
-    { label: 'KPB 1', value: 'KPB-1' },
-    { label: 'KPB 2', value: 'KPB-2' },
-    { label: 'KPB 3', value: 'KPB-3' },
-    { label: 'KPB 4', value: 'KPB-4' },
-    { label: 'Non KPB', value: 'Non KPB' },
-    { label: 'Booking Service', value: 'Booking Service' },
-    { label: 'Ultah Konsumen', value: 'Ultah Konsumen' }
-]);
+// Reminder target options (loaded dynamically from backend)
+const reminderTargetOptions = ref([]);
+const reminderTargetsLoading = ref(false);
+const reminderTargetsError = ref(false);
 
 // Check if user is DEALER_USER role
 const isDealerUser = computed(() => {
@@ -72,6 +65,30 @@ const formattedDateFrom = computed(() => {
 const formattedDateTo = computed(() => {
     return formatDateForAPI(selectedDateTo.value);
 });
+
+// Load reminder targets
+const loadReminderTargets = async () => {
+    reminderTargetsLoading.value = true;
+    reminderTargetsError.value = false;
+    try {
+        const response = await CustomerService.getReminderTargets();
+        if (response.success && response.data) {
+            reminderTargetOptions.value = response.data;
+        } else {
+            // Use fallback data if API returns success: false
+            reminderTargetOptions.value = response.data || [];
+            reminderTargetsError.value = !response.success;
+        }
+    } catch (error) {
+        console.error('Failed to load reminder targets:', error);
+        reminderTargetsError.value = true;
+        // Fallback options are already provided by CustomerService.getReminderTargets()
+        const fallbackResponse = await CustomerService.getReminderTargets();
+        reminderTargetOptions.value = fallbackResponse.data || [];
+    } finally {
+        reminderTargetsLoading.value = false;
+    }
+};
 
 // Data states
 const loading = ref(false);
@@ -330,6 +347,7 @@ watch(
 
 // Initial load
 onMounted(() => {
+    loadReminderTargets();
     loadStats();
     loadReminders();
 });
@@ -358,7 +376,17 @@ onMounted(() => {
             <!-- Reminder Target Filter -->
             <div class="flex items-center space-x-2">
                 <label for="target-filter" class="text-sm font-medium">Target:</label>
-                <Dropdown id="target-filter" v-model="selectedReminderTarget" :options="reminderTargetOptions" optionLabel="label" optionValue="value" placeholder="All Targets" class="w-44" />
+                <Dropdown
+                    id="target-filter"
+                    v-model="selectedReminderTarget"
+                    :options="reminderTargetOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    :placeholder="reminderTargetsLoading ? 'Loading targets...' : reminderTargetsError ? 'Error loading targets' : 'All Targets'"
+                    :loading="reminderTargetsLoading"
+                    :disabled="reminderTargetsLoading || reminderTargetsError"
+                    class="w-44"
+                />
             </div>
 
             <!-- Date Range Filters -->

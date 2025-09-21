@@ -1,0 +1,206 @@
+"""
+API request log repository for database operations
+"""
+
+import logging
+from typing import Optional, Dict, Any
+from datetime import datetime
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.models.api_request_log import ApiRequestLog
+
+logger = logging.getLogger(__name__)
+
+
+class ApiRequestLogRepository:
+    """Repository for API request log operations"""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create_request_log(
+        self,
+        request_name: str,
+        request_method: str,
+        endpoint: str,
+        dealer_id: Optional[str] = None,
+        request_payload: Optional[Dict[str, Any]] = None,
+        request_headers: Optional[Dict[str, Any]] = None,
+        request_ip: Optional[str] = None,
+        user_email: Optional[str] = None
+    ) -> Optional[ApiRequestLog]:
+        """
+        Create a new API request log entry
+
+        Args:
+            request_name: Name/type of the request
+            request_method: HTTP method
+            endpoint: API endpoint path
+            dealer_id: Optional dealer ID
+            request_payload: Optional request body
+            request_headers: Optional request headers
+            request_ip: Optional client IP
+            user_email: Optional user email from JWT
+
+        Returns:
+            ApiRequestLog object or None if creation failed
+        """
+        try:
+            log_entry = ApiRequestLog(
+                request_name=request_name,
+                dealer_id=dealer_id,
+                request_method=request_method,
+                endpoint=endpoint,
+                request_payload=request_payload,
+                request_headers=request_headers,
+                request_ip=request_ip,
+                user_email=user_email,
+                request_timestamp=datetime.utcnow()
+            )
+
+            self.db.add(log_entry)
+            self.db.commit()
+            self.db.refresh(log_entry)
+
+            logger.debug(f"Created request log entry: {log_entry.id} for {request_name}")
+            return log_entry
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error creating request log: {str(e)}")
+            self.db.rollback()
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error creating request log: {str(e)}")
+            self.db.rollback()
+            return None
+
+    def update_response_log(
+        self,
+        log_id: str,
+        response_status: str,
+        response_code: int,
+        processing_time_ms: int,
+        response_data: Optional[Dict[str, Any]] = None,
+        error_message: Optional[str] = None
+    ) -> bool:
+        """
+        Update an existing log entry with response information
+
+        Args:
+            log_id: ID of the log entry to update
+            response_status: Response status ('success', 'error', 'partial_success')
+            response_code: HTTP status code
+            processing_time_ms: Processing time in milliseconds
+            response_data: Optional response data
+            error_message: Optional error message
+
+        Returns:
+            True if update successful, False otherwise
+        """
+        try:
+            log_entry = self.db.query(ApiRequestLog).filter(ApiRequestLog.id == log_id).first()
+
+            if not log_entry:
+                logger.warning(f"Request log entry not found: {log_id}")
+                return False
+
+            log_entry.update_response(
+                response_status=response_status,
+                response_code=response_code,
+                processing_time_ms=processing_time_ms,
+                response_data=response_data,
+                error_message=error_message
+            )
+
+            self.db.commit()
+            logger.debug(f"Updated request log entry: {log_id} with response data")
+            return True
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error updating request log {log_id}: {str(e)}")
+            self.db.rollback()
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error updating request log {log_id}: {str(e)}")
+            self.db.rollback()
+            return False
+
+    def get_request_log_by_id(self, log_id: str) -> Optional[ApiRequestLog]:
+        """
+        Get request log by ID
+
+        Args:
+            log_id: ID of the log entry
+
+        Returns:
+            ApiRequestLog object or None if not found
+        """
+        try:
+            return self.db.query(ApiRequestLog).filter(ApiRequestLog.id == log_id).first()
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting request log {log_id}: {str(e)}")
+            return None
+
+    def get_request_logs_by_dealer(
+        self,
+        dealer_id: str,
+        limit: int = 100,
+        offset: int = 0
+    ) -> list:
+        """
+        Get request logs for a specific dealer
+
+        Args:
+            dealer_id: Dealer ID
+            limit: Maximum number of records to return
+            offset: Number of records to skip
+
+        Returns:
+            List of ApiRequestLog objects
+        """
+        try:
+            return (
+                self.db.query(ApiRequestLog)
+                .filter(ApiRequestLog.dealer_id == dealer_id)
+                .order_by(ApiRequestLog.request_timestamp.desc())
+                .limit(limit)
+                .offset(offset)
+                .all()
+            )
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting request logs for dealer {dealer_id}: {str(e)}")
+            return []
+
+    def get_request_logs_by_name(
+        self,
+        request_name: str,
+        limit: int = 100,
+        offset: int = 0
+    ) -> list:
+        """
+        Get request logs by request name
+
+        Args:
+            request_name: Name of the request type
+            limit: Maximum number of records to return
+            offset: Number of records to skip
+
+        Returns:
+            List of ApiRequestLog objects
+        """
+        try:
+            return (
+                self.db.query(ApiRequestLog)
+                .filter(ApiRequestLog.request_name == request_name)
+                .order_by(ApiRequestLog.request_timestamp.desc())
+                .limit(limit)
+                .offset(offset)
+                .all()
+            )
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting request logs for {request_name}: {str(e)}")
+            return []
