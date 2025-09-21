@@ -23,7 +23,7 @@ class ReminderTarget(str, Enum):
 class ReminderType(str, Enum):
     """Enum for reminder types"""
     # KPB-1 Types
-    KPB_1_H_PLUS_30 = "H+30 tanggal beli (by WA)"
+    KPB_1_H_PLUS_30 = "H+30 dari tanggal beli (by WA)"
     KPB_1_H_MINUS_7 = "H-7 dari expired KPB-1 (by WA)"
     
     # KPB-2 Types

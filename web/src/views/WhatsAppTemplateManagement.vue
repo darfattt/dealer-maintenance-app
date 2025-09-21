@@ -15,6 +15,7 @@ import Tag from 'primevue/tag';
 import WhatsAppTemplateService from '@/service/WhatsAppTemplateService';
 import WhatsAppTemplateEditSidebar from '@/components/WhatsAppTemplateEditSidebar.vue';
 import WhatsAppTemplateCopySidebar from '@/components/WhatsAppTemplateCopySidebar.vue';
+import { formatIndonesiaDateTime } from '@/utils/dateFormatter';
 
 const authStore = useAuthStore();
 const toast = useToast();
@@ -203,18 +204,7 @@ const onTemplatesCopied = () => {
 
 // Utility functions
 const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-        return new Intl.DateTimeFormat('id-ID', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }).format(new Date(dateString));
-    } catch (error) {
-        return dateString;
-    }
+    return formatIndonesiaDateTime(dateString);
 };
 
 const truncateText = (text, maxLength = 100) => {

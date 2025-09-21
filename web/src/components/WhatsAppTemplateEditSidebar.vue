@@ -13,6 +13,7 @@ import Tag from 'primevue/tag';
 import Message from 'primevue/message';
 import ProgressSpinner from 'primevue/progressspinner';
 import WhatsAppTemplateService from '@/service/WhatsAppTemplateService';
+import { formatIndonesiaDateTime } from '@/utils/dateFormatter';
 
 const props = defineProps({
     visible: {
@@ -143,18 +144,7 @@ const getOperationSeverity = (operation) => {
 };
 
 const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-        return new Intl.DateTimeFormat('id-ID', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }).format(new Date(dateString));
-    } catch (error) {
-        return dateString;
-    }
+    return formatIndonesiaDateTime(dateString);
 };
 
 // Save template
@@ -200,8 +190,9 @@ const saveTemplate = async () => {
 // Close sidebar with unsaved changes check
 const closeSidebar = async () => {
     if (hasUnsavedChanges.value) {
-        const confirmed = await confirmUnsavedChanges();
-        if (!confirmed) return;
+        // const confirmed = await confirmUnsavedChanges();
+        // if (!confirmed) return;
+        
     }
     emit('update:visible', false);
 };

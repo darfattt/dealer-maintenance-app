@@ -88,22 +88,39 @@ const loadSourceTemplateCount = async () => {
 
 // Perform copy operation
 const copyTemplates = async () => {
-    console.log({canProceedCopy});
+    console.log('Form data before validation:', {
+        sourceDealerId: copyForm.sourceDealerId,
+        targetDealerId: copyForm.targetDealerId,
+        overwriteExisting: copyForm.overwriteExisting,
+        canProceedCopy: canProceedCopy.value
+    });
+
     if (!canProceedCopy.value) return;
 
-    // Show confirmation dialog
-    const confirmData = {
-        source_dealer_id: copyForm.sourceDealerId,
-        target_dealer_id: copyForm.targetDealerId,
-        overwrite_existing: copyForm.overwriteExisting
-    };
-    const confirmed = await confirmCopy(confirmData, sourceTemplateCount.value);
-    if (!confirmed) return;
-
+    // Set copying flag immediately to protect form data during confirmation
     copying.value = true;
     copyResult.value = null;
 
     try {
+        // Show confirmation dialog
+        const confirmData = {
+            source_dealer_id: copyForm.sourceDealerId,
+            target_dealer_id: copyForm.targetDealerId,
+            overwrite_existing: copyForm.overwriteExisting
+        };
+        const confirmed = await confirmCopy(confirmData, sourceTemplateCount.value);
+
+        if (!confirmed) {
+            // User cancelled - reset copying flag and return
+            copying.value = false;
+            return;
+        }
+
+        console.log('Form data before API call:', {
+            source_dealer_id: copyForm.sourceDealerId,
+            target_dealer_id: copyForm.targetDealerId,
+            overwrite_existing: copyForm.overwriteExisting
+        });
         const response = await WhatsAppTemplateService.copyTemplates({
             source_dealer_id: copyForm.sourceDealerId,
             target_dealer_id: copyForm.targetDealerId,
@@ -206,7 +223,7 @@ watch(
         if (newVisible && showHistory.value) {
             //refreshHistory();
         }
-        if (!newVisible) {
+        if (!newVisible && !copying.value) {
             resetForm();
         }
     }

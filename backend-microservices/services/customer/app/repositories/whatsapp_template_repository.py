@@ -2,12 +2,13 @@
 WhatsApp template repository
 """
 
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func, desc
 import logging
+import uuid
 
 from app.models.whatsapp_template import WhatsAppTemplate
 from app.schemas.customer_reminder_request import BulkReminderCustomerData, get_target_only_categories, get_kpb_categories
@@ -367,3 +368,301 @@ class WhatsAppTemplateRepository:
                 'unique_types': 0,
                 'error': str(e)
             }
+
+    def get_templates_paginated(
+        self,
+        dealer_id: Optional[str] = None,
+        reminder_target: Optional[str] = None,
+        template_content: Optional[str] = None,
+        page: int = 1,
+        size: int = 10
+    ) -> Tuple[List[WhatsAppTemplate], Dict[str, Any]]:
+        """
+        Get paginated list of templates with optional filtering
+
+        Args:
+            dealer_id: Filter by exact dealer ID (empty string for global templates)
+            reminder_target: Filter by exact reminder target
+            template_content: Search in template content (contains)
+            page: Page number (1-based)
+            size: Page size (max 100)
+
+        Returns:
+            Tuple of (templates list, pagination metadata)
+        """
+        try:
+            # Validate and adjust parameters
+            page = max(1, page)
+            size = min(100, max(1, size))
+            offset = (page - 1) * size
+
+            # Build base query
+            query = self.db.query(WhatsAppTemplate)
+
+            # Apply filters
+            filters = []
+
+            # Dealer ID filter - handle both null and specific dealer
+            if dealer_id is not None:
+                if dealer_id == "":
+                    # Filter for global templates (dealer_id is NULL)
+                    filters.append(WhatsAppTemplate.dealer_id.is_(None))
+                else:
+                    # Filter for specific dealer
+                    filters.append(WhatsAppTemplate.dealer_id == dealer_id)
+
+            # Reminder target filter
+            if reminder_target:
+                filters.append(WhatsAppTemplate.reminder_target == reminder_target)
+
+            # Template content search (case-insensitive contains)
+            if template_content:
+                filters.append(WhatsAppTemplate.template.ilike(f"%{template_content}%"))
+
+            # Apply all filters
+            if filters:
+                query = query.filter(and_(*filters))
+
+            # Get total count for pagination
+            total = query.count()
+
+            # Apply ordering and pagination
+            templates = (
+                query.order_by(desc(WhatsAppTemplate.last_modified_date))
+                .limit(size)
+                .offset(offset)
+                .all()
+            )
+
+            # Calculate pagination metadata
+            total_pages = (total + size - 1) // size
+            has_next = page < total_pages
+            has_previous = page > 1
+
+            pagination = {
+                "page": page,
+                "size": size,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": has_next,
+                "has_previous": has_previous
+            }
+
+            logger.debug(f"Retrieved {len(templates)} templates (page {page}/{total_pages})")
+            return templates, pagination
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting paginated templates: {str(e)}")
+            return [], {"page": 1, "size": size, "total": 0, "total_pages": 0, "has_next": False, "has_previous": False}
+
+    def get_template_by_id(self, template_id: str) -> Optional[WhatsAppTemplate]:
+        """
+        Get template by ID
+
+        Args:
+            template_id: Template UUID
+
+        Returns:
+            WhatsAppTemplate object or None if not found
+        """
+        try:
+            return self.db.query(WhatsAppTemplate).filter(WhatsAppTemplate.id == template_id).first()
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting template by ID {template_id}: {str(e)}")
+            return None
+
+    def update_template_by_id(
+        self,
+        template_id: str,
+        template: str,
+        reminder_target: str,
+        reminder_type: str,
+        last_modified_by: str
+    ) -> Optional[WhatsAppTemplate]:
+        """
+        Update template by ID (only allowed fields)
+
+        Args:
+            template_id: Template UUID
+            template: New template content
+            reminder_target: New reminder target
+            reminder_type: New reminder type
+            last_modified_by: User making the update
+
+        Returns:
+            Updated WhatsAppTemplate object or None if not found/failed
+        """
+        try:
+            # Get existing template
+            existing_template = self.get_template_by_id(template_id)
+            if not existing_template:
+                logger.warning(f"Template not found for update: {template_id}")
+                return None
+
+            # Update allowed fields
+            existing_template.template = template
+            existing_template.reminder_target = reminder_target
+            existing_template.reminder_type = reminder_type
+            existing_template.last_modified_by = last_modified_by
+            existing_template.last_modified_date = datetime.utcnow()
+
+            self.db.commit()
+            self.db.refresh(existing_template)
+
+            logger.debug(f"Updated template: {template_id}")
+            return existing_template
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error updating template {template_id}: {str(e)}")
+            self.db.rollback()
+            return None
+
+    def delete_template_by_id(self, template_id: str) -> bool:
+        """
+        Delete template by ID
+
+        Args:
+            template_id: Template UUID
+
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        try:
+            # Get existing template to verify it exists
+            existing_template = self.get_template_by_id(template_id)
+            if not existing_template:
+                logger.warning(f"Template not found for deletion: {template_id}")
+                return False
+
+            # Delete the template
+            self.db.delete(existing_template)
+            self.db.commit()
+
+            logger.debug(f"Deleted template: {template_id}")
+            return True
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error deleting template {template_id}: {str(e)}")
+            self.db.rollback()
+            return False
+
+    def get_templates_by_dealer_id(self, dealer_id: str) -> List[WhatsAppTemplate]:
+        """
+        Get all templates for a specific dealer
+
+        Args:
+            dealer_id: Dealer ID
+
+        Returns:
+            List of WhatsAppTemplate objects
+        """
+        try:
+            return (
+                self.db.query(WhatsAppTemplate)
+                .filter(WhatsAppTemplate.dealer_id == dealer_id)
+                .all()
+            )
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting templates for dealer {dealer_id}: {str(e)}")
+            return []
+
+    def copy_templates(
+        self,
+        source_dealer_id: str,
+        target_dealer_id: str,
+        overwrite_existing: bool = False,
+        created_by: str = "system"
+    ) -> Dict[str, Any]:
+        """
+        Copy all templates from source dealer to target dealer
+
+        Args:
+            source_dealer_id: Source dealer ID
+            target_dealer_id: Target dealer ID
+            overwrite_existing: Whether to overwrite existing templates
+            created_by: User performing the copy operation
+
+        Returns:
+            Dictionary with copy operation results
+        """
+        result = {
+            "templates_found": 0,
+            "templates_copied": 0,
+            "templates_skipped": 0,
+            "templates_overwritten": 0,
+            "errors": []
+        }
+
+        try:
+            # Get source templates
+            source_templates = self.get_templates_by_dealer_id(source_dealer_id)
+            result["templates_found"] = len(source_templates)
+
+            if not source_templates:
+                logger.warning(f"No templates found for source dealer: {source_dealer_id}")
+                return result
+
+            # Get existing target templates if not overwriting
+            existing_target_templates = {}
+            if not overwrite_existing:
+                target_templates = self.get_templates_by_dealer_id(target_dealer_id)
+                existing_target_templates = {
+                    (t.reminder_target, t.reminder_type): t for t in target_templates
+                }
+
+            # Copy each template
+            for source_template in source_templates:
+                try:
+                    template_key = (source_template.reminder_target, source_template.reminder_type)
+
+                    # Check if template already exists for target dealer
+                    if template_key in existing_target_templates:
+                        if overwrite_existing:
+                            # Update existing template
+                            existing_template = existing_target_templates[template_key]
+                            existing_template.template = source_template.template
+                            existing_template.last_modified_by = created_by
+                            existing_template.last_modified_date = datetime.utcnow()
+                            result["templates_overwritten"] += 1
+                        else:
+                            # Skip existing template
+                            result["templates_skipped"] += 1
+                            continue
+                    else:
+                        # Create new template
+                        new_template = WhatsAppTemplate(
+                            id=str(uuid.uuid4()),
+                            reminder_target=source_template.reminder_target,
+                            reminder_type=source_template.reminder_type,
+                            dealer_id=target_dealer_id,
+                            template=source_template.template,
+                            created_by=created_by,
+                            created_date=datetime.utcnow(),
+                            last_modified_by=created_by,
+                            last_modified_date=datetime.utcnow()
+                        )
+                        self.db.add(new_template)
+                        result["templates_copied"] += 1
+
+                except Exception as e:
+                    error_msg = f"Error copying template {source_template.id}: {str(e)}"
+                    logger.error(error_msg)
+                    result["errors"].append(error_msg)
+                    continue
+
+            # Commit all changes
+            self.db.commit()
+            logger.info(f"Copy operation completed: {result['templates_copied']} copied, {result['templates_skipped']} skipped, {result['templates_overwritten']} overwritten")
+
+        except SQLAlchemyError as e:
+            error_msg = f"Database error during copy operation: {str(e)}"
+            logger.error(error_msg)
+            result["errors"].append(error_msg)
+            self.db.rollback()
+        except Exception as e:
+            error_msg = f"Unexpected error during copy operation: {str(e)}"
+            logger.error(error_msg)
+            result["errors"].append(error_msg)
+            self.db.rollback()
+
+        return result
