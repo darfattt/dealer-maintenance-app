@@ -351,12 +351,12 @@ const exportHLOExcel = async () => {
                     <Button icon="pi pi-file-excel" severity="success" size="small" :loading="isExportingWorkOrder" @click="exportWorkOrderExcel" v-tooltip="'Export to Excel'" class="p-button-outlined" />
                 </div>
 
-                <!-- Work Order Row 1: Total Unit Entry & Revenue (2 columns) -->
+                <!-- Work Order Row 1: Total Work Order & Revenue (2 columns) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 work-order-row-1">
                     <div>
-                        <!-- Total Unit Entry Title -->
+                        <!-- Total Work Order Title -->
                         <div class="bg-surface-0 p-3 rounded-t-lg border border-b-0 border-surface-200">
-                            <h3 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Total Unit Entry</h3>
+                            <h3 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wide">Total Work Order</h3>
                         </div>
                         <!-- Widget -->
                         <div class="widget-with-title">
@@ -481,7 +481,7 @@ const exportHLOExcel = async () => {
 }
 
 /* Widget height consistency */
-/* Force equal heights for Total Unit Entry & Revenue widgets */
+/* Force equal heights for Total Work Order & Revenue widgets */
 .work-order-row-1 .widget-with-title :deep(.p-card) {
     min-height: 280px;
     display: flex;
