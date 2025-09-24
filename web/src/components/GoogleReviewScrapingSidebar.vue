@@ -401,10 +401,10 @@ onMounted(() => {
                                 </div>
                                 <div class="flex flex-col gap-1 ml-2">
                                     <Tag :value="scrape.scrape_status" :severity="getStatusSeverity(scrape.scrape_status)" class="text-xs" />
-                                    <Tag v-if="scrape.analyze_sentiment_enabled && scrape.sentiment_analysis_status"
+                                    <!-- <Tag v-if="scrape.analyze_sentiment_enabled && scrape.sentiment_analysis_status"
                                          :value="scrape.sentiment_analysis_status"
                                          :severity="getSentimentStatusSeverity(scrape.sentiment_analysis_status)"
-                                         class="text-xs" />
+                                         class="text-xs" /> -->
                                 </div>
                             </div>
                             <div class="text-xs text-gray-600 mt-2">

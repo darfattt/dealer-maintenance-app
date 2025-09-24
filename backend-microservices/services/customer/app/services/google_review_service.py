@@ -14,16 +14,13 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.google_review import GoogleReview, GoogleReviewDetail
 from app.models.dealer_config import DealerConfig
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class GoogleReviewService:
     """Service for scraping and storing Google Maps review data"""
-
-    # Apify API configuration
-    APIFY_API_URL = "https://api.apify.com/v2/actor-tasks/operational_tangent~google-maps-scraper-task/run-sync-get-dataset-items"
-    APIFY_TOKEN = "apify_api_oElpIXPORhp1x8OWzqJ280erzjbVwf2CXFx9"
 
     def __init__(self, db: Session):
         """
@@ -33,6 +30,11 @@ class GoogleReviewService:
             db: Database session
         """
         self.db = db
+
+        # Load Apify API configuration from settings
+        self.apify_api_url = settings.apify_api_url
+        self.apify_api_token = settings.apify_api_token
+        self.apify_timeout = settings.apify_timeout
 
         # Import sentiment service here to avoid circular imports
         try:
@@ -195,12 +197,12 @@ class GoogleReviewService:
                 "Content-Type": "application/json",
                 #"Authorization": f"Bearer {self.APIFY_TOKEN}"
             }
-            print(f"URL : {self.APIFY_API_URL}?token={self.APIFY_TOKEN}")
+            print(f"URL : {self.apify_api_url}?token={self.apify_api_token}")
             response = requests.post(
-                f"{self.APIFY_API_URL}?token={self.APIFY_TOKEN}",
+                f"{self.apify_api_url}?token={self.apify_api_token}",
                 headers=headers,
                 json=request_body,
-                timeout=120  # 2 minutes timeout
+                timeout=self.apify_timeout
             )
 
             response.raise_for_status()

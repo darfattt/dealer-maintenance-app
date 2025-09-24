@@ -67,25 +67,25 @@ const getStarClass = (starPosition, rating) => {
         return 'text-yellow-400';
     } else if (difference <= 0.5) {
         // Half star
-        return 'text-yellow-400 half-star';
+        return 'text-yellow-400';
     } else {
         // Empty star
         return 'text-gray-300';
     }
 };
 
-const getStarIcon = (starPosition, rating) => {
+const getStarDisplay = (starPosition, rating) => {
     const difference = starPosition - rating;
 
     if (difference <= 0) {
-        // Full star
-        return 'pi-star-fill';
+        // Full star - Unicode filled star
+        return '★';
     } else if (difference <= 0.5) {
-        // Half star
-        return 'pi-star-half-fill';
+        // Half star - Use CSS to create half-filled effect
+        return '★';
     } else {
-        // Empty star
-        return 'pi-star';
+        // Empty star - Unicode outline star
+        return '☆';
     }
 };
 
@@ -98,17 +98,24 @@ const formatReviewCount = (count) => {
 
 // Initialize star distribution chart
 const initStarChart = () => {
-    if (!reviewSummary.value.star_distribution || reviewSummary.value.star_distribution.length === 0) {
-        chartData.value = {};
-        return;
+    // Always create chart with all 5 star ratings, even if no data
+    let distribution = reviewSummary.value.star_distribution || [];
+
+    // Create complete distribution array with all 5 star ratings
+    const completeDistribution = [];
+    for (let stars = 1; stars <= 5; stars++) {
+        const existing = distribution.find(item => item.stars === stars);
+        completeDistribution.push({
+            stars: stars,
+            count: existing ? existing.count : 0,
+            percentage: existing ? existing.percentage : 0
+        });
     }
 
-    const distribution = reviewSummary.value.star_distribution;
-
     // Create horizontal bar chart data
-    const labels = distribution.map(item => `${item.stars} stars`);
-    const data = distribution.map(item => item.percentage);
-    const counts = distribution.map(item => item.count);
+    const labels = completeDistribution.map(item => `${item.stars} stars`);
+    const data = completeDistribution.map(item => item.percentage);
+    const counts = completeDistribution.map(item => item.count);
 
     // Colors for each star level
     const backgroundColor = [
@@ -141,7 +148,7 @@ const initStarChart = () => {
                 callbacks: {
                     label: function(context) {
                         const index = context.dataIndex;
-                        const reversedIndex = distribution.length - 1 - index;
+                        const reversedIndex = completeDistribution.length - 1 - index;
                         const count = counts[reversedIndex];
                         const percentage = context.parsed.x;
                         return `${count} reviews (${percentage.toFixed(1)}%)`;
@@ -260,9 +267,9 @@ onMounted(() => {
                                         {{ starRating.toFixed(2) }}
                                     </span>
                                     <div class="flex">
-                                        <i v-for="star in 5" :key="star"
-                                           class="text-sm"
-                                           :class="[getStarIcon(star, starRating), getStarClass(star, starRating)]"></i>
+                                        <span v-for="star in 5" :key="star"
+                                              class="text-sm font-bold"
+                                              :class="getStarClass(star, starRating)">{{ getStarDisplay(star, starRating) }}</span>
                                     </div>
                                     <span class="text-sm text-surface-600 dark:text-surface-400">
                                         ({{ formatReviewCount(totalReviews) }})
@@ -464,9 +471,9 @@ onMounted(() => {
                                 </div>
                                 <div class="flex justify-center mb-2">
                                     <div class="flex">
-                                        <i v-for="star in 5" :key="star"
-                                           class="text-lg"
-                                           :class="[getStarIcon(star, starRating), getStarClass(star, starRating)]"></i>
+                                        <span v-for="star in 5" :key="star"
+                                              class="text-lg font-bold"
+                                              :class="getStarClass(star, starRating)">{{ getStarDisplay(star, starRating) }}</span>
                                     </div>
                                 </div>
                                 <div class="text-sm text-surface-600 dark:text-surface-400">
@@ -509,23 +516,6 @@ onMounted(() => {
 
 .chart-container {
     position: relative;
-}
-
-/* Half star styling */
-.half-star {
-    position: relative;
-    overflow: hidden;
-}
-
-.half-star::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    background: currentColor;
-    opacity: 0.3;
 }
 
 /* Tag hover effects */

@@ -58,7 +58,18 @@ class Settings(BaseSettings):
     sentiment_circuit_breaker_failure_threshold: int = Field(default=5, env="SENTIMENT_CIRCUIT_BREAKER_FAILURE_THRESHOLD")
     sentiment_circuit_breaker_timeout: int = Field(default=300, env="SENTIMENT_CIRCUIT_BREAKER_TIMEOUT")  # 5 minutes
     sentiment_circuit_breaker_expected_exception: bool = Field(default=True, env="SENTIMENT_CIRCUIT_BREAKER_EXPECTED_EXCEPTION")
-    
+
+    # Apify API Configuration - Google Maps Scraper
+    apify_api_url: str = Field(
+        default="https://api.apify.com/v2/actor-tasks/operational_tangent~google-maps-scraper-task/run-sync-get-dataset-items",
+        env="APIFY_API_URL"
+    )
+    apify_api_token: str = Field(
+        default="apify_api_oElpIXPORhp1x8OWzqJ280erzjbVwf2CXFx9",
+        env="APIFY_API_TOKEN"
+    )
+    apify_timeout: int = Field(default=120, env="APIFY_TIMEOUT")
+
     # Rate limiting
     request_timeout: int = 30
     max_requests_per_minute: int = 60

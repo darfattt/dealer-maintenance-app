@@ -332,6 +332,9 @@ services:
       - DEALER_INTEGRATION_SCHEMA=dealer_integration
       - FONNTE_DEFAULT_API_URL=https://api.fonnte.com/send
       - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5000,http://localhost:5173,http://localhost:5174,http://localhost:8501,http://localhost:8502,http://localhost:8080
+      - APIFY_API_URL=${APIFY_API_URL:-https://api.apify.com/v2/actor-tasks/operational_tangent~google-maps-scraper-task/run-sync-get-dataset-items}
+      - APIFY_API_TOKEN=${APIFY_API_TOKEN:-apify_api_oElpIXPORhp1x8OWzqJ280erzjbVwf2CXFx9}
+      - APIFY_TIMEOUT=${APIFY_TIMEOUT:-120}
     ports:
       - "8300:8300"
     depends_on:
