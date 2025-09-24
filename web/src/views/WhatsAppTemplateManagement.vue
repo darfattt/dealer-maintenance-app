@@ -26,7 +26,7 @@ const { dealerOptions, isLoading: dealersLoading } = useDealers();
 
 // Role-based access control
 const isAdmin = computed(() => authStore.userRole === 'SUPER_ADMIN');
-const isDealerUser = computed(() => authStore.userRole === 'DEALER_ADMIN');
+const isDealerUser = computed(() => authStore.userRole === 'DEALER_USER');
 const showDealerDropdown = computed(() => isAdmin.value);
 const canCopyTemplates = computed(() => isAdmin.value);
 
