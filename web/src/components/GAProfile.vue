@@ -130,9 +130,9 @@ const initStarChart = () => {
     ];
 
     chartData.value = {
-        labels: labels.reverse(), // Show 5 stars at top
+        labels: labels, // Keep original order for vertical bars
         datasets: [
-            // Background bars (always full width - 100%)
+            // Background bars (always full height - 100%)
             {
                 data: Array(5).fill(100),
                 backgroundColor: 'rgba(200, 200, 200, 0.3)',
@@ -144,8 +144,8 @@ const initStarChart = () => {
             },
             // Foreground bars (actual percentages)
             {
-                data: data.reverse(),
-                backgroundColor: backgroundColor.reverse(),
+                data: data, // Keep original order for vertical bars
+                backgroundColor: backgroundColor,
                 borderWidth: 0,
                 barThickness: 8,
                 categoryPercentage: 1,
@@ -156,7 +156,6 @@ const initStarChart = () => {
     };
 
     chartOptions.value = {
-        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -169,9 +168,8 @@ const initStarChart = () => {
                         // Only show tooltip for the foreground dataset (index 1)
                         if (context.datasetIndex === 1) {
                             const index = context.dataIndex;
-                            const reversedIndex = completeDistribution.length - 1 - index;
-                            const count = counts[reversedIndex];
-                            const percentage = context.parsed.x;
+                            const count = counts[index];
+                            const percentage = context.parsed.y;
                             return `${count} reviews (${percentage.toFixed(1)}%)`;
                         }
                         return null; // Hide tooltip for background bars
@@ -181,8 +179,6 @@ const initStarChart = () => {
         },
         scales: {
             x: {
-                beginAtZero: true,
-                max: 100,
                 display: false,
                 stacked: true,
                 grid: {
@@ -190,6 +186,8 @@ const initStarChart = () => {
                 }
             },
             y: {
+                beginAtZero: true,
+                max: 100,
                 display: false,
                 stacked: true,
                 grid: {

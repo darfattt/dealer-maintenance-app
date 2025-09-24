@@ -260,8 +260,8 @@ onMounted(() => {
                                 placeholder="Choose a dealer"
                                 :loading="loadingDealers"
                                 class="w-full"
-                                :filter="true"
-                                filterPlaceholder="Search dealers..."
+                                :editable="false"
+                                @click.stop
                             />
                         </div>
 
