@@ -260,14 +260,14 @@ onMounted(() => {
                 </div>
 
                 <!-- Average Sentiment Score -->
-                <div v-if="stats?.data?.average_sentiment_score !== null && stats?.data?.average_sentiment_score !== undefined"
+                <!-- <div v-if="stats?.data?.average_sentiment_score !== null && stats?.data?.average_sentiment_score !== undefined"
                      class="text-center border-t border-surface-200 dark:border-surface-700 pt-3">
                     <div class="text-sm text-surface-500 dark:text-surface-400">Average Sentiment Score</div>
                     <div class="text-xl font-bold text-surface-900 dark:text-surface-100 mt-1">
                         {{ parseFloat(stats.data.average_sentiment_score || 0).toFixed(2) }}
                     </div>
-                    <!-- <div class="text-xs text-surface-500 dark:text-surface-400">Scale: -5.00 (Very Negative) to +5.00 (Very Positive)</div> -->
-                </div>
+                    <div class="text-xs text-surface-500 dark:text-surface-400">Scale: -5.00 (Very Negative) to +5.00 (Very Positive)</div> 
+                </div> -->
             </div>
         </template>
     </Card>
