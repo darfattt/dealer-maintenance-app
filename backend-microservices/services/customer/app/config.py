@@ -45,7 +45,7 @@ class Settings(BaseSettings):
         env="SENTIMENT_API_URL"
     )
     sentiment_api_token: str = Field(
-        default="my-secret-token-daya-",
+        default="",
         env="SENTIMENT_API_TOKEN"
     )
     sentiment_api_timeout: int = Field(default=60, env="SENTIMENT_API_TIMEOUT")  # Reduced from 120s to 60s
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         env="APIFY_API_URL"
     )
     apify_api_token: str = Field(
-        default="my-secret-token",
+        default="",
         env="APIFY_API_TOKEN"
     )
     apify_timeout: int = Field(default=120, env="APIFY_TIMEOUT")
