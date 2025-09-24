@@ -572,60 +572,12 @@ onMounted(async () => {
 
             <!-- Right Column: Overview Cards -->
             <div class="lg:col-span-1">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 gap-4">
                     <!-- Sentiment Analysis Chart -->
                     <SentimentAnalysisGAChart :stats="sentimentStatistics" :loading="loading" />
 
                     <!-- Monthly Review Totals Chart -->
                     <SentimentAnalysisGATotalReview :monthlyData="monthlyData" :loading="loading" />
-
-                    <!-- Business Info Card -->
-                    <!-- <Card class="text-center">
-                        <template #content>
-                            <div v-if="loading" class="flex justify-center">
-                                <ProgressSpinner style="width: 30px; height: 30px" />
-                            </div>
-                            <div v-else>
-                                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-3">Business Info</h3>
-                                <div class="space-y-2">
-                                    <div class="text-sm font-medium text-surface-900 dark:text-surface-0">
-                                        {{ statistics?.business_name || 'N/A' }}
-                                    </div>
-                                    <div v-if="statistics?.total_score" class="flex items-center justify-center space-x-1">
-                                        <span class="text-2xl font-bold text-surface-900 dark:text-surface-0">
-                                            {{ statistics.total_score }}
-                                        </span>
-                                        <div class="flex">
-                                            <i v-for="star in 5" :key="star" class="pi pi-star-fill text-sm"
-                                               :class="getStarColor(star, statistics.total_score)"></i>
-                                        </div>
-                                    </div>
-                                    <div v-if="statistics?.reviews_count" class="text-sm text-surface-500 dark:text-surface-400">
-                                        {{ statistics.reviews_count }} total reviews on Google
-                                    </div>
-                                    <div v-if="statistics?.last_scraped" class="text-xs text-surface-400 dark:text-surface-500">
-                                        Last scraped: {{ formatRelativeTime(statistics.last_scraped) }}
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                    </Card> -->
-
-                    <!-- Scraped Reviews Count -->
-                    <!-- <Card class="text-center">
-                        <template #content>
-                            <div v-if="loading" class="flex justify-center">
-                                <ProgressSpinner style="width: 30px; height: 30px" />
-                            </div>
-                            <div v-else>
-                                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-3">Scraped Reviews</h3>
-                                <div class="text-6xl font-bold text-blue-600 mb-2">
-                                    {{ statistics?.scraped_reviews_count || 0 }}
-                                </div>
-                                <p class="text-base text-surface-500 font-medium">Reviews in Database</p>
-                            </div>
-                        </template>
-                    </Card> -->
                 </div>
             </div>
         </div>

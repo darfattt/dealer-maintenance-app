@@ -249,7 +249,7 @@ onMounted(() => {
                 </div>
 
                 <!-- Analysis Progress Info -->
-                <div class="bg-surface-50 dark:bg-surface-800 p-3 rounded-lg border border-surface-200 dark:border-surface-600">
+                <!-- <div class="bg-surface-50 dark:bg-surface-800 p-3 rounded-lg border border-surface-200 dark:border-surface-600">
                     <div class="flex justify-between items-center text-sm">
                         <span class="font-medium text-surface-700 dark:text-surface-300">Analysis Progress</span>
                         <span class="text-surface-900 dark:text-surface-100 font-semibold">{{ analysisCompletionRate }}%</span>
@@ -257,7 +257,7 @@ onMounted(() => {
                     <div class="mt-2 text-xs text-surface-500 dark:text-surface-400">
                         {{ stats?.data?.analyzed_reviews || 0 }} of {{ stats?.data?.total_reviews || 0 }} reviews analyzed
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Average Sentiment Score -->
                 <!-- <div v-if="stats?.data?.average_sentiment_score !== null && stats?.data?.average_sentiment_score !== undefined"

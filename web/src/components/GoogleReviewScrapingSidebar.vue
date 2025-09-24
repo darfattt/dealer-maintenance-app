@@ -261,7 +261,7 @@ onMounted(() => {
                                 :loading="loadingDealers"
                                 class="w-full"
                                 :editable="false"
-                                @click.stop
+                                appendTo="body"
                             />
                         </div>
 

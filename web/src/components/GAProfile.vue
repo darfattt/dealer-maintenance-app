@@ -4,7 +4,7 @@ import Card from 'primevue/card';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import ProgressSpinner from 'primevue/progressspinner';
-import Chart from 'primevue/chart';
+import ProgressBar from 'primevue/progressbar';
 import GoogleReviewService from '@/service/GoogleReviewService';
 
 // Props
@@ -23,8 +23,6 @@ const props = defineProps({
 const profileData = ref(null);
 const internalLoading = ref(false);
 const activeTab = ref('reviews'); // 'overview' or 'reviews'
-const chartData = ref({});
-const chartOptions = ref({});
 
 // Computed properties
 const isLoading = computed(() => props.loading || internalLoading.value);
@@ -57,6 +55,44 @@ const totalReviews = computed(() => {
 const photosCount = computed(() => {
     return businessInfo.value.photos_count || 0;
 });
+
+const ownerImages = computed(() => {
+    const updates = businessInfo.value.ownerUpdates || [];
+    return updates
+        .filter(update => update.imageUrl)
+        .map(update => update.imageUrl)
+        .slice(0, 6); // Limit to 6 images for grid layout
+});
+
+const hasOwnerImages = computed(() => {
+    return ownerImages.value.length > 0;
+});
+
+const starDistributionData = computed(() => {
+    const distribution = reviewSummary.value.star_distribution || [];
+    const result = [];
+
+    for (let stars = 5; stars >= 1; stars--) {
+        const existing = distribution.find(item => item.stars === stars);
+        result.push({
+            stars: stars,
+            count: existing ? existing.count : 0,
+            percentage: existing ? existing.percentage : 0
+        });
+    }
+
+    return result;
+});
+
+const getStarPercentage = (stars) => {
+    const item = starDistributionData.value.find(d => d.stars === stars);
+    return item ? item.percentage : 0;
+};
+
+const getStarCount = (stars) => {
+    const item = starDistributionData.value.find(d => d.stars === stars);
+    return item ? item.count : 0;
+};
 
 // Helper functions
 const getStarClass = (starPosition, rating) => {
@@ -99,117 +135,6 @@ const formatReviewCount = (count) => {
 
 
 
-// Initialize star distribution chart
-const initStarChart = () => {
-    // Always create chart with all 5 star ratings, even if no data
-    let distribution = reviewSummary.value.star_distribution || [];
-
-    // Create complete distribution array with all 5 star ratings
-    const completeDistribution = [];
-    for (let stars = 1; stars <= 5; stars++) {
-        const existing = distribution.find(item => item.stars === stars);
-        completeDistribution.push({
-            stars: stars,
-            count: existing ? existing.count : 0,
-            percentage: existing ? existing.percentage : 0
-        });
-    }
-
-    // Create horizontal bar chart data
-    const labels = completeDistribution.map(item => `${item.stars} stars`);
-    const data = completeDistribution.map(item => item.percentage);
-    const counts = completeDistribution.map(item => item.count);
-
-    // Colors for each star level
-    const backgroundColor = [
-        '#EF4444', // 1 star - Red
-        '#F97316', // 2 stars - Orange
-        '#EAB308', // 3 stars - Yellow
-        '#22C55E', // 4 stars - Green
-        '#16A34A'  // 5 stars - Dark Green
-    ];
-
-    chartData.value = {
-        labels: labels, // Keep original order for vertical bars
-        datasets: [
-            // Background bars (always full height - 100%)
-            {
-                data: Array(5).fill(100),
-                backgroundColor: 'rgba(200, 200, 200, 0.3)',
-                borderWidth: 0,
-                barThickness: 8,
-                categoryPercentage: 1,
-                barPercentage: 1,
-                stack: 'background'
-            },
-            // Foreground bars (actual percentages)
-            {
-                data: data, // Keep original order for vertical bars
-                backgroundColor: backgroundColor,
-                borderWidth: 0,
-                barThickness: 8,
-                categoryPercentage: 1,
-                barPercentage: 1,
-                stack: 'foreground'
-            }
-        ]
-    };
-
-    chartOptions.value = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        // Only show tooltip for the foreground dataset (index 1)
-                        if (context.datasetIndex === 1) {
-                            const index = context.dataIndex;
-                            const count = counts[index];
-                            const percentage = context.parsed.y;
-                            return `${count} reviews (${percentage.toFixed(1)}%)`;
-                        }
-                        return null; // Hide tooltip for background bars
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                display: false,
-                stacked: true,
-                grid: {
-                    display: false
-                }
-            },
-            y: {
-                beginAtZero: true,
-                max: 100,
-                display: false,
-                stacked: true,
-                grid: {
-                    display: false
-                }
-            }
-        },
-        elements: {
-            bar: {
-                borderRadius: 2
-            }
-        },
-        layout: {
-            padding: {
-                top: 5,
-                bottom: 5,
-                left: 0,
-                right: 0
-            }
-        }
-    };
-};
 
 // Load profile data
 const loadProfile = async () => {
@@ -220,10 +145,7 @@ const loadProfile = async () => {
         const result = await GoogleReviewService.getDealerProfile(props.dealerId);
         profileData.value = result;
 
-        // Initialize chart after data is loaded
-        if (result.success && result.data && result.data.has_data) {
-            initStarChart();
-        }
+        // Data is loaded and will be reactive through computed properties
     } catch (error) {
         console.error('Error loading dealer profile:', error);
         profileData.value = null;
@@ -239,12 +161,6 @@ watch(() => props.dealerId, () => {
     }
 }, { immediate: true });
 
-// Watch for review summary changes to update chart
-watch(() => reviewSummary.value, () => {
-    if (reviewSummary.value.star_distribution) {
-        initStarChart();
-    }
-}, { deep: true });
 
 // Initialize on mount
 onMounted(() => {
@@ -308,9 +224,9 @@ onMounted(() => {
                         </div>
 
                         <!-- Action Button -->
-                        <div class="flex-shrink-0">
+                        <!-- <div class="flex-shrink-0">
                             <Button icon="pi pi-ellipsis-h" severity="secondary" text size="small" />
-                        </div>
+                        </div> -->
                     </div>
                 </div>
 
@@ -319,36 +235,106 @@ onMounted(() => {
                     <div class="grid grid-cols-4 gap-2 h-48">
                         <!-- Main large photo -->
                         <div class="col-span-2 bg-surface-100 dark:bg-surface-700 rounded-lg relative overflow-hidden">
-                            <div class="absolute inset-0 flex items-center justify-center">
+                            <div v-if="ownerImages[0]" class="absolute inset-0">
+                                <img
+                                    :src="ownerImages[0]"
+                                    :alt="businessInfo.name || 'Business photo'"
+                                    class="w-full h-full object-cover transition-opacity duration-300"
+                                    @error="$event.target.style.display = 'none'; $event.target.nextElementSibling.style.display = 'flex'"
+                                    loading="lazy"
+                                />
+                                <div class="absolute inset-0 hidden items-center justify-center">
+                                    <i class="pi pi-image text-3xl text-surface-400"></i>
+                                </div>
+                            </div>
+                            <div v-else class="absolute inset-0 flex items-center justify-center">
                                 <i class="pi pi-image text-3xl text-surface-400"></i>
                             </div>
                         </div>
 
                         <!-- Smaller photos -->
                         <div class="space-y-2">
+                            <!-- Second image -->
                             <div class="h-20 bg-surface-100 dark:bg-surface-700 rounded-lg relative overflow-hidden">
-                                <div class="absolute inset-0 flex items-center justify-center">
+                                <div v-if="ownerImages[1]" class="absolute inset-0">
+                                    <img
+                                        :src="ownerImages[1]"
+                                        :alt="businessInfo.name || 'Business photo'"
+                                        class="w-full h-full object-cover transition-opacity duration-300"
+                                        @error="$event.target.style.display = 'none'; $event.target.nextElementSibling.style.display = 'flex'"
+                                        loading="lazy"
+                                    />
+                                    <div class="absolute inset-0 hidden items-center justify-center">
+                                        <i class="pi pi-image text-lg text-surface-400"></i>
+                                    </div>
+                                </div>
+                                <div v-else class="absolute inset-0 flex items-center justify-center">
                                     <i class="pi pi-image text-lg text-surface-400"></i>
                                 </div>
                             </div>
+                            <!-- Third image -->
                             <div class="h-20 bg-surface-100 dark:bg-surface-700 rounded-lg relative overflow-hidden">
-                                <div class="absolute inset-0 flex items-center justify-center">
+                                <div v-if="ownerImages[2]" class="absolute inset-0">
+                                    <img
+                                        :src="ownerImages[2]"
+                                        :alt="businessInfo.name || 'Business photo'"
+                                        class="w-full h-full object-cover transition-opacity duration-300"
+                                        @error="$event.target.style.display = 'none'; $event.target.nextElementSibling.style.display = 'flex'"
+                                        loading="lazy"
+                                    />
+                                    <div class="absolute inset-0 hidden items-center justify-center">
+                                        <i class="pi pi-image text-lg text-surface-400"></i>
+                                    </div>
+                                </div>
+                                <div v-else class="absolute inset-0 flex items-center justify-center">
                                     <i class="pi pi-image text-lg text-surface-400"></i>
                                 </div>
                             </div>
                         </div>
 
                         <div class="space-y-2">
+                            <!-- Fourth image -->
                             <div class="h-20 bg-surface-100 dark:bg-surface-700 rounded-lg relative overflow-hidden">
-                                <div class="absolute inset-0 flex items-center justify-center">
+                                <div v-if="ownerImages[3]" class="absolute inset-0">
+                                    <img
+                                        :src="ownerImages[3]"
+                                        :alt="businessInfo.name || 'Business photo'"
+                                        class="w-full h-full object-cover transition-opacity duration-300"
+                                        @error="$event.target.style.display = 'none'; $event.target.nextElementSibling.style.display = 'flex'"
+                                        loading="lazy"
+                                    />
+                                    <div class="absolute inset-0 hidden items-center justify-center">
+                                        <i class="pi pi-image text-lg text-surface-400"></i>
+                                    </div>
+                                </div>
+                                <div v-else class="absolute inset-0 flex items-center justify-center">
                                     <i class="pi pi-image text-lg text-surface-400"></i>
                                 </div>
                             </div>
                             <!-- Photos count overlay -->
                             <div class="h-20 bg-surface-100 dark:bg-surface-700 rounded-lg relative overflow-hidden">
-                                <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                                <div v-if="ownerImages[4]" class="absolute inset-0">
+                                    <img
+                                        :src="ownerImages[4]"
+                                        :alt="businessInfo.name || 'Business photo'"
+                                        class="w-full h-full object-cover transition-opacity duration-300"
+                                        @error="$event.target.style.display = 'none'; $event.target.nextElementSibling.style.display = 'flex'"
+                                        loading="lazy"
+                                    />
+                                    <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                        <span class="text-white text-sm font-medium">
+                                            {{ formatReviewCount(hasOwnerImages ? ownerImages.length : photosCount) }}+ Photos
+                                        </span>
+                                    </div>
+                                    <div class="absolute inset-0 hidden items-center justify-center bg-black bg-opacity-50">
+                                        <span class="text-white text-sm font-medium">
+                                            {{ formatReviewCount(hasOwnerImages ? ownerImages.length : photosCount) }}+ Photos
+                                        </span>
+                                    </div>
+                                </div>
+                                <div v-else class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
                                     <span class="text-white text-sm font-medium">
-                                        {{ formatReviewCount(photosCount) }}+ Photos
+                                        {{ formatReviewCount(hasOwnerImages ? ownerImages.length : photosCount) }}+ Photos
                                     </span>
                                 </div>
                             </div>
@@ -477,10 +463,23 @@ onMounted(() => {
 
                         <!-- Star distribution and overall rating -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Star Distribution Chart -->
+                            <!-- Star Distribution Progress Bars -->
                             <div class="space-y-3">
-                                <div class="chart-container h-32" v-if="chartData.labels && chartData.labels.length > 0">
-                                    <Chart type="bar" :data="chartData" :options="chartOptions" class="w-full h-full" />
+                                <div v-if="starDistributionData.length > 0" class="space-y-2">
+                                    <div v-for="item in starDistributionData" :key="item.stars" class="flex items-center gap-3">
+                                        <div class="flex items-center gap-1 w-12">
+                                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">{{ item.stars }}</span>
+                                            <i class="pi pi-star-fill text-xs text-yellow-400"></i>
+                                        </div>
+                                        <ProgressBar
+                                            :value="item.percentage"
+                                            class="flex-1 star-progress"
+                                            :style="{ height: '8px' }"
+                                        />
+                                        <!-- <div class="flex items-center gap-1 w-12 text-right">
+                                            <span class="text-xs text-surface-500 dark:text-surface-400">{{ Math.round(item.percentage) }}%</span>
+                                        </div> -->
+                                    </div>
                                 </div>
                                 <div v-else class="h-32 flex items-center justify-center text-surface-500 dark:text-surface-400">
                                     No rating distribution data
@@ -571,6 +570,17 @@ onMounted(() => {
 /* Tab navigation styling */
 button:focus {
     outline: none;
+}
+
+/* Star progress bar styling */
+.star-progress :deep(.p-progressbar) {
+    background-color: #E5E7EB; /* Light grey background */
+    border-radius: 4px;
+}
+
+.star-progress :deep(.p-progressbar-value) {
+    background-color: #FFD700; /* Gold color for filled portion */
+    border-radius: 4px;
 }
 
 /* Custom scrollbar for mobile */

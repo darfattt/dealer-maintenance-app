@@ -351,6 +351,15 @@ class ErrorResponse(BaseModel):
 
 
 # Google Profile Schemas
+class OwnerUpdate(BaseModel):
+    """Schema for owner updates/posts"""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    imageUrl: Optional[str] = None
+    date: Optional[datetime] = None
+    url: Optional[str] = None
+
+
 class BusinessInfo(BaseModel):
     """Schema for business information"""
     name: Optional[str] = None
@@ -366,6 +375,7 @@ class BusinessInfo(BaseModel):
     hours: Optional[Dict[str, Any]] = None
     services: Optional[List[str]] = None
     appointments: Optional[Dict[str, Any]] = None
+    ownerUpdates: Optional[List[OwnerUpdate]] = []
 
 
 class StarDistribution(BaseModel):

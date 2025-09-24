@@ -37,7 +37,8 @@ from app.schemas.google_review_schemas import (
     ScrapeTrackerSummary,
     ScrapeHistoryResponse,
     DealerOptionsResponse,
-    DealerOption
+    DealerOption,
+    OwnerUpdate
 )
 
 
@@ -812,6 +813,33 @@ class CustomerGoogleReviewController:
                     if isinstance(additional_info['service_options'], list):
                         services.extend(additional_info['service_options'])
 
+            # Extract owner updates from latest_google_review
+            owner_updates_data = []
+            if latest_google_review.owner_updates:
+                try:
+                    import json
+                    if isinstance(latest_google_review.owner_updates, str):
+                        owner_updates_raw = json.loads(latest_google_review.owner_updates)
+                    else:
+                        owner_updates_raw = latest_google_review.owner_updates
+
+                    # Process owner updates into OwnerUpdate schema format
+                    if isinstance(owner_updates_raw, list):
+                        for update in owner_updates_raw:
+                            if isinstance(update, dict):
+                                owner_update = OwnerUpdate(
+                                    title=update.get('title'),
+                                    description=update.get('description'),
+                                    imageUrl=update.get('imageUrl') or update.get('image_url'),
+                                    date=update.get('date'),
+                                    url=update.get('url')
+                                )
+                                owner_updates_data.append(owner_update)
+                except Exception as e:
+                    # Log error and continue with empty owner updates
+                    print(f"Error processing owner updates for dealer {dealer_id}: {e}")
+                    owner_updates_data = []
+
             # Build business info with enhanced data
             business_info = BusinessInfo(
                 name=latest_google_review.title,
@@ -826,7 +854,8 @@ class CustomerGoogleReviewController:
                 address=latest_google_review.address,
                 hours=opening_hours,
                 services=services if services else None,
-                appointments=appointments
+                appointments=appointments,
+                ownerUpdates=owner_updates_data
             )
 
             # Get review statistics for star distribution
