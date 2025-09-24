@@ -25,7 +25,10 @@
       "Bash(done)",
       "Bash(timeout 30s npm run build)",
       "WebSearch",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm run build:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": []
   }

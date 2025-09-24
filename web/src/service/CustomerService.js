@@ -195,6 +195,33 @@ export class CustomerService {
     }
 
     /**
+     * Get available reminder targets for dropdown
+     * @returns {Promise<Object>} Reminder targets response
+     */
+    async getReminderTargets() {
+        try {
+            const response = await api.get('/v1/reminder/targets');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching reminder targets:', error);
+            // Return fallback data to prevent frontend crashes
+            return {
+                success: false,
+                data: [
+                    { label: 'All Targets', value: '' },
+                    { label: 'KPB 1', value: 'KPB-1' },
+                    { label: 'KPB 2', value: 'KPB-2' },
+                    { label: 'KPB 3', value: 'KPB-3' },
+                    { label: 'KPB 4', value: 'KPB-4' },
+                    { label: 'Non KPB', value: 'Non KPB' },
+                    { label: 'Booking Service', value: 'Booking Service' },
+                    { label: 'Ultah Konsumen', value: 'Ultah Konsumen' }
+                ]
+            };
+        }
+    }
+
+    /**
      * Test WhatsApp configuration for reminder sending for authenticated dealer
      * @returns {Promise<Object>} Test result
      */

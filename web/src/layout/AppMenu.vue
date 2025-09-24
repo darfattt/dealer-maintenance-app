@@ -38,6 +38,10 @@ const model = ref([
             { label: 'Daya Auto', icon: 'pi pi-fw pi-star', to: '/customer-satisfaction' },
             { label: 'Google Reviews', icon: 'pi pi-fw pi-google', to: '/google-reviews' }
         ]
+    },
+    {
+        label: 'Configuration',
+        items: [{ label: 'WhatsApp Template', icon: 'pi pi-fw pi-comments', to: '/configuration/whatsapp-templates' }]
     }
 ]);
 </script>

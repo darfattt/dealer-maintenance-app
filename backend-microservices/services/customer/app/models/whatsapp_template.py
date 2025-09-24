@@ -26,7 +26,10 @@ class WhatsAppTemplate(Base):
     # Template categorization
     reminder_target = Column(String(50), nullable=False, index=True)  # e.g., "KPB-1", "KPB-2", "Non KPB"
     reminder_type = Column(String(100), nullable=False, index=True)   # e.g., "H+30 tanggal beli (by WA)", "N/A"
-    
+
+    # Dealer-specific templates (NULL for global templates)
+    dealer_id = Column(String(50), nullable=True, index=True)  # Dealer ID for dealer-specific templates
+
     # Template content
     template = Column(Text, nullable=False)  # Message template with placeholders like {nama_pemilik}, {dealer_name}
     
@@ -37,7 +40,7 @@ class WhatsAppTemplate(Base):
     last_modified_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     def __repr__(self):
-        return f"<WhatsAppTemplate(id={self.id}, reminder_target={self.reminder_target}, reminder_type={self.reminder_type})>"
+        return f"<WhatsAppTemplate(id={self.id}, reminder_target={self.reminder_target}, reminder_type={self.reminder_type}, dealer_id={self.dealer_id})>"
     
     def to_dict(self):
         """Convert WhatsApp template to dictionary"""
@@ -45,6 +48,7 @@ class WhatsAppTemplate(Base):
             "id": str(self.id),
             "reminder_target": self.reminder_target,
             "reminder_type": self.reminder_type,
+            "dealer_id": self.dealer_id,
             "template": self.template,
             "created_by": self.created_by,
             "created_date": self.created_date.isoformat() if self.created_date else None,
