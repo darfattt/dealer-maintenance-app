@@ -88,6 +88,11 @@ const router = createRouter({
                     path: '/sentiment-analysis',
                     name: 'sentiment-analysis',
                     component: () => import('@/views/SentimentAnalysis.vue')
+                },
+                {
+                    path: '/google-reviews',
+                    name: 'google-reviews',
+                    component: () => import('@/views/GoogleReviews.vue')
                 }
             ]
         },

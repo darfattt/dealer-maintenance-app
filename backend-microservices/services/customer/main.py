@@ -19,6 +19,7 @@ from app.config import settings
 from app.routes.customer import router as customer_router
 from app.routes.customer_reminder import router as customer_reminder_router
 from app.routes.customer_satisfaction import router as customer_satisfaction_router
+from app.routes.google_review_routes import router as google_review_router
 from app.routes.health import router as health_router
 from utils.database import DatabaseManager
 from utils.logger import setup_logger
@@ -287,6 +288,8 @@ async def lifespan(app: FastAPI):
         from app.models.customer_reminder_request import CustomerReminderRequest
         from app.models.customer_satisfaction_raw import CustomerSatisfactionRaw, CustomerSatisfactionUploadTracker
         from app.models.whatsapp_template import WhatsAppTemplate
+        from app.models.google_review import GoogleReview, GoogleReviewDetail
+        from app.models.google_review_scrape_tracker import GoogleReviewScrapeTracker
         
         # Create schema and tables with checkfirst=True to avoid conflicts
         logger.info("Creating database schema and tables...")
@@ -374,6 +377,7 @@ async def general_exception_handler(request, exc):
 app.include_router(customer_router, prefix="/api/v1")
 app.include_router(customer_reminder_router, prefix="/api/v1")
 app.include_router(customer_satisfaction_router, prefix="/api/v1")
+app.include_router(google_review_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1")
 
 
