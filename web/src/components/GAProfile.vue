@@ -96,6 +96,9 @@ const formatReviewCount = (count) => {
     return count.toString();
 };
 
+
+
+
 // Initialize star distribution chart
 const initStarChart = () => {
     // Always create chart with all 5 star ratings, even if no data
@@ -128,12 +131,28 @@ const initStarChart = () => {
 
     chartData.value = {
         labels: labels.reverse(), // Show 5 stars at top
-        datasets: [{
-            data: data.reverse(),
-            backgroundColor: backgroundColor.reverse(),
-            borderWidth: 0,
-            barThickness: 8
-        }]
+        datasets: [
+            // Background bars (always full width - 100%)
+            {
+                data: Array(5).fill(100),
+                backgroundColor: 'rgba(200, 200, 200, 0.3)',
+                borderWidth: 0,
+                barThickness: 8,
+                categoryPercentage: 1,
+                barPercentage: 1,
+                stack: 'background'
+            },
+            // Foreground bars (actual percentages)
+            {
+                data: data.reverse(),
+                backgroundColor: backgroundColor.reverse(),
+                borderWidth: 0,
+                barThickness: 8,
+                categoryPercentage: 1,
+                barPercentage: 1,
+                stack: 'foreground'
+            }
+        ]
     };
 
     chartOptions.value = {
@@ -147,11 +166,15 @@ const initStarChart = () => {
             tooltip: {
                 callbacks: {
                     label: function(context) {
-                        const index = context.dataIndex;
-                        const reversedIndex = completeDistribution.length - 1 - index;
-                        const count = counts[reversedIndex];
-                        const percentage = context.parsed.x;
-                        return `${count} reviews (${percentage.toFixed(1)}%)`;
+                        // Only show tooltip for the foreground dataset (index 1)
+                        if (context.datasetIndex === 1) {
+                            const index = context.dataIndex;
+                            const reversedIndex = completeDistribution.length - 1 - index;
+                            const count = counts[reversedIndex];
+                            const percentage = context.parsed.x;
+                            return `${count} reviews (${percentage.toFixed(1)}%)`;
+                        }
+                        return null; // Hide tooltip for background bars
                     }
                 }
             }
@@ -161,12 +184,14 @@ const initStarChart = () => {
                 beginAtZero: true,
                 max: 100,
                 display: false,
+                stacked: true,
                 grid: {
                     display: false
                 }
             },
             y: {
                 display: false,
+                stacked: true,
                 grid: {
                     display: false
                 }
