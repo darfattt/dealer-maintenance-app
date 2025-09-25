@@ -32,10 +32,10 @@ const model = ref([
             { label: 'Customer Satisfaction', icon: 'pi pi-fw pi-star', to: '/customer-satisfaction' }
         ]
     },
-    {
-        label: 'AHASS',
-        items: [{ label: 'Sentiment Analysis', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' }]
-    },
+    // {
+    //     label: 'AHASS',
+    //     items: [{ label: 'Sentiment Analysis', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' }]
+    // },
     {
         label: 'Configuration',
         items: [{ label: 'WhatsApp Template', icon: 'pi pi-fw pi-comments', to: '/configuration/whatsapp-templates' }]
