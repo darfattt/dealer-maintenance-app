@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+import pytz
 
 from app.repositories.whatsapp_template_repository import WhatsAppTemplateRepository
 from app.repositories.whatsapp_template_logs_repository import WhatsAppTemplateLogsRepository
@@ -34,6 +35,31 @@ class WhatsAppTemplateController:
         self.db = db
         self.template_repo = WhatsAppTemplateRepository(db)
         self.logs_repo = WhatsAppTemplateLogsRepository(db)
+        self.indonesia_tz = pytz.timezone('Asia/Jakarta')
+
+    def _convert_to_indonesia_timezone(self, utc_datetime: Optional[datetime]) -> Optional[str]:
+        """
+        Convert UTC datetime to Indonesia timezone (Asia/Jakarta) and return as ISO string
+
+        Args:
+            utc_datetime: UTC datetime object
+
+        Returns:
+            ISO formatted string in Indonesia timezone or None
+        """
+        if not utc_datetime:
+            return None
+
+        # Ensure the datetime is timezone-aware (UTC)
+        if utc_datetime.tzinfo is None:
+            utc_datetime = pytz.utc.localize(utc_datetime)
+        elif utc_datetime.tzinfo != pytz.utc:
+            # Convert to UTC first if it's in a different timezone
+            utc_datetime = utc_datetime.astimezone(pytz.utc)
+
+        # Convert to Indonesia timezone
+        indonesia_datetime = utc_datetime.astimezone(self.indonesia_tz)
+        return indonesia_datetime.isoformat()
 
     def get_templates(
         self,
@@ -406,7 +432,7 @@ class WhatsAppTemplateController:
                     "user_email": log.user_email,
                     "source_dealer_id": log.source_dealer_id,
                     "target_dealer_id": log.target_dealer_id,
-                    "operation_timestamp": log.operation_timestamp.isoformat() if log.operation_timestamp else None,
+                    "operation_timestamp": self._convert_to_indonesia_timezone(log.operation_timestamp),
                     "operation_notes": log.operation_notes
                 })
 

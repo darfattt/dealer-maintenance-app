@@ -52,25 +52,25 @@ export function useTemplateVariables() {
             variable: '{kode_ahass}',
             description: 'AHASS code',
             category: 'AHASS Information',
-            example: '00999'
+            example: '00111'
         },
         {
             variable: '{nama_ahass}',
             description: 'AHASS name',
             category: 'AHASS Information',
-            example: 'Daya Adicipta Motora'
+            example: 'Nama AHASS 111'
         },
         {
             variable: '{alamat_ahass}',
             description: 'AHASS address',
             category: 'AHASS Information',
-            example: 'Jl. Cibereum No. 26'
+            example: 'Jl. Nasional No. 26'
         },
         {
             variable: '{dealer_name}',
             description: 'Dealer name',
             category: 'Dealer Information',
-            example: 'Honda Dealer Jakarta'
+            example: 'Nama Dealer Bandung'
         }
     ]);
 
