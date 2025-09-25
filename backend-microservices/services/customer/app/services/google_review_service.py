@@ -242,11 +242,15 @@ class GoogleReviewService:
 
         # Parse scraped_at timestamp
         scraped_at = None
-        if "scrapedAt" in business_data:
+        if "scrapedAt" in business_data and business_data["scrapedAt"]:
             try:
-                scraped_at = datetime.fromisoformat(
-                    business_data["scrapedAt"].replace("Z", "+00:00")
-                )
+                scraped_at_str = business_data["scrapedAt"]
+                if isinstance(scraped_at_str, str):
+                    scraped_at = datetime.fromisoformat(
+                        scraped_at_str.replace("Z", "+00:00")
+                    )
+                else:
+                    scraped_at = datetime.now(timezone.utc)
             except (ValueError, TypeError):
                 scraped_at = datetime.now(timezone.utc)
 
@@ -347,11 +351,15 @@ class GoogleReviewService:
 
         # Parse scraped_at timestamp
         scraped_at = None
-        if "scrapedAt" in business_data:
+        if "scrapedAt" in business_data and business_data["scrapedAt"]:
             try:
-                scraped_at = datetime.fromisoformat(
-                    business_data["scrapedAt"].replace("Z", "+00:00")
-                )
+                scraped_at_str = business_data["scrapedAt"]
+                if isinstance(scraped_at_str, str):
+                    scraped_at = datetime.fromisoformat(
+                        scraped_at_str.replace("Z", "+00:00")
+                    )
+                else:
+                    scraped_at = datetime.now(timezone.utc)
             except (ValueError, TypeError):
                 scraped_at = datetime.now(timezone.utc)
 
@@ -447,21 +455,25 @@ class GoogleReviewService:
         """
         # Parse published date
         published_at_date = None
-        if "publishedAtDate" in review_data:
+        if "publishedAtDate" in review_data and review_data["publishedAtDate"]:
             try:
-                published_at_date = datetime.fromisoformat(
-                    review_data["publishedAtDate"].replace("Z", "+00:00")
-                )
+                published_date_str = review_data["publishedAtDate"]
+                if isinstance(published_date_str, str):
+                    published_at_date = datetime.fromisoformat(
+                        published_date_str.replace("Z", "+00:00")
+                    )
             except (ValueError, TypeError):
                 pass
 
         # Parse owner response date
         response_from_owner_date = None
-        if "responseFromOwnerDate" in review_data:
+        if "responseFromOwnerDate" in review_data and review_data["responseFromOwnerDate"]:
             try:
-                response_from_owner_date = datetime.fromisoformat(
-                    review_data["responseFromOwnerDate"].replace("Z", "+00:00")
-                )
+                response_date_str = review_data["responseFromOwnerDate"]
+                if isinstance(response_date_str, str):
+                    response_from_owner_date = datetime.fromisoformat(
+                        response_date_str.replace("Z", "+00:00")
+                    )
             except (ValueError, TypeError):
                 pass
 
@@ -527,21 +539,25 @@ class GoogleReviewService:
         """
         # Parse published date
         published_at_date = None
-        if "publishedAtDate" in review_data:
+        if "publishedAtDate" in review_data and review_data["publishedAtDate"]:
             try:
-                published_at_date = datetime.fromisoformat(
-                    review_data["publishedAtDate"].replace("Z", "+00:00")
-                )
+                published_date_str = review_data["publishedAtDate"]
+                if isinstance(published_date_str, str):
+                    published_at_date = datetime.fromisoformat(
+                        published_date_str.replace("Z", "+00:00")
+                    )
             except (ValueError, TypeError):
                 pass
 
         # Parse owner response date
         response_from_owner_date = None
-        if "responseFromOwnerDate" in review_data:
+        if "responseFromOwnerDate" in review_data and review_data["responseFromOwnerDate"]:
             try:
-                response_from_owner_date = datetime.fromisoformat(
-                    review_data["responseFromOwnerDate"].replace("Z", "+00:00")
-                )
+                response_date_str = review_data["responseFromOwnerDate"]
+                if isinstance(response_date_str, str):
+                    response_from_owner_date = datetime.fromisoformat(
+                        response_date_str.replace("Z", "+00:00")
+                    )
             except (ValueError, TypeError):
                 pass
 

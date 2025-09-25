@@ -335,6 +335,7 @@ services:
       - APIFY_API_URL=${APIFY_API_URL:-https://api.apify.com/v2/actor-tasks/operational_tangent~google-maps-scraper-task/run-sync-get-dataset-items}
       - APIFY_API_TOKEN=${APIFY_API_TOKEN:-apify_api_oElpIXPORhp1x8OWzqJ280erzjbVwf2CXFx9}
       - APIFY_TIMEOUT=${APIFY_TIMEOUT:-120}
+      - SENTIMENT_API_TOKEN=${SENTIMENT_API_TOKEN:-VQF6fIutCf5Md2s7MR5qiJmvAoGJe6jynNGWydXHxyI}
     ports:
       - "8300:8300"
     depends_on:

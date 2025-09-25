@@ -95,6 +95,9 @@ const currentDealerId = computed(() => {
     return selectedDealerId.value;
 });
 
+// Computed first record for pagination
+const first = computed(() => (pagination.page - 1) * pagination.per_page);
+
 // Load dealer options for SUPER_ADMIN
 const loadDealerOptions = async () => {
     if (!showAhassFilter.value) return; // Only for SUPER_ADMIN
@@ -352,6 +355,13 @@ const handleSearch = () => {
 // Pagination handler (only loads reviews, not statistics)
 const onPageChange = (event) => {
     pagination.page = event.page + 1;
+    loadReviewsOnly();
+};
+
+// Rows per page change handler
+const onRowsChange = (event) => {
+    pagination.per_page = event.value;
+    pagination.page = 1; // Reset to first page when changing page size
     loadReviewsOnly();
 };
 
@@ -673,10 +683,12 @@ onMounted(async () => {
 
                 <!-- Pagination -->
                 <Paginator
+                    :first="first"
                     :rows="pagination.per_page"
                     :totalRecords="pagination.total_items"
                     :rowsPerPageOptions="[10, 20, 50]"
                     @page="onPageChange"
+                    @update:rows="onRowsChange"
                     class="mt-4"
                 />
             </template>
