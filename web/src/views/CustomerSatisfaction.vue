@@ -633,9 +633,9 @@ onMounted(() => {
                 <Paginator :rows="pagination.page_size" :totalRecords="pagination.total_count" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
 
                 <!-- Simplified Latest Upload Info -->
-                <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-surface-700 dark:to-surface-800 rounded-xl border border-blue-200 dark:border-surface-600 shadow-sm">
+                <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-green-50 to-indigo-50 dark:from-surface-700 dark:to-surface-800 rounded-xl border border-green-200 dark:border-surface-600 shadow-sm">
                     <div class="flex items-center space-x-3">
-                        <div class="flex items-center justify-center w-10 h-10 bg-blue-500 dark:bg-blue-600 text-white rounded-full">
+                        <div class="flex items-center justify-center w-10 h-10 bg-green-500 dark:bg-green-600 text-white rounded-full">
                             <i class="pi pi-calendar text-lg"></i>
                         </div>
                         <div class="flex-1">
