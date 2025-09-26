@@ -283,6 +283,36 @@ export class GoogleReviewService {
             throw error;
         }
     }
+
+    /**
+     * Get latest scrape information for a dealer
+     * @param {string} dealerId - The dealer ID
+     * @returns {Promise<Object>} Latest scrape info including sentiment analysis progress
+     */
+    async getLatestScrapeInfo(dealerId) {
+        try {
+            const response = await api.get(`/v1/google-reviews/dealers/${dealerId}/latest-scrape-info`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching latest scrape info:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get scrape tracker details by tracker ID
+     * @param {string} trackerId - The tracker ID
+     * @returns {Promise<Object>} Scrape tracker details with progress information
+     */
+    async getScrapeTracker(trackerId) {
+        try {
+            const response = await api.get(`/v1/google-reviews/scrape-tracker/${trackerId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching scrape tracker:', error);
+            throw error;
+        }
+    }
 }
 
 // Export default instance

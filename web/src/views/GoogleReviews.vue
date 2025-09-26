@@ -12,6 +12,7 @@ import DatePicker from 'primevue/datepicker';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
 import ProgressSpinner from 'primevue/progressspinner';
+import ProgressBar from 'primevue/progressbar';
 import Dialog from 'primevue/dialog';
 import Textarea from 'primevue/textarea';
 import SentimentAnalysisGAChart from '@/components/dashboard/SentimentAnalysisGAChart.vue';
@@ -46,6 +47,10 @@ const loadingActions = ref({
     scraping: false,
     analyzing: false
 });
+
+// Latest scrape info state
+const lastScrapeInfo = ref(null);
+const loadingScrapeInfo = ref(false);
 
 // Dialog state for details popup
 const showDetailsDialog = ref(false);
@@ -289,6 +294,9 @@ const loadAllData = async () => {
             GoogleReviewService.getMonthlyReviewTotals(currentDealerId.value)
         ]);
 
+        // Load latest scrape info
+        loadLastScrapeInfo();
+
         // Process reviews result
         if (reviewsResult.success) {
             reviewsData.value = reviewsResult.reviews || [];
@@ -349,6 +357,7 @@ const handleSearch = () => {
     // If dealer changed, also load statistics (independent of date filters)
     if (dealerChanged) {
         loadStatisticsData();
+        loadLastScrapeInfo();
     }
 };
 
@@ -440,6 +449,26 @@ const handleAnalyzeSentiment = async () => {
     }
 };
 
+// Load latest scrape info
+const loadLastScrapeInfo = async () => {
+    if (!currentDealerId.value) return;
+
+    loadingScrapeInfo.value = true;
+    try {
+        const result = await GoogleReviewService.getLatestScrapeInfo(currentDealerId.value);
+        if (result.success && result.data) {
+            lastScrapeInfo.value = result.data;
+        } else {
+            lastScrapeInfo.value = null;
+        }
+    } catch (error) {
+        console.error('Error loading last scrape info:', error);
+        lastScrapeInfo.value = null;
+    } finally {
+        loadingScrapeInfo.value = false;
+    }
+};
+
 // Date formatting utilities
 const formatDate = (dateString) => {
     return formatIndonesiaDateTime(dateString);
@@ -505,6 +534,7 @@ onMounted(async () => {
     if (currentDealerId.value) {
         console.log('Loading all data for dealer:', currentDealerId.value);
         loadAllData();
+        loadLastScrapeInfo();
     }
 });
 </script>
@@ -578,6 +608,7 @@ onMounted(async () => {
             <!-- Left Column: Google Profile -->
             <div class="lg:col-span-1">
                 <GAProfile :dealerId="currentDealerId" :loading="loading" />
+
             </div>
 
             <!-- Right Column: Overview Cards -->
@@ -691,6 +722,59 @@ onMounted(async () => {
                     @update:rows="onRowsChange"
                     class="mt-4"
                 />
+
+                <!-- Latest Scrape Info -->
+                <div v-if="lastScrapeInfo" class="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-surface-700 dark:to-surface-800 rounded-xl border border-green-200 dark:border-surface-600 shadow-sm">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center justify-center w-10 h-10 bg-green-500 dark:bg-green-600 text-white rounded-full">
+                            <i class="pi pi-download text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-lg font-semibold text-surface-800 dark:text-surface-200 mb-1">Latest Scrape</h4>
+                            <div class="text-sm text-surface-600 dark:text-surface-400">
+                                <span>{{ formatDate(lastScrapeInfo.scrape_date) }}</span>
+                            </div>
+
+                            <!-- Scraping Status -->
+                            <div class="mt-2 space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <Tag
+                                        :value="lastScrapeInfo.scrape_status"
+                                        :severity="lastScrapeInfo.is_processing ? 'info' : (lastScrapeInfo.is_completed ? 'success' : 'danger')"
+                                    />
+                                    <span class="text-sm">{{ lastScrapeInfo.scraped_reviews }} / {{ lastScrapeInfo.max_reviews_requested }} reviews</span>
+                                </div>
+                                <div class="text-xs text-surface-500 dark:text-surface-400">
+                                    Success rate: {{ lastScrapeInfo.success_rate }}%
+                                </div>
+                            </div>
+
+                            <!-- Sentiment Analysis Progress -->
+                            <div v-if="lastScrapeInfo.analyze_sentiment_enabled && lastScrapeInfo.has_sentiment_pending" class="mt-3 space-y-2">
+                                <div class="flex items-center space-x-2">
+                                    <ProgressSpinner size="small" style="width: 16px; height: 16px" />
+                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Sentiment Analysis in Progress</span>
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-xs text-surface-600 dark:text-surface-400">
+                                        <span>{{ lastScrapeInfo.sentiment_analyzed_count }} / {{ lastScrapeInfo.scraped_reviews }} analyzed</span>
+                                        <span>{{ lastScrapeInfo.sentiment_completion_rate }}%</span>
+                                    </div>
+                                    <ProgressBar :value="lastScrapeInfo.sentiment_completion_rate" :showValue="false" style="height: 6px" class="w-full" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- No Scrape Info State -->
+                <div v-else-if="!loadingScrapeInfo" class="mt-6 p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-dashed border-surface-300 dark:border-surface-600 text-center">
+                    <div class="flex flex-col items-center space-y-2">
+                        <i class="pi pi-info-circle text-3xl text-surface-400 dark:text-surface-500"></i>
+                        <p class="text-sm text-surface-500 dark:text-surface-400">No scraping information available</p>
+                        <p class="text-xs text-surface-400 dark:text-surface-500">Scrape reviews to see the latest scraping details here</p>
+                    </div>
+                </div>
             </template>
         </Card>
 

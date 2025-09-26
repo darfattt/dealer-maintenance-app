@@ -4,6 +4,8 @@ Handles Google Reviews scraping and retrieval operations
 """
 
 import math
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, date
 from typing import List, Dict, Any, Optional
 from fastapi import HTTPException, status, Depends, Query
@@ -54,6 +56,29 @@ class CustomerGoogleReviewController:
         """
         self.db = db
         self.google_review_service = GoogleReviewService(db)
+        # Thread pool for background sentiment analysis
+        self.thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="sentiment_analysis")
+        # Valid scrape types as per database constraint
+        self._valid_scrape_types = {'MANUAL', 'SCHEDULED'}
+
+    def _validate_scrape_type(self, scrape_type: str) -> str:
+        """
+        Validate and sanitize scrape_type value
+
+        Args:
+            scrape_type: The scrape type to validate
+
+        Returns:
+            Valid scrape_type value
+
+        Raises:
+            ValueError: If scrape_type is invalid
+        """
+        if scrape_type not in self._valid_scrape_types:
+            # Log the invalid value and default to MANUAL
+            print(f"Warning: Invalid scrape_type '{scrape_type}', defaulting to 'MANUAL'")
+            return 'MANUAL'
+        return scrape_type
 
     async def scrape_reviews_for_dealer(self, request: ScrapeReviewsRequest, scraped_by: str = None) -> ScrapeReviewsResponse:
         """
@@ -73,7 +98,7 @@ class CustomerGoogleReviewController:
         tracker = GoogleReviewScrapeTracker(
             dealer_id=request.dealer_id,
             dealer_name=None,  # Will be updated after dealer validation
-            scrape_type='MANUAL',
+            scrape_type=self._validate_scrape_type('MANUAL'),
             max_reviews_requested=request.max_reviews,
             language=request.language,
             scrape_status='PROCESSING',
@@ -173,34 +198,25 @@ class CustomerGoogleReviewController:
                 tracker.completed_date = datetime.now()
                 tracker.scrape_duration_seconds = scrape_duration
 
-                # If auto sentiment analysis is enabled, trigger it
+                # If auto sentiment analysis is enabled, trigger it in background
                 if request.auto_analyze_sentiment and new_reviews_count > 0:
                     try:
-                        sentiment_start_time = datetime.now()
                         tracker.sentiment_analysis_status = 'PROCESSING'
                         self.db.commit()
 
-                        # Trigger sentiment analysis
-                        sentiment_request = AnalyzeSentimentRequest(
-                            dealer_id=request.dealer_id,
-                            limit=new_reviews_count,
-                            batch_size=10
+                        # Start background sentiment analysis using thread pool
+                        loop = asyncio.get_event_loop()
+                        loop.run_in_executor(
+                            self.thread_pool,
+                            self._run_sentiment_analysis_background,
+                            request.dealer_id,
+                            new_reviews_count,
+                            str(tracker.id)
                         )
-                        sentiment_result = await self.analyze_reviews_sentiment(sentiment_request)
-
-                        if sentiment_result.success:
-                            tracker.sentiment_analysis_status = 'COMPLETED'
-                            tracker.sentiment_analyzed_count = sentiment_result.data.get('processed_count', 0)
-                            tracker.sentiment_failed_count = sentiment_result.data.get('failed_count', 0)
-                        else:
-                            tracker.sentiment_analysis_status = 'FAILED'
-                            tracker.warning_message = f"Sentiment analysis failed: {sentiment_result.message}"
-
-                        tracker.sentiment_duration_seconds = int((datetime.now() - sentiment_start_time).total_seconds())
 
                     except Exception as e:
                         tracker.sentiment_analysis_status = 'FAILED'
-                        tracker.warning_message = f"Sentiment analysis error: {str(e)}"
+                        tracker.warning_message = f"Error starting background sentiment analysis: {str(e)}"
                 elif request.auto_analyze_sentiment and new_reviews_count == 0:
                     tracker.sentiment_analysis_status = 'COMPLETED'
                     tracker.warning_message = "No new reviews to analyze for sentiment"
@@ -227,6 +243,15 @@ class CustomerGoogleReviewController:
                 "auto_analyze_sentiment": request.auto_analyze_sentiment,
                 "sentiment_status": tracker.sentiment_analysis_status
             }
+
+            # Enhance message based on sentiment analysis status
+            if request.auto_analyze_sentiment and new_reviews_count > 0:
+                if tracker.sentiment_analysis_status == 'PROCESSING':
+                    message += f". Sentiment analysis is running in background."
+                elif tracker.sentiment_analysis_status == 'COMPLETED':
+                    message += f". Sentiment analysis completed."
+                elif tracker.sentiment_analysis_status == 'FAILED':
+                    message += f". Sentiment analysis failed."
 
             return ScrapeReviewsResponse(
                 success=True,
@@ -526,16 +551,16 @@ class CustomerGoogleReviewController:
 
     async def analyze_reviews_sentiment(self, request: AnalyzeSentimentRequest) -> AnalyzeSentimentResponse:
         """
-        Analyze sentiment for Google Reviews of a specific dealer
+        Analyze sentiment for Google Reviews of a specific dealer using background processing
 
         Args:
             request: Sentiment analysis request data
 
         Returns:
-            AnalyzeSentimentResponse with analysis results
+            AnalyzeSentimentResponse with background processing status
 
         Raises:
-            HTTPException: If dealer not found or analysis fails
+            HTTPException: If dealer not found or no reviews available
         """
         try:
             # Validate dealer exists
@@ -549,44 +574,103 @@ class CustomerGoogleReviewController:
                     detail=f"Dealer with ID {request.dealer_id} not found"
                 )
 
-            # Check if dealer has any Google Reviews data
-            reviews_count = self.db.query(GoogleReviewDetail).filter(
+            # Check if dealer has any Google Reviews data that need sentiment analysis
+            unanalyzed_reviews_count = self.db.query(GoogleReviewDetail).filter(
                 GoogleReviewDetail.dealer_id == request.dealer_id,
                 GoogleReviewDetail.review_text.isnot(None),
-                GoogleReviewDetail.review_text != ""
+                GoogleReviewDetail.review_text != "",
+                GoogleReviewDetail.sentiment.is_(None)
             ).count()
 
-            if reviews_count == 0:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No Google Reviews found for dealer {request.dealer_id}"
+            if unanalyzed_reviews_count == 0:
+                return AnalyzeSentimentResponse(
+                    success=True,
+                    message=f"No unanalyzed Google Reviews found for dealer {request.dealer_id}",
+                    data={
+                        "dealer_id": request.dealer_id,
+                        "batch_id": None,
+                        "total_reviews": 0,
+                        "analyzed_reviews": 0,
+                        "failed_reviews": 0,
+                        "status": "COMPLETED",
+                        "tracker_id": None,
+                        "started_at": datetime.now().isoformat(),
+                        "completed_at": datetime.now().isoformat()
+                    }
                 )
 
-            # Perform sentiment analysis
-            result = await self.google_review_service.analyze_reviews_sentiment(
+            # Create tracker for manual sentiment analysis
+            tracker = GoogleReviewScrapeTracker(
                 dealer_id=request.dealer_id,
-                limit=request.limit,
-                batch_size=request.batch_size
+                dealer_name=dealer.dealer_name,
+                scrape_type=self._validate_scrape_type('MANUAL'),  # Validate scrape type
+                max_reviews_requested=request.limit,
+                language='id',  # Default language
+                scrape_status='COMPLETED',  # Scraping is not needed, only sentiment
+                scraped_reviews=unanalyzed_reviews_count,
+                new_reviews=0,
+                duplicate_reviews=0,
+                analyze_sentiment_enabled=True,
+                sentiment_analysis_status='PROCESSING',
+                scraped_by='manual_sentiment_analysis'
             )
+            self.db.add(tracker)
+            self.db.commit()
+            self.db.refresh(tracker)
 
-            if not result["success"]:
+            try:
+                # Start background sentiment analysis using thread pool
+                loop = asyncio.get_event_loop()
+                loop.run_in_executor(
+                    self.thread_pool,
+                    self._run_sentiment_analysis_background,
+                    request.dealer_id,
+                    request.limit,
+                    str(tracker.id)
+                )
+
+                # Return immediately with processing status
+                return AnalyzeSentimentResponse(
+                    success=True,
+                    message=f"Sentiment analysis started in background for {unanalyzed_reviews_count} reviews",
+                    data={
+                        "dealer_id": request.dealer_id,
+                        "batch_id": None,  # Will be set by background process
+                        "total_reviews": unanalyzed_reviews_count,
+                        "analyzed_reviews": 0,  # Will be updated by background process
+                        "failed_reviews": 0,  # Will be updated by background process
+                        "status": "PROCESSING",
+                        "tracker_id": str(tracker.id),
+                        "started_at": datetime.now().isoformat(),
+                        "completed_at": None  # Will be set by background process
+                    }
+                )
+
+            except Exception as e:
+                # Update tracker with error if background processing fails to start
+                try:
+                    tracker.sentiment_analysis_status = 'FAILED'
+                    tracker.warning_message = f"Failed to start background sentiment analysis: {str(e)}"
+                    self.db.commit()
+                except Exception as db_error:
+                    # If we can't update tracker, rollback and log error
+                    try:
+                        self.db.rollback()
+                    except:
+                        pass
+                    print(f"Database error when updating tracker: {str(db_error)}")
+
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Sentiment analysis failed: {result['message']}"
+                    detail=f"Failed to start background sentiment analysis: {str(e)}"
                 )
-
-            return AnalyzeSentimentResponse(
-                success=True,
-                message=result["message"],
-                data=result["data"]
-            )
 
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Unexpected error during sentiment analysis: {str(e)}"
+                detail=f"Unexpected error during sentiment analysis setup: {str(e)}"
             )
 
     def get_sentiment_statistics(self, dealer_id: str) -> Dict[str, Any]:
@@ -1086,3 +1170,159 @@ class CustomerGoogleReviewController:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error retrieving dealer options: {str(e)}"
             )
+
+    def get_latest_scrape_info(self, dealer_id: str) -> Dict[str, Any]:
+        """
+        Get latest scrape information for a specific dealer
+
+        Args:
+            dealer_id: Dealer ID to get latest scrape info for
+
+        Returns:
+            Dictionary with latest scrape information including sentiment analysis status
+
+        Raises:
+            HTTPException: If dealer not found or query fails
+        """
+        try:
+            # Validate dealer exists
+            dealer = self.db.query(DealerConfig).filter(
+                DealerConfig.dealer_id == dealer_id
+            ).first()
+
+            if not dealer:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Dealer with ID {dealer_id} not found"
+                )
+
+            # Get the latest scrape tracker for the dealer
+            latest_tracker = self.db.query(GoogleReviewScrapeTracker).filter(
+                GoogleReviewScrapeTracker.dealer_id == dealer_id
+            ).order_by(GoogleReviewScrapeTracker.scrape_date.desc()).first()
+
+            if not latest_tracker:
+                return {
+                    "success": True,
+                    "message": "No scraping information found for this dealer",
+                    "data": None
+                }
+
+            # Return the tracker data using the built-in to_dict method
+            tracker_data = latest_tracker.to_dict()
+
+            return {
+                "success": True,
+                "message": "Latest scrape information retrieved successfully",
+                "data": tracker_data
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error retrieving latest scrape information: {str(e)}"
+            )
+
+    def _run_sentiment_analysis_background(self, dealer_id: str, limit: int, tracker_id: str) -> None:
+        """
+        Run sentiment analysis in background thread
+
+        Args:
+            dealer_id: Dealer ID to analyze reviews for
+            limit: Maximum number of reviews to analyze
+            tracker_id: Tracker ID to update status
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        try:
+            sentiment_start_time = datetime.now()
+            logger.info(f"Starting background sentiment analysis for dealer {dealer_id} (tracker: {tracker_id})")
+
+            # Create new database session for background thread
+            from app.dependencies import db_manager
+            background_db = next(db_manager.get_session())
+            try:
+                # Get tracker record
+                tracker = background_db.query(GoogleReviewScrapeTracker).filter(
+                    GoogleReviewScrapeTracker.id == tracker_id
+                ).first()
+
+                if not tracker:
+                    logger.error(f"Tracker {tracker_id} not found for background sentiment analysis")
+                    return
+
+                try:
+                    # Create sentiment request
+                    sentiment_request = AnalyzeSentimentRequest(
+                        dealer_id=dealer_id,
+                        limit=limit,
+                        batch_size=10
+                    )
+
+                    # Initialize controller with background db session
+                    background_controller = CustomerGoogleReviewController(background_db)
+
+                    # Run sentiment analysis synchronously in background thread
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                    try:
+                        sentiment_result = loop.run_until_complete(
+                            background_controller.analyze_reviews_sentiment(sentiment_request)
+                        )
+
+                        # Update tracker with results
+                        if sentiment_result.success:
+                            tracker.sentiment_analysis_status = 'COMPLETED'
+                            tracker.sentiment_analyzed_count = sentiment_result.data.get('analyzed_reviews', 0)
+                            tracker.sentiment_failed_count = sentiment_result.data.get('failed_reviews', 0)
+                            logger.info(f"Background sentiment analysis completed for dealer {dealer_id}: "
+                                      f"{tracker.sentiment_analyzed_count} analyzed, {tracker.sentiment_failed_count} failed")
+                        else:
+                            tracker.sentiment_analysis_status = 'FAILED'
+                            tracker.warning_message = f"Sentiment analysis failed: {sentiment_result.message}"
+                            logger.error(f"Background sentiment analysis failed for dealer {dealer_id}: {sentiment_result.message}")
+
+                        tracker.sentiment_duration_seconds = int((datetime.now() - sentiment_start_time).total_seconds())
+                        background_db.commit()
+
+                    finally:
+                        loop.close()
+
+                except Exception as sentiment_error:
+                    logger.error(f"Error during background sentiment analysis for dealer {dealer_id}: {str(sentiment_error)}")
+                    try:
+                        # Rollback any failed transaction before updating tracker
+                        background_db.rollback()
+
+                        # Re-fetch tracker to ensure we have a clean state
+                        tracker = background_db.query(GoogleReviewScrapeTracker).filter(
+                            GoogleReviewScrapeTracker.id == tracker_id
+                        ).first()
+
+                        if tracker:
+                            tracker.sentiment_analysis_status = 'FAILED'
+                            tracker.warning_message = f"Background sentiment analysis error: {str(sentiment_error)}"
+                            tracker.sentiment_duration_seconds = int((datetime.now() - sentiment_start_time).total_seconds())
+                            background_db.commit()
+                    except Exception as update_error:
+                        logger.error(f"Failed to update tracker after error: {str(update_error)}")
+                        try:
+                            background_db.rollback()
+                        except:
+                            pass  # Ignore rollback errors
+
+            finally:
+                background_db.close()
+
+        except Exception as e:
+            logger.error(f"Critical error in background sentiment analysis for dealer {dealer_id}: {str(e)}", exc_info=True)
+
+    def __del__(self):
+        """Cleanup thread pool executor on object deletion"""
+        if hasattr(self, 'thread_pool') and self.thread_pool:
+            self.thread_pool.shutdown(wait=False)

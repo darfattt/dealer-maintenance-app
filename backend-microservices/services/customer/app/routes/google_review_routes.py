@@ -683,3 +683,106 @@ async def get_dealer_options(
         HTTPException: If access denied
     """
     return controller.get_dealer_options()
+
+
+@router.get(
+    "/dealers/{dealer_id}/latest-scrape-info",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Get Latest Scrape Information for Dealer",
+    description="""
+    Get the latest Google Review scraping information for a specific dealer.
+
+    **Information Includes:**
+    - **Scrape Details**: Date, status, reviews scraped, success rate
+    - **Business Info**: Business name, rating, total reviews available
+    - **Sentiment Analysis**: Status, progress, completion rate
+    - **Processing Status**: Real-time indicators for ongoing operations
+    - **Performance Metrics**: Scrape duration, error messages, warnings
+
+    **Scrape Status Values:**
+    - **PROCESSING**: Scraping operation is currently running
+    - **COMPLETED**: Scraping completed successfully
+    - **FAILED**: Scraping failed with error details
+    - **PARTIAL**: Scraping completed with some failures
+
+    **Sentiment Analysis Status:**
+    - **PENDING**: Sentiment analysis queued but not started
+    - **PROCESSING**: Sentiment analysis currently running
+    - **COMPLETED**: Sentiment analysis finished successfully
+    - **FAILED**: Sentiment analysis failed
+
+    **Use Cases:**
+    - Dashboard progress tracking and status display
+    - Real-time scraping and analysis monitoring
+    - Latest operation summary for user interface
+    - Progress indicators for background operations
+
+    **Response Examples:**
+
+    **Active Processing:**
+    ```json
+    {
+        "success": true,
+        "message": "Latest scrape information retrieved successfully",
+        "data": {
+            "dealer_id": "12345",
+            "scrape_date": "2025-09-26T15:30:00+07:00",
+            "scrape_status": "PROCESSING",
+            "scraped_reviews": 15,
+            "max_reviews_requested": 30,
+            "is_processing": true,
+            "sentiment_analysis_status": "PENDING"
+        }
+    }
+    ```
+
+    **Completed with Sentiment Analysis:**
+    ```json
+    {
+        "success": true,
+        "message": "Latest scrape information retrieved successfully",
+        "data": {
+            "dealer_id": "12345",
+            "scrape_date": "2025-09-26T15:30:00+07:00",
+            "scrape_status": "COMPLETED",
+            "scraped_reviews": 28,
+            "max_reviews_requested": 30,
+            "success_rate": 93.3,
+            "sentiment_analysis_status": "COMPLETED",
+            "sentiment_analyzed_count": 28,
+            "sentiment_completion_rate": 100.0,
+            "is_completed": true,
+            "completed_date": "2025-09-26T15:35:00+07:00"
+        }
+    }
+    ```
+
+    **No Scrape Data:**
+    ```json
+    {
+        "success": true,
+        "message": "No scraping information found for this dealer",
+        "data": null
+    }
+    ```
+    """
+)
+async def get_latest_scrape_info(
+    dealer_id: str,
+    controller: CustomerGoogleReviewController = Depends(get_google_review_controller)
+) -> Dict[str, Any]:
+    """
+    Get latest scrape information for a specific dealer
+
+    Args:
+        dealer_id: Dealer ID to get latest scrape info for
+        controller: Google Review controller instance
+
+    Returns:
+        Dictionary with latest scrape information including sentiment analysis status
+
+    Raises:
+        HTTPException: If dealer not found or access denied
+    """
+    return controller.get_latest_scrape_info(dealer_id)
