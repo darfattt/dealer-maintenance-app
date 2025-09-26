@@ -187,3 +187,106 @@ HLO_COLUMNS = [
     {"key": "created_time", "header": "Created Time"},
     {"key": "modified_time", "header": "Modified Time"}
 ]
+
+WORK_ORDER_DETAIL_COLUMNS = [
+    {"key": "no", "header": "no"},
+    # PKBData fields
+    {"key": "dealer_id", "header": "dealer_id"},
+    {"key": "no_work_order", "header": "no_work_order"},
+    {"key": "no_sa_form", "header": "no_sa_form"},
+    {"key": "tanggal_servis", "header": "tanggal_servis"},
+    {"key": "waktu_pkb", "header": "waktu_pkb"},
+    {"key": "no_polisi", "header": "no_polisi"},
+    {"key": "no_rangka", "header": "no_rangka"},
+    {"key": "no_mesin", "header": "no_mesin"},
+    {"key": "kode_tipe_unit", "header": "kode_tipe_unit"},
+    {"key": "tahun_motor", "header": "tahun_motor"},
+    {"key": "informasi_bensin", "header": "informasi_bensin"},
+    {"key": "km_terakhir", "header": "km_terakhir"},
+    {"key": "tipe_coming_customer", "header": "tipe_coming_customer"},
+    {"key": "nama_pemilik", "header": "nama_pemilik"},
+    {"key": "alamat_pemilik", "header": "alamat_pemilik"},
+    {"key": "nama_pembawa", "header": "nama_pembawa"},
+    {"key": "no_telp_pembawa", "header": "no_telp_pembawa"},
+    {"key": "keluhan_konsumen", "header": "keluhan_konsumen"},
+    {"key": "rekomendasi_sa", "header": "rekomendasi_sa"},
+    {"key": "honda_id_sa", "header": "honda_id_sa"},
+    {"key": "honda_id_mekanik", "header": "honda_id_mekanik"},
+    {"key": "total_biaya_service", "header": "total_biaya_service"},
+    {"key": "status_work_order", "header": "status_work_order"},
+    {"key": "created_time", "header": "created_time"},
+    # PKBService fields
+    {"key": "id_job", "header": "id_job"},
+    {"key": "nama_pekerjaan", "header": "nama_pekerjaan"},
+    {"key": "jenis_pekerjaan", "header": "jenis_pekerjaan"},
+    {"key": "biaya_service", "header": "biaya_service"},
+    {"key": "total_harga_servis", "header": "total_harga_servis"},
+    # PKBPart fields
+    {"key": "parts_number", "header": "parts_number"},
+    {"key": "harga_parts", "header": "harga_parts"},
+    {"key": "kuantitas_parts", "header": "kuantitas_parts"},
+    {"key": "total_harga_parts", "header": "total_harga_parts"}
+]
+
+NJB_NSC_DETAIL_COLUMNS = [
+    {"key": "no", "header": "no"},
+    # WorkshopInvoiceData fields
+    {"key": "dealer_id", "header": "dealer_id"},
+    {"key": "no_work_order", "header": "no_work_order"},
+    {"key": "no_njb", "header": "no_njb"},
+    {"key": "tanggal_njb", "header": "tanggal_njb"},
+    {"key": "total_harga_njb", "header": "total_harga_njb"},
+    {"key": "no_nsc", "header": "no_nsc"},
+    {"key": "tanggal_nsc", "header": "tanggal_nsc"},
+    {"key": "total_harga_nsc", "header": "total_harga_nsc"},
+    {"key": "honda_id_sa", "header": "honda_id_sa"},
+    {"key": "honda_id_mekanik", "header": "honda_id_mekanik"},
+    {"key": "created_time", "header": "created_time"},
+    {"key": "modified_time", "header": "modified_time"},
+    {"key": "workshop_invoice_data_id", "header": "workshop_invoice_data_id"},
+    # WorkshopInvoiceNJB fields
+    {"key": "id_job", "header": "id_job"},
+    {"key": "harga_servis", "header": "harga_servis"},
+    {"key": "promo_id_jasa", "header": "promo_id_jasa"},
+    {"key": "disc_service_amount", "header": "disc_service_amount"},
+    {"key": "disc_service_percentage", "header": "disc_service_percentage"},
+    {"key": "total_harga_servis", "header": "total_harga_servis"},
+    {"key": "njb_created_time", "header": "njb_created_time"},
+    {"key": "njb_modified_time", "header": "njb_modified_time"},
+    # WorkshopInvoiceNSC fields
+    {"key": "parts_number", "header": "parts_number"},
+    {"key": "kuantitas", "header": "kuantitas"},
+    {"key": "harga_parts", "header": "harga_parts"},
+    {"key": "promo_id_parts", "header": "promo_id_parts"},
+    {"key": "disc_parts_amount", "header": "disc_parts_amount"},
+    {"key": "disc_parts_percentage", "header": "disc_parts_percentage"},
+    {"key": "ppn", "header": "ppn"},
+    {"key": "total_harga_parts", "header": "total_harga_parts"},
+    {"key": "uang_muka", "header": "uang_muka"},
+    {"key": "nsc_created_time", "header": "nsc_created_time"},
+    {"key": "nsc_modified_time", "header": "nsc_modified_time"}
+]
+
+HLO_DETAIL_COLUMNS = [
+    {"key": "no", "header": "no"},
+    # DPHLOData fields
+    {"key": "dealer_id", "header": "dealer_id"},
+    {"key": "no_invoice_uang_jaminan", "header": "no_invoice_uang_jaminan"},
+    {"key": "id_hlo_document", "header": "id_hlo_document"},
+    {"key": "tanggal_pemesanan_hlo", "header": "tanggal_pemesanan_hlo"},
+    {"key": "no_work_order", "header": "no_work_order"},
+    {"key": "id_customer", "header": "id_customer"},
+    {"key": "created_time", "header": "created_time"},
+    {"key": "modified_time", "header": "modified_time"},
+    {"key": "fetched_at", "header": "fetched_at"},
+    # DPHLOPart fields
+    {"key": "dp_hlo_data_id", "header": "dp_hlo_data_id"},
+    {"key": "parts_number", "header": "parts_number"},
+    {"key": "kuantitas", "header": "kuantitas"},
+    {"key": "harga_parts", "header": "harga_parts"},
+    {"key": "total_harga_parts", "header": "total_harga_parts"},
+    {"key": "uang_muka", "header": "uang_muka"},
+    {"key": "sisa_bayar", "header": "sisa_bayar"},
+    {"key": "part_created_time", "header": "part_created_time"},
+    {"key": "part_modified_time", "header": "part_modified_time"}
+]
