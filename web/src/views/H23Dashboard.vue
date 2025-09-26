@@ -106,7 +106,7 @@ const exportWorkOrderExcel = async () => {
     isExportingWorkOrder.value = true;
 
     try {
-        const response = await api.get('/v1/h23-dashboard/exports/work-order-excel', {
+        const response = await api.get('/v1/h23-dashboard/exports/work-order-detail-excel', {
             params: {
                 dealer_id: selectedDealer.value,
                 date_from: formattedDateFrom.value,
@@ -117,7 +117,7 @@ const exportWorkOrderExcel = async () => {
 
         // Extract filename from Content-Disposition header
         const contentDisposition = response.headers['content-disposition'];
-        let filename = 'work-order-export.xlsx';
+        let filename = 'work-order-detail-export.xlsx';
         if (contentDisposition) {
             const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
             if (filenameMatch) {
@@ -142,7 +142,7 @@ const exportWorkOrderExcel = async () => {
         toast.add({
             severity: 'success',
             summary: 'Success',
-            detail: 'Work Order data exported successfully',
+            detail: 'Work Order detailed data exported successfully',
             life: 3000
         });
     } catch (error) {
@@ -150,7 +150,7 @@ const exportWorkOrderExcel = async () => {
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: error.response?.data?.detail || 'Failed to export Work Order data',
+            detail: error.response?.data?.detail || 'Failed to export Work Order detailed data',
             life: 5000
         });
     } finally {
@@ -183,7 +183,7 @@ const exportNJBExcel = async () => {
     isExportingNJB.value = true;
 
     try {
-        const response = await api.get('/v1/h23-dashboard/exports/njb-nsc-excel', {
+        const response = await api.get('/v1/h23-dashboard/exports/njb-nsc-detail-excel', {
             params: {
                 dealer_id: selectedDealer.value,
                 date_from: formattedDateFrom.value,
@@ -194,7 +194,7 @@ const exportNJBExcel = async () => {
 
         // Extract filename from Content-Disposition header
         const contentDisposition = response.headers['content-disposition'];
-        let filename = 'njb-nsc-export.xlsx';
+        let filename = 'njb-nsc-detail-export.xlsx';
         if (contentDisposition) {
             const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
             if (filenameMatch) {
@@ -219,7 +219,7 @@ const exportNJBExcel = async () => {
         toast.add({
             severity: 'success',
             summary: 'Success',
-            detail: 'NJB/NSC data exported successfully',
+            detail: 'NJB/NSC detailed data exported successfully',
             life: 3000
         });
     } catch (error) {
@@ -227,7 +227,7 @@ const exportNJBExcel = async () => {
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: error.response?.data?.detail || 'Failed to export NJB/NSC data',
+            detail: error.response?.data?.detail || 'Failed to export NJB/NSC detailed data',
             life: 5000
         });
     } finally {
@@ -260,7 +260,7 @@ const exportHLOExcel = async () => {
     isExportingHLO.value = true;
 
     try {
-        const response = await api.get('/v1/h23-dashboard/exports/hlo-excel', {
+        const response = await api.get('/v1/h23-dashboard/exports/hlo-detail-excel', {
             params: {
                 dealer_id: selectedDealer.value,
                 date_from: formattedDateFrom.value,
@@ -271,7 +271,7 @@ const exportHLOExcel = async () => {
 
         // Extract filename from Content-Disposition header
         const contentDisposition = response.headers['content-disposition'];
-        let filename = 'hlo-export.xlsx';
+        let filename = 'hlo-detail-export.xlsx';
         if (contentDisposition) {
             const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
             if (filenameMatch) {
@@ -296,7 +296,7 @@ const exportHLOExcel = async () => {
         toast.add({
             severity: 'success',
             summary: 'Success',
-            detail: 'HLO data exported successfully',
+            detail: 'HLO detailed data exported successfully',
             life: 3000
         });
     } catch (error) {
@@ -304,7 +304,7 @@ const exportHLOExcel = async () => {
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: error.response?.data?.detail || 'Failed to export HLO data',
+            detail: error.response?.data?.detail || 'Failed to export HLO detailed data',
             life: 5000
         });
     } finally {
