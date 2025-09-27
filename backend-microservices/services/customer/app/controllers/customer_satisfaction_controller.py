@@ -8,6 +8,7 @@ import pandas as pd
 import re
 import asyncio
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any, Optional, BinaryIO, List, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -36,10 +37,13 @@ class CustomerSatisfactionController:
         self.db = db
         self.repository = CustomerSatisfactionRepository(db)
         self.sentiment_service = SentimentAnalysisService()
-        
+
+        # Thread pool for background sentiment analysis
+        self.thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="sentiment_analysis")
+
         # Supported file extensions
         self.supported_extensions = ['.xlsx', '.xls', '.csv']
-        
+
         # Maximum file size (10MB)
         self.max_file_size = 10 * 1024 * 1024
         
@@ -1229,83 +1233,87 @@ class CustomerSatisfactionController:
             )
     
     async def bulk_analyze_sentiment(
-        self, 
-        limit: int = 50, 
+        self,
+        limit: int = 50,
         upload_batch_id: Optional[str] = None
     ) -> BulkSentimentAnalysisResponse:
         """
-        Perform bulk sentiment analysis on unanalyzed records
-        
+        Perform bulk sentiment analysis on unanalyzed records using background processing
+
         Args:
             limit: Maximum number of records to analyze
             upload_batch_id: Optional filter by specific upload batch
-            
+
         Returns:
-            BulkSentimentAnalysisResponse with analysis results
+            BulkSentimentAnalysisResponse with background processing status
         """
         try:
             started_at = get_indonesia_utc_now()
-            
-            # Get unanalyzed records
+
+            # Get unanalyzed records count
             unanalyzed_records = self.repository.get_unanalyzed_records(
                 limit=limit,
                 upload_batch_id=upload_batch_id
             )
-            
+
             if not unanalyzed_records:
                 return BulkSentimentAnalysisResponse(
                     success=True,
-                    message="No unanalyzed records found",
+                    message="No unanalyzed records found for sentiment analysis",
                     data={
                         "batch_id": None,
                         "total_records": 0,
                         "analyzed_records": 0,
                         "failed_records": 0,
+                        "status": "COMPLETED",
                         "started_at": started_at.isoformat(),
                         "completed_at": get_indonesia_utc_now().isoformat()
                     }
                 )
-            
-            batch_id = str(uuid.uuid4())
-            logger.info(f"Starting bulk sentiment analysis for {len(unanalyzed_records)} records (batch {batch_id})")
-            
-            # Analyze sentiments
-            sentiment_results, errors = await self.sentiment_service.analyze_sentiments(unanalyzed_records)
-            
-            # Update database
-            analyzed_count = 0
-            failed_count = len(unanalyzed_records)
-            
-            if sentiment_results:
-                update_stats = self.repository.bulk_update_sentiment_analysis(
-                    sentiment_results, 
-                    batch_id=batch_id
+
+            try:
+                # Start background sentiment analysis using thread pool
+                loop = asyncio.get_event_loop()
+                loop.run_in_executor(
+                    self.thread_pool,
+                    self._run_bulk_sentiment_analysis_background,
+                    limit,
+                    upload_batch_id or "",
+                    None  # tracker_id - can be implemented later
                 )
-                
-                analyzed_count = update_stats["updated_count"]
-                failed_count = update_stats["failed_count"] + len(errors)
-            
-            completed_at = get_indonesia_utc_now()
-            
-            return BulkSentimentAnalysisResponse(
-                success=True,
-                message=f"Bulk sentiment analysis completed: {analyzed_count} analyzed, {failed_count} failed",
-                data={
-                    "batch_id": batch_id,
-                    "total_records": len(unanalyzed_records),
-                    "analyzed_records": analyzed_count,
-                    "failed_records": failed_count,
-                    "started_at": started_at.isoformat(),
-                    "completed_at": completed_at.isoformat(),
-                    "errors": errors[:10] if errors else []  # Include first 10 errors
-                }
-            )
-            
+
+                # Return immediately with processing status
+                batch_id = str(uuid.uuid4())
+
+                return BulkSentimentAnalysisResponse(
+                    success=True,
+                    message=f"Bulk sentiment analysis started in background for {len(unanalyzed_records)} records",
+                    data={
+                        "batch_id": batch_id,
+                        "total_records": len(unanalyzed_records),
+                        "analyzed_records": 0,  # Will be updated by background process
+                        "failed_records": 0,    # Will be updated by background process
+                        "status": "PROCESSING",
+                        "started_at": started_at.isoformat(),
+                        "completed_at": None,   # Will be set by background process
+                        "message": "Processing in background - check logs for completion status"
+                    }
+                )
+
+            except Exception as e:
+                logger.error(f"Failed to start background bulk sentiment analysis: {str(e)}")
+
+                return BulkSentimentAnalysisResponse(
+                    success=False,
+                    message=f"Failed to start background sentiment analysis: {str(e)}",
+                    data=None
+                )
+
         except Exception as e:
-            logger.error(f"Error in bulk sentiment analysis: {str(e)}", exc_info=True)
+            logger.error(f"Error in bulk sentiment analysis setup: {str(e)}", exc_info=True)
             return BulkSentimentAnalysisResponse(
                 success=False,
-                message=f"Internal server error during bulk sentiment analysis: {str(e)}",
+                message=f"Internal server error during bulk sentiment analysis setup: {str(e)}",
                 data=None
             )
     
@@ -1426,3 +1434,84 @@ class CustomerSatisfactionController:
                 "message": f"Internal server error while retrieving sentiment themes statistics: {str(e)}",
                 "data": None
             }
+
+    def _run_bulk_sentiment_analysis_background(self, limit: int, upload_batch_id: str, tracker_id: str = None) -> None:
+        """
+        Run bulk sentiment analysis in background thread
+
+        Args:
+            limit: Maximum number of records to analyze
+            upload_batch_id: Upload batch ID to filter records (optional)
+            tracker_id: Tracker ID for monitoring progress (optional)
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        try:
+            analysis_start_time = get_indonesia_utc_now()
+            logger.info(f"Starting background bulk sentiment analysis (limit: {limit}, batch: {upload_batch_id})")
+
+            # Create new database session for background thread
+            from app.dependencies import db_manager
+            background_db = next(db_manager.get_session())
+
+            try:
+                # Initialize background controller with background db session
+                background_controller = CustomerSatisfactionController(background_db)
+
+                # Get unanalyzed records
+                unanalyzed_records = background_controller.repository.get_unanalyzed_records(
+                    limit=limit,
+                    upload_batch_id=upload_batch_id
+                )
+
+                if not unanalyzed_records:
+                    logger.info(f"No unanalyzed records found for background analysis")
+                    return
+
+                # Run sentiment analysis synchronously in background thread
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+                try:
+                    # Generate batch ID for this analysis
+                    batch_id = str(uuid.uuid4())
+                    logger.info(f"Processing {len(unanalyzed_records)} records in background (batch {batch_id})")
+
+                    # Analyze sentiments
+                    sentiment_results, errors = loop.run_until_complete(
+                        background_controller.sentiment_service.analyze_sentiments(unanalyzed_records)
+                    )
+
+                    # Update database with results
+                    analyzed_count = 0
+                    failed_count = len(unanalyzed_records)
+
+                    if sentiment_results:
+                        update_stats = background_controller.repository.bulk_update_sentiment_analysis(
+                            sentiment_results,
+                            batch_id=batch_id
+                        )
+
+                        analyzed_count = update_stats["updated_count"]
+                        failed_count = update_stats["failed_count"] + len(errors)
+
+                    analysis_duration = int((get_indonesia_utc_now() - analysis_start_time).total_seconds())
+
+                    logger.info(f"Background bulk sentiment analysis completed: "
+                              f"{analyzed_count} analyzed, {failed_count} failed, {analysis_duration}s duration")
+
+                finally:
+                    loop.close()
+
+            finally:
+                background_db.close()
+
+        except Exception as e:
+            logger.error(f"Critical error in background bulk sentiment analysis: {str(e)}", exc_info=True)
+
+    def __del__(self):
+        """Cleanup thread pool executor on object deletion"""
+        if hasattr(self, 'thread_pool') and self.thread_pool:
+            self.thread_pool.shutdown(wait=False)

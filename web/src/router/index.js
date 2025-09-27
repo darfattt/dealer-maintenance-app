@@ -93,6 +93,11 @@ const router = createRouter({
                     path: '/configuration/whatsapp-templates',
                     name: 'whatsapp-templates',
                     component: () => import('@/views/WhatsAppTemplateManagement.vue')
+                },
+                {
+                    path: '/google-reviews',
+                    name: 'google-reviews',
+                    component: () => import('@/views/GoogleReviews.vue')
                 }
             ]
         },

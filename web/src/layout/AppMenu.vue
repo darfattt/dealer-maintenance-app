@@ -28,14 +28,17 @@ const model = ref([
         label: 'Customer',
         items: [
             { label: 'Customer Validation Request', icon: 'pi pi-fw pi-users', to: '/customer-validation' },
-            { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' },
-            { label: 'Customer Satisfaction', icon: 'pi pi-fw pi-star', to: '/customer-satisfaction' }
+            { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' }
         ]
     },
-    // {
-    //     label: 'AHASS',
-    //     items: [{ label: 'Sentiment Analysis', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' }]
-    // },
+    {
+        label: 'Sentiment Analysis',
+        items: [
+            //{ label: 'DA', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' },
+            { label: 'Daya Auto', icon: 'pi pi-fw pi-star', to: '/customer-satisfaction' },
+            { label: 'Google Reviews', icon: 'pi pi-fw pi-google', to: '/google-reviews' }
+        ]
+    },
     {
         label: 'Configuration',
         items: [{ label: 'WhatsApp Template', icon: 'pi pi-fw pi-comments', to: '/configuration/whatsapp-templates' }]

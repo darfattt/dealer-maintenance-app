@@ -35,8 +35,8 @@ class DealerConfig(Base):
     
     # Contact information
     phone_number = Column(String(255), nullable=True)
-    
-    
+    google_location_url = Column(String(500), nullable=True)
+
     # Status
     is_active = Column(Boolean, default=True)
     
@@ -56,6 +56,7 @@ class DealerConfig(Base):
             "has_fonnte_config": bool(self.fonnte_api_key),
             "fonnte_api_url": self.fonnte_api_url,
             "phone_number": self.phone_number,
+            "google_location_url": self.google_location_url,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
