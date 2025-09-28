@@ -1239,7 +1239,7 @@ class CustomerGoogleReviewController:
 
         try:
             sentiment_start_time = datetime.now()
-            logger.info(f"Starting background sentiment analysis for dealer {dealer_id} (tracker: {tracker_id})")
+            print(f"Starting background sentiment analysis for dealer {dealer_id} (tracker: {tracker_id})")
 
             # Create new database session for background thread
             from app.dependencies import db_manager
@@ -1321,6 +1321,129 @@ class CustomerGoogleReviewController:
 
         except Exception as e:
             logger.error(f"Critical error in background sentiment analysis for dealer {dealer_id}: {str(e)}", exc_info=True)
+
+    async def sync_process_google_review_sentiment_analysis(
+        self,
+        dealer_id: str,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """
+        Process sentiment analysis for Google Reviews synchronously
+
+        Args:
+            dealer_id: Dealer ID to process reviews for
+            limit: Maximum number of reviews to process
+
+        Returns:
+            Dictionary containing processing results
+
+        Raises:
+            HTTPException: If dealer not found or processing fails
+        """
+        try:
+            # Validate dealer exists
+            dealer = self.db.query(DealerConfig).filter(
+                DealerConfig.dealer_id == dealer_id
+            ).first()
+
+            if not dealer:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Dealer with ID {dealer_id} not found"
+                )
+
+            # Import sentiment service
+            from app.services.sentiment_analysis_service import SentimentAnalysisService
+            sentiment_service = SentimentAnalysisService()
+
+            # Get unanalyzed Google Review Details where review_text is not null and sentiment_analyzed_at is null
+            unanalyzed_reviews = self.db.query(GoogleReviewDetail).filter(
+                GoogleReviewDetail.dealer_id == dealer_id,
+                GoogleReviewDetail.review_text.isnot(None),
+                GoogleReviewDetail.review_text != "",
+                GoogleReviewDetail.sentiment_analyzed_at.is_(None)
+            ).limit(limit).all()
+
+            if not unanalyzed_reviews:
+                return {
+                    "success": True,
+                    "message": f"No unanalyzed Google Reviews found for dealer {dealer_id}",
+                    "data": {
+                        "dealer_id": dealer_id,
+                        "total_records": 0,
+                        "processed_records": 0,
+                        "successful_records": 0,
+                        "failed_records": 0,
+                        "errors": []
+                    }
+                }
+
+            # Prepare records for sentiment analysis (same format as customer satisfaction)
+            formatted_records = []
+            for review in unanalyzed_reviews:
+                formatted_records.append({
+                    "id": str(review.id),
+                    "no_tiket": review.dealer_id,  # Use dealer_id as identifier
+                    "review": review.review_text or ""
+                })
+
+            # Process sentiment analysis
+            sentiment_results, errors = await sentiment_service.analyze_sentiments(formatted_records)
+
+            # Update GoogleReviewDetail records with sentiment results
+            successful_count = 0
+            failed_count = 0
+
+            for result in sentiment_results:
+                try:
+                    record_id = result.get('id')
+                    review_record = self.db.query(GoogleReviewDetail).filter(
+                        GoogleReviewDetail.id == record_id
+                    ).first()
+
+                    if review_record:
+                        # Update sentiment fields
+                        review_record.sentiment = result.get('sentiment')
+                        review_record.sentiment_score = result.get('sentiment_score')
+                        review_record.sentiment_confidence = result.get('confidence')
+                        review_record.sentiment_themes = result.get('themes')
+                        review_record.sentiment_analyzed_at = datetime.now()
+
+                        successful_count += 1
+
+                except Exception as e:
+                    failed_count += 1
+                    errors.append(f"Failed to update record {record_id}: {str(e)}")
+
+            # Handle failed sentiment analysis errors
+            for error in errors:
+                failed_count += 1
+
+            # Commit all changes
+            self.db.commit()
+
+            return {
+                "success": True,
+                "message": f"Processed {len(formatted_records)} Google Reviews for sentiment analysis",
+                "data": {
+                    "dealer_id": dealer_id,
+                    "total_records": len(formatted_records),
+                    "processed_records": len(sentiment_results),
+                    "successful_records": successful_count,
+                    "failed_records": failed_count,
+                    "errors": errors[:10]  # Limit to first 10 errors
+                }
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Rollback in case of unexpected error
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error processing Google Review sentiment analysis: {str(e)}"
+            )
 
     def __del__(self):
         """Cleanup thread pool executor on object deletion"""

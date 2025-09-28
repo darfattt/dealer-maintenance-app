@@ -786,3 +786,87 @@ async def get_latest_scrape_info(
         HTTPException: If dealer not found or access denied
     """
     return controller.get_latest_scrape_info(dealer_id)
+
+
+@router.post(
+    "/sentiment-analysis/process-sync",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Process Google Review Sentiment Analysis Synchronously",
+    description="""
+    Process sentiment analysis for Google Reviews synchronously (immediate processing).
+
+    **Process:**
+    1. Validates dealer exists and has access permissions
+    2. Retrieves unanalyzed Google Review Details where review_text is not null and sentiment_analyzed_at is null
+    3. Processes sentiment analysis immediately (not in background)
+    4. Updates GoogleReviewDetail records with sentiment results
+    5. Returns immediate results with processing statistics
+
+    **Sentiment Analysis Results:**
+    - **Sentiment**: Positive, Negative, or Neutral classification
+    - **Sentiment Score**: Numeric score from -5.00 (very negative) to 5.00 (very positive)
+    - **Sentiment Confidence**: Confidence level of the sentiment analysis
+    - **Sentiment Themes**: JSON array of themes identified in the review
+    - **Sentiment Analyzed At**: Timestamp when analysis was performed
+
+    **Features:**
+    - **Synchronous Processing**: Returns results immediately (no background jobs)
+    - **Configurable Limit**: Process up to specified number of reviews (1-100)
+    - **Dealer Filtering**: Only processes reviews for the specified dealer
+    - **Error Handling**: Individual review failures don't stop the entire process
+    - **Progress Tracking**: Real-time statistics and error reporting
+
+    **Use Cases:**
+    - Manual sentiment analysis for specific dealers
+    - Testing sentiment analysis functionality
+    - Processing small batches of reviews immediately
+    - Admin interface for sentiment analysis management
+
+    **Filtering Criteria:**
+    - dealer_id must match the provided dealer ID
+    - review_text must not be null or empty
+    - sentiment_analyzed_at must be null (unanalyzed reviews only)
+
+    **Response Format:**
+    ```json
+    {
+        "success": true,
+        "message": "Processed 25 Google Reviews for sentiment analysis",
+        "data": {
+            "dealer_id": "12284",
+            "total_records": 25,
+            "processed_records": 23,
+            "successful_records": 22,
+            "failed_records": 3,
+            "errors": ["Failed to update record 456: Database error"]
+        }
+    }
+    ```
+
+    **Performance Notes:**
+    - Processes reviews synchronously (blocks until completion)
+    - Recommended limit: 50 reviews or less for reasonable response time
+    - For large batches, consider using the background analysis endpoint instead
+    """
+)
+async def sync_process_google_review_sentiment_analysis(
+    dealer_id: str = Query(..., description="Dealer ID to process Google Reviews for"),
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of reviews to process (1-100)"),
+    controller: CustomerGoogleReviewController = Depends(get_google_review_controller)
+) -> Dict[str, Any]:
+    """
+    Process Google Review sentiment analysis synchronously
+
+    Args:
+        dealer_id: Dealer ID to process reviews for
+        limit: Maximum number of reviews to process (default: 50, max: 100)
+        controller: Google Review controller instance
+
+    Returns:
+        Dictionary containing processing results with statistics
+
+    Raises:
+        HTTPException: If dealer not found, access denied, or processing fails
+    """
+    return await controller.sync_process_google_review_sentiment_analysis(dealer_id, limit)

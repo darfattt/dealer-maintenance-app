@@ -590,6 +590,64 @@ async def bulk_analyze_sentiment(
         )
 
 
+@router.post(
+    "/sentiment-analysis/process-sync",
+    summary="Process sentiment analysis synchronously",
+    description="Synchronously process sentiment analysis for records with null sentiment_analyzed_at. Returns immediate results."
+)
+async def sync_process_sentiment_analysis(
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of records to process"),
+    upload_batch_id: str = Query(None, description="Optional filter by specific upload batch"),
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Synchronously process sentiment analysis for unanalyzed records
+
+    This endpoint:
+    1. Finds customer satisfaction records where sentiment_analyzed_at is null
+    2. Optionally filters by specific upload batch
+    3. Processes records synchronously through sentiment analysis service
+    4. Updates database with sentiment results immediately
+    5. Returns detailed processing statistics and results
+
+    Features:
+    - Synchronous processing: waits for completion before returning
+    - Immediate feedback: returns processing results right away
+    - Batch processing: handles multiple records efficiently
+    - Error tracking: detailed error reporting for debugging
+    - Statistics: comprehensive processing metrics
+
+    Difference from bulk endpoint:
+    - This endpoint processes synchronously and returns immediate results
+    - The bulk endpoint runs in background and returns processing status
+
+    Authentication: Requires Authorization: Bearer <token> header with valid JWT token
+    """
+    try:
+        controller = CustomerSatisfactionController(db)
+        result = await controller.sync_process_sentiment_analysis(
+            limit=limit,
+            upload_batch_id=upload_batch_id
+        )
+
+        # Log the operation
+        if result["success"]:
+            logger.info(f"Sync sentiment analysis completed by user {current_user.email}: "
+                       f"{result['data']['successful']} successful, {result['data']['failed']} failed")
+        else:
+            logger.warning(f"Sync sentiment analysis failed for user {current_user.email}: {result['message']}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error in sync sentiment analysis processing: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during synchronous sentiment analysis processing"
+        )
+
+
 @router.get(
     "/sentiment-analysis/statistics",
     summary="Get sentiment analysis statistics",

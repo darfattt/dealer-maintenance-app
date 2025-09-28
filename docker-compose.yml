@@ -52,6 +52,7 @@ services:
       - DATABASE_URL=postgresql://dealer_user:dealer_pass@postgres:5432/dealer_dashboard
       - REDIS_URL=redis://redis:6379/0
       - SENTRY_DSN=${SENTRY_DSN}
+      - LOG_LEVEL=DEBUG
     depends_on:
       postgres:
         condition: service_healthy
@@ -326,7 +327,7 @@ services:
       - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
       - SERVICE_NAME=customer-service
       - SERVICE_VERSION=1.0.0
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=DEBUG
       - ENVIRONMENT=production
       - DB_SCHEMA=customer
       - DEALER_INTEGRATION_SCHEMA=dealer_integration

@@ -163,6 +163,32 @@ export class GoogleReviewService {
     }
 
     /**
+     * Analyze sentiment for Google Reviews synchronously
+     * @param {Object} options - Analysis options
+     * @param {string} options.dealer_id - The dealer ID
+     * @param {number} options.limit - Maximum number of reviews to analyze (1-100)
+     * @returns {Promise<Object>} Sentiment analysis results (immediate processing)
+     */
+    async analyzeSentimentSync(options = {}) {
+        try {
+            const {
+                dealer_id,
+                limit = 50
+            } = options;
+
+            const params = new URLSearchParams();
+            params.append('dealer_id', dealer_id);
+            params.append('limit', limit.toString());
+
+            const response = await api.post(`/v1/google-reviews/sentiment-analysis/process-sync?${params.toString()}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error analyzing review sentiment (sync):', error);
+            throw error;
+        }
+    }
+
+    /**
      * Legacy method for backward compatibility
      * @deprecated Use analyzeSentiment instead
      */

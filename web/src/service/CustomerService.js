@@ -589,6 +589,34 @@ export class CustomerService {
     }
 
     /**
+     * Process sentiment analysis for customer satisfaction records synchronously
+     * @param {Object} options - Analysis options
+     * @param {number} options.limit - Maximum number of records to analyze (1-100)
+     * @param {string} options.upload_batch_id - Optional filter by upload batch ID
+     * @returns {Promise<Object>} Sentiment analysis results (immediate processing)
+     */
+    async processSentimentAnalysisSync(options = {}) {
+        try {
+            const {
+                limit = 50,
+                upload_batch_id = null
+            } = options;
+
+            const params = new URLSearchParams();
+            params.append('limit', limit.toString());
+            if (upload_batch_id) {
+                params.append('upload_batch_id', upload_batch_id);
+            }
+
+            const response = await api.post(`/v1/customer-satisfaction/sentiment-analysis/process-sync?${params.toString()}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error processing sentiment analysis (sync):', error);
+            throw error;
+        }
+    }
+
+    /**
      * Get all active dealers for dropdown options
      * @returns {Promise<Object>} Active dealers list with formatted labels
      */

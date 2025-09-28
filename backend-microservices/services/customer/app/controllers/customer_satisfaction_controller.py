@@ -1435,6 +1435,130 @@ class CustomerSatisfactionController:
                 "data": None
             }
 
+    async def sync_process_sentiment_analysis(
+        self,
+        limit: int = 50,
+        upload_batch_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Synchronously process sentiment analysis for records with null sentiment_analyzed_at
+
+        Args:
+            limit: Maximum number of records to process
+            upload_batch_id: Optional filter by specific upload batch
+
+        Returns:
+            Dictionary containing processing results and statistics
+        """
+        try:
+            start_time = get_indonesia_utc_now()
+            logger.info(f"Starting synchronous sentiment analysis processing (limit: {limit}, batch: {upload_batch_id})")
+
+            # Get unanalyzed records
+            unanalyzed_records = self.repository.get_unanalyzed_records(
+                limit=limit,
+                upload_batch_id=upload_batch_id
+            )
+
+            if not unanalyzed_records:
+                return {
+                    "success": True,
+                    "message": "No unanalyzed records found for sentiment analysis",
+                    "data": {
+                        "total_found": 0,
+                        "processed": 0,
+                        "successful": 0,
+                        "failed": 0,
+                        "errors": [],
+                        "processing_time_seconds": 0.0
+                    }
+                }
+
+            logger.info(f"Found {len(unanalyzed_records)} unanalyzed records for processing")
+
+            # Generate batch ID for this analysis
+            batch_id = str(uuid.uuid4())
+
+            # Analyze sentiments using the service
+            sentiment_results, errors = await self.sentiment_service.analyze_sentiments(unanalyzed_records)
+
+            # Initialize counters
+            successful_count = 0
+            failed_count = 0
+
+            # Update database with results
+            if sentiment_results:
+                try:
+                    update_stats = self.repository.bulk_update_sentiment_analysis(
+                        sentiment_results,
+                        batch_id=batch_id
+                    )
+
+                    successful_count = update_stats["updated_count"]
+                    failed_count = update_stats["failed_count"]
+
+                    logger.info(f"Database update completed: {successful_count} successful, {failed_count} failed")
+
+                except Exception as db_error:
+                    logger.error(f"Database update failed: {str(db_error)}")
+                    failed_count = len(unanalyzed_records)
+                    errors.append(f"Database update error: {str(db_error)}")
+            else:
+                # No results from sentiment analysis
+                failed_count = len(unanalyzed_records)
+                if not errors:
+                    errors.append("No sentiment analysis results returned from API")
+
+            # Add any additional failures from errors list
+            if errors:
+                additional_failures = len(errors) - failed_count
+                if additional_failures > 0:
+                    failed_count += additional_failures
+
+            # Calculate processing time
+            processing_time = (get_indonesia_utc_now() - start_time).total_seconds()
+
+            # Build response
+            total_processed = successful_count + failed_count
+            success_rate = (successful_count / total_processed * 100) if total_processed > 0 else 0
+
+            message = f"Processed {total_processed} records: {successful_count} successful, {failed_count} failed"
+            if success_rate > 0:
+                message += f" ({success_rate:.1f}% success rate)"
+
+            return {
+                "success": successful_count > 0 or len(unanalyzed_records) == 0,
+                "message": message,
+                "data": {
+                    "total_found": len(unanalyzed_records),
+                    "processed": total_processed,
+                    "successful": successful_count,
+                    "failed": failed_count,
+                    "success_rate": round(success_rate, 2),
+                    "errors": errors[:10],  # Limit errors to first 10
+                    "processing_time_seconds": round(processing_time, 2),
+                    "batch_id": batch_id,
+                    "upload_batch_id": upload_batch_id,
+                    "started_at": start_time.isoformat(),
+                    "completed_at": get_indonesia_utc_now().isoformat()
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Error in sync sentiment analysis processing: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"Internal server error during sentiment analysis processing: {str(e)}",
+                "data": {
+                    "total_found": 0,
+                    "processed": 0,
+                    "successful": 0,
+                    "failed": 0,
+                    "errors": [str(e)],
+                    "processing_time_seconds": 0.0
+                }
+            }
+
     def _run_bulk_sentiment_analysis_background(self, limit: int, upload_batch_id: str, tracker_id: str = None) -> None:
         """
         Run bulk sentiment analysis in background thread

@@ -28,7 +28,7 @@ const toast = useToast();
 const selectedDealer = ref(null);
 const maxReviews = ref(10);
 const language = ref('id');
-const analyzeSentiment = ref(true);
+const analyzeSentiment = ref(false); // Always false - sentiment analysis is manual only
 const scraping = ref(false);
 const scrapeResult = ref(null);
 
@@ -123,7 +123,9 @@ const scrapeReviews = async () => {
     }
 };
 
-// Manual sentiment analysis
+// Manual sentiment analysis - synchronous processing
+const analyzingSentiment = ref(false);
+
 const analyzeSentimentManually = async () => {
     if (!selectedDealer.value) {
         toast.add({
@@ -135,24 +137,40 @@ const analyzeSentimentManually = async () => {
         return;
     }
 
-    // Show immediate info message that analysis is starting in background
-    toast.add({
-        severity: 'info',
-        summary: 'Processing',
-        detail: 'Sentiment analysis started in background. This may take a few minutes to complete.',
-        life: 5000
-    });
+    analyzingSentiment.value = true;
 
-    // Start sentiment analysis in background (fire and forget)
-    GoogleReviewService.analyzeSentiment({
-        dealer_id: selectedDealer.value,
-        limit: 100,
-        batch_size: 10
-    }).then(result => {
-        console.log('Background sentiment analysis completed:', result);
-    }).catch(error => {
-        console.error('Background sentiment analysis error:', error);
-    });
+    try {
+        const result = await GoogleReviewService.analyzeSentimentSync({
+            dealer_id: selectedDealer.value,
+            limit: 100
+        });
+
+        if (result.success) {
+            toast.add({
+                severity: 'success',
+                summary: 'Analysis Complete',
+                detail: `Processed ${result.data.successful_records}/${result.data.total_records} reviews successfully`,
+                life: 5000
+            });
+        } else {
+            toast.add({
+                severity: 'error',
+                summary: 'Analysis Failed',
+                detail: result.message || 'Failed to analyze sentiment',
+                life: 5000
+            });
+        }
+    } catch (error) {
+        console.error('Sentiment analysis error:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Analysis Error',
+            detail: error.response?.data?.detail || 'An error occurred during sentiment analysis',
+            life: 5000
+        });
+    } finally {
+        analyzingSentiment.value = false;
+    }
 };
 
 // Scraping history
@@ -283,8 +301,8 @@ onMounted(() => {
                         </div>
 
 
-                        <!-- Analyze Sentiment Option -->
-                        <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <!-- Analyze Sentiment Option - HIDDEN: Sentiment analysis is now manual only -->
+                        <!-- <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <Checkbox v-model="analyzeSentiment" inputId="sentiment-checkbox" :binary="true" />
                             <div class="flex-1">
                                 <label for="sentiment-checkbox" class="text-sm font-medium text-blue-800 cursor-pointer">
@@ -294,7 +312,7 @@ onMounted(() => {
                                     Automatically analyze sentiment after scraping reviews
                                 </p>
                             </div>
-                        </div>
+                        </div> -->
 
                         <!-- Scraping Instructions -->
                         <div class="p-3 bg-green-50 rounded-lg border border-green-200">
@@ -320,7 +338,8 @@ onMounted(() => {
                         <!-- Manual Sentiment Analysis -->
                         <Button
                             @click="analyzeSentimentManually"
-                            :disabled="!selectedDealer"
+                            :disabled="!selectedDealer || analyzingSentiment"
+                            :loading="analyzingSentiment"
                             label="Analyze Sentiment"
                             icon="pi pi-chart-line"
                             class="w-full"
