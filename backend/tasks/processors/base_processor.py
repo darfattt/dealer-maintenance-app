@@ -350,11 +350,12 @@ class BaseDataProcessor(ABC):
             # Validate response
             self.validate_api_response(api_data)
 
-            # Process records
+            # Process records (implementations handle their own commits for complex processors)
             records_processed = self.process_records(db, dealer_id, api_data)
 
-            # Commit all changes
-            db.commit()
+            # For simple processors, commit here. Complex processors (like PKB) handle their own commits.
+            if not hasattr(self, '_handles_own_commits') or not self._handles_own_commits:
+                db.commit()
 
             # Log successful fetch
             duration = int((datetime.utcnow() - start_time).total_seconds())
