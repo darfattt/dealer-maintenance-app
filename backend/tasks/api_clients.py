@@ -127,6 +127,22 @@ class APIConfigManager:
             "circuit_breaker_timeout": 300,  # Circuit breaker recovery timeout (5 min)
             "description": "Enhanced DGI API Configuration with Retry Logic"
         }
+    
+    @staticmethod
+    def get_default_prod_config() -> Dict[str, Any]:
+        """Get enhanced default API configuration"""
+        return {
+            "base_url": "https://gvt-apigateway.daya-dms.id/dgi-api/v1.3",
+            "timeout_seconds": 45,  # Increased from 30s
+            "connect_timeout": 10,  # Connection timeout
+            "read_timeout": 35,     # Read timeout
+            "retry_attempts": 3,
+            "retry_delay": 1.0,     # Base retry delay
+            "max_retry_delay": 30.0, # Max retry delay
+            "circuit_breaker_threshold": 5,  # Circuit breaker failure threshold
+            "circuit_breaker_timeout": 300,  # Circuit breaker recovery timeout (5 min)
+            "description": "Enhanced DGI API Configuration with Retry Logic"
+        }
 
     @staticmethod
     def create_enhanced_client_config(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -181,7 +197,7 @@ class PKBAPIClient:
     """Client for PKB (Service Record) API calls"""
     
     def __init__(self):
-        self.config = APIConfigManager.get_api_config("dgi_pkb_api") or APIConfigManager.get_default_config()
+        self.config = APIConfigManager.get_api_config("dgi_pkb_api") or APIConfigManager.get_default_prod_config()
         self.endpoint = "/pkb/read"
     
     def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str, no_work_order: str = "") -> Dict[str, Any]:
@@ -196,8 +212,8 @@ class PKBAPIClient:
             "dealerId": dealer_id,
             "noWorkOrder": no_work_order
         }
-        
-        url = f"{self.config['base_url']}{self.endpoint}"
+        base_prod_url = 'https://gvt-apigateway.daya-dms.id/dgi-api/v1.3'
+        url = f"{base_prod_url}{self.endpoint}"
         
         logger.info(f"Calling PKB API for dealer {dealer_id} at {url}")
         
@@ -813,7 +829,7 @@ class WorkshopInvoiceAPIClient:
     """Client for Workshop Invoice (INV2) API calls"""
 
     def __init__(self):
-        self.config = APIConfigManager.get_api_config("dgi_workshop_invoice_api") or APIConfigManager.get_default_config()
+        self.config = APIConfigManager.get_api_config("dgi_workshop_invoice_api") or APIConfigManager.get_default_prod_config()
         self.endpoint = "/inv2/read"
 
     def fetch_data(self, dealer_id: str, from_time: str, to_time: str, api_key: str, secret_key: str,
