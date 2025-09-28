@@ -209,68 +209,114 @@ class PKBDataProcessor(BaseDataProcessor):
                 # First, get the mapping of work order numbers to database IDs
                 work_orders = [record['no_work_order'] for record in pkb_records if record['no_work_order']]
                 if work_orders:
-                    pkb_mapping = {}
-                    pkb_query = db.query(PKBData.id, PKBData.no_work_order).filter(
-                        PKBData.dealer_id == dealer_id,
-                        PKBData.no_work_order.in_(work_orders)
-                    ).all()
+                    # Sanitize work orders and limit batch size to prevent SQL corruption
+                    sanitized_work_orders = []
+                    for wo in work_orders:
+                        if wo and isinstance(wo, str) and len(wo.strip()) > 0:
+                            # Clean the work order number to prevent SQL injection/corruption
+                            clean_wo = str(wo).strip()[:50]  # Limit length
+                            if clean_wo and clean_wo not in sanitized_work_orders:
+                                sanitized_work_orders.append(clean_wo)
 
-                    for pkb_id, work_order in pkb_query:
-                        pkb_mapping[work_order] = pkb_id
+                    if not sanitized_work_orders:
+                        self.logger.warning(f"No valid work orders found for service mapping in dealer {dealer_id}")
+                    else:
+                        pkb_mapping = {}
+                        # Process in smaller batches to prevent SQL parameter corruption
+                        batch_size = 50  # Limit to prevent parameter overflow
+                        for i in range(0, len(sanitized_work_orders), batch_size):
+                            batch_work_orders = sanitized_work_orders[i:i + batch_size]
+                            try:
+                                pkb_query = db.query(PKBData.id, PKBData.no_work_order).filter(
+                                    PKBData.dealer_id == dealer_id,
+                                    PKBData.no_work_order.in_(batch_work_orders)
+                                ).all()
 
-                    # Update service records with correct foreign keys
-                    valid_services = []
-                    for service in service_records:
-                        work_order = service.pop('work_order', None)
-                        if work_order and work_order in pkb_mapping:
-                            service['pkb_data_id'] = pkb_mapping[work_order]
-                            valid_services.append(service)
+                                for pkb_id, work_order in pkb_query:
+                                    pkb_mapping[work_order] = pkb_id
 
-                    if valid_services:
-                        # Bulk upsert services with conflict resolution
-                        services_processed = self.bulk_upsert(
-                            db,
-                            PKBService,
-                            valid_services,
-                            conflict_columns=['pkb_data_id', 'id_job'],
-                            batch_size=500
-                        )
+                            except Exception as query_error:
+                                self.logger.error(f"Error querying PKB mapping batch {i//batch_size + 1}: {query_error}")
+                                continue
 
-                        self.logger.info(f"Processed {services_processed} PKB services for dealer {dealer_id}")
+                        # Update service records with correct foreign keys
+                        valid_services = []
+                        for service in service_records:
+                            work_order = service.pop('work_order', None)
+                            if work_order and work_order in pkb_mapping:
+                                service['pkb_data_id'] = pkb_mapping[work_order]
+                                valid_services.append(service)
+
+                        if valid_services:
+                            # Bulk upsert services with conflict resolution
+                            services_processed = self.bulk_upsert(
+                                db,
+                                PKBService,
+                                valid_services,
+                                conflict_columns=['pkb_data_id', 'id_job'],
+                                batch_size=500
+                            )
+
+                            self.logger.info(f"Processed {services_processed} PKB services for dealer {dealer_id}")
+                        else:
+                            self.logger.warning(f"No valid services found after mapping for dealer {dealer_id}")
 
             # Process part records if any
             if part_records:
-                # Use the same mapping as services
+                # Use the same mapping approach as services with sanitization
                 work_orders = [record['no_work_order'] for record in pkb_records if record['no_work_order']]
                 if work_orders:
-                    pkb_mapping = {}
-                    pkb_query = db.query(PKBData.id, PKBData.no_work_order).filter(
-                        PKBData.dealer_id == dealer_id,
-                        PKBData.no_work_order.in_(work_orders)
-                    ).all()
+                    # Sanitize work orders and limit batch size to prevent SQL corruption
+                    sanitized_work_orders = []
+                    for wo in work_orders:
+                        if wo and isinstance(wo, str) and len(wo.strip()) > 0:
+                            # Clean the work order number to prevent SQL injection/corruption
+                            clean_wo = str(wo).strip()[:50]  # Limit length
+                            if clean_wo and clean_wo not in sanitized_work_orders:
+                                sanitized_work_orders.append(clean_wo)
 
-                    for pkb_id, work_order in pkb_query:
-                        pkb_mapping[work_order] = pkb_id
+                    if not sanitized_work_orders:
+                        self.logger.warning(f"No valid work orders found for parts mapping in dealer {dealer_id}")
+                    else:
+                        pkb_mapping = {}
+                        # Process in smaller batches to prevent SQL parameter corruption
+                        batch_size = 50  # Limit to prevent parameter overflow
+                        for i in range(0, len(sanitized_work_orders), batch_size):
+                            batch_work_orders = sanitized_work_orders[i:i + batch_size]
+                            try:
+                                pkb_query = db.query(PKBData.id, PKBData.no_work_order).filter(
+                                    PKBData.dealer_id == dealer_id,
+                                    PKBData.no_work_order.in_(batch_work_orders)
+                                ).all()
 
-                    # Update part records with correct foreign keys
-                    valid_parts = []
-                    for part in part_records:
-                        work_order = part.pop('work_order', None)
-                        if work_order and work_order in pkb_mapping:
-                            part['pkb_data_id'] = pkb_mapping[work_order]
-                            valid_parts.append(part)
+                                for pkb_id, work_order in pkb_query:
+                                    pkb_mapping[work_order] = pkb_id
 
-                    if valid_parts:
-                        # Bulk upsert parts with conflict resolution
-                        parts_processed = self.bulk_upsert(
-                            db,
-                            PKBPart,
-                            valid_parts,
-                            conflict_columns=['pkb_data_id', 'id_job', 'parts_number'],
-                            batch_size=500
-                        )
+                            except Exception as query_error:
+                                self.logger.error(f"Error querying PKB parts mapping batch {i//batch_size + 1}: {query_error}")
+                                continue
 
-                        self.logger.info(f"Processed {parts_processed} PKB parts for dealer {dealer_id}")
+                        # Update part records with correct foreign keys
+                        valid_parts = []
+                        for part in part_records:
+                            work_order = part.pop('work_order', None)
+                            if work_order and work_order in pkb_mapping:
+                                part['pkb_data_id'] = pkb_mapping[work_order]
+                                valid_parts.append(part)
+
+                        if valid_parts:
+                            # Bulk upsert parts with conflict resolution
+                            parts_processed = self.bulk_upsert(
+                                db,
+                                PKBPart,
+                                valid_parts,
+                                conflict_columns=['pkb_data_id', 'id_job', 'parts_number'],
+                                batch_size=500
+                            )
+
+                            self.logger.info(f"Processed {parts_processed} PKB parts for dealer {dealer_id}")
+                        else:
+                            self.logger.warning(f"No valid parts found after mapping for dealer {dealer_id}")
 
             self.logger.info(f"Successfully processed {main_processed} PKB records for dealer {dealer_id}")
 
