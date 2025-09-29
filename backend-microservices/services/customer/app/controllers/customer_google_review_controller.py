@@ -575,11 +575,12 @@ class CustomerGoogleReviewController:
                 )
 
             # Check if dealer has any Google Reviews data that need sentiment analysis
+            # Use same query as sync method for consistency
             unanalyzed_reviews_count = self.db.query(GoogleReviewDetail).filter(
                 GoogleReviewDetail.dealer_id == request.dealer_id,
                 GoogleReviewDetail.review_text.isnot(None),
                 GoogleReviewDetail.review_text != "",
-                GoogleReviewDetail.sentiment.is_(None)
+                GoogleReviewDetail.sentiment_analyzed_at.is_(None)  # Changed from sentiment.is_(None)
             ).count()
 
             if unanalyzed_reviews_count == 0:
@@ -604,7 +605,7 @@ class CustomerGoogleReviewController:
                 dealer_id=request.dealer_id,
                 dealer_name=dealer.dealer_name,
                 scrape_type=self._validate_scrape_type('MANUAL'),  # Validate scrape type
-                max_reviews_requested=request.limit,
+                max_reviews_requested=unanalyzed_reviews_count,
                 language='id',  # Default language
                 scrape_status='COMPLETED',  # Scraping is not needed, only sentiment
                 scraped_reviews=unanalyzed_reviews_count,
@@ -619,11 +620,11 @@ class CustomerGoogleReviewController:
             self.db.refresh(tracker)
 
             try:
-                # Start background sentiment analysis using thread pool
+                # Start background sentiment analysis using thread pool for manual analysis
                 loop = asyncio.get_event_loop()
                 loop.run_in_executor(
                     self.thread_pool,
-                    self._run_sentiment_analysis_background,
+                    self._run_manual_sentiment_analysis_background,
                     request.dealer_id,
                     request.limit,
                     str(tracker.id)
@@ -1322,6 +1323,167 @@ class CustomerGoogleReviewController:
         except Exception as e:
             logger.error(f"Critical error in background sentiment analysis for dealer {dealer_id}: {str(e)}", exc_info=True)
 
+    def _run_manual_sentiment_analysis_background(self, dealer_id: str, limit: int, tracker_id: str) -> None:
+        """
+        Run manual sentiment analysis for unanalyzed reviews in background thread
+
+        Args:
+            dealer_id: Dealer ID to analyze reviews for
+            limit: Maximum number of reviews to analyze
+            tracker_id: Tracker ID to update status
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        try:
+            sentiment_start_time = datetime.now()
+            print(f"Starting background manual sentiment analysis for dealer {dealer_id} (tracker: {tracker_id})")
+
+            # Create new database session for background thread
+            from app.dependencies import db_manager
+            background_db = next(db_manager.get_session())
+            try:
+                # Get tracker record
+                tracker = background_db.query(GoogleReviewScrapeTracker).filter(
+                    GoogleReviewScrapeTracker.id == tracker_id
+                ).first()
+
+                if not tracker:
+                    logger.error(f"Tracker {tracker_id} not found for background manual sentiment analysis")
+                    return
+
+                try:
+                    # Import sentiment service
+                    from app.services.sentiment_analysis_service import SentimentAnalysisService
+                    sentiment_service = SentimentAnalysisService()
+
+                    # Get unanalyzed Google Review Details where review_text is not null and sentiment_analyzed_at is null
+                    unanalyzed_reviews = background_db.query(GoogleReviewDetail).filter(
+                        GoogleReviewDetail.dealer_id == dealer_id,
+                        GoogleReviewDetail.review_text.isnot(None),
+                        GoogleReviewDetail.review_text != "",
+                        GoogleReviewDetail.sentiment_analyzed_at.is_(None)
+                    ).limit(limit).all()
+
+                    if not unanalyzed_reviews:
+                        logger.info(f"No unanalyzed reviews found for dealer {dealer_id}")
+                        tracker.sentiment_analysis_status = 'COMPLETED'
+                        tracker.sentiment_analyzed_count = 0
+                        tracker.sentiment_failed_count = 0
+                        tracker.sentiment_duration_seconds = int((datetime.now() - sentiment_start_time).total_seconds())
+                        background_db.commit()
+                        return
+
+                    # Prepare records for sentiment analysis (same format as customer satisfaction)
+                    formatted_records = []
+                    for review in unanalyzed_reviews:
+                        formatted_records.append({
+                            "id": str(review.id),
+                            "no_tiket": review.review_id or "",  # Add null handling like Customer Satisfaction
+                            "review": review.review_text or ""
+                        })
+
+                    print(f"📊 Processing {len(formatted_records)} records for sentiment analysis")
+                    print(f"📝 Sample record: {formatted_records[0] if formatted_records else 'None'}")
+
+                    # Run sentiment analysis asynchronously in background thread
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                    try:
+                        # Process sentiment analysis
+                        sentiment_results, errors = loop.run_until_complete(
+                            sentiment_service.analyze_sentiments(formatted_records)
+                        )
+
+                        print(f"✅ Sentiment Results Count: {len(sentiment_results) if sentiment_results else 0}")
+                        print(f"❌ Errors Count: {len(errors) if errors else 0}")
+                        if errors:
+                            print(f"🚨 First error: {errors[0] if errors else 'None'}")
+                        if sentiment_results:
+                            print(f"📄 Sample result: {sentiment_results[0] if sentiment_results else 'None'}")
+
+                        # Update GoogleReviewDetail records with sentiment results
+                        successful_count = 0
+                        failed_count = 0
+
+                        for result in sentiment_results:
+                            try:
+                                record_id = result.get('id')
+                                review_record = background_db.query(GoogleReviewDetail).filter(
+                                    GoogleReviewDetail.id == record_id
+                                ).first()
+
+                                if review_record:
+                                    # Update sentiment fields - Fixed to match sentiment analysis service output
+                                    review_record.sentiment = result.get('sentiment')
+                                    review_record.sentiment_score = result.get('sentiment_score')
+                                    review_record.sentiment_reasons = result.get('sentiment_reasons')
+                                    review_record.sentiment_suggestion = result.get('sentiment_suggestion')
+                                    review_record.sentiment_themes = result.get('sentiment_themes')
+                                    review_record.sentiment_analyzed_at = result.get('sentiment_analyzed_at')
+                                    review_record.sentiment_batch_id = result.get('sentiment_batch_id')
+
+                                    successful_count += 1
+
+                            except Exception as e:
+                                failed_count += 1
+                                errors.append(f"Failed to update record {record_id}: {str(e)}")
+
+                        # Handle failed sentiment analysis errors
+                        for error in errors:
+                            failed_count += 1
+
+                        # Commit all changes
+                        background_db.commit()
+
+                        # Update tracker with results
+                        tracker.sentiment_analysis_status = 'COMPLETED'
+                        tracker.sentiment_analyzed_count = successful_count
+                        tracker.sentiment_failed_count = failed_count
+                        tracker.sentiment_duration_seconds = int((datetime.now() - sentiment_start_time).total_seconds())
+
+                        if failed_count > 0:
+                            tracker.warning_message = f"Sentiment analysis completed with {failed_count} failures"
+
+                        background_db.commit()
+
+                        logger.info(f"Background manual sentiment analysis completed for dealer {dealer_id}: "
+                                  f"{successful_count} analyzed, {failed_count} failed")
+
+                    finally:
+                        loop.close()
+
+                except Exception as sentiment_error:
+                    logger.error(f"Error during background manual sentiment analysis for dealer {dealer_id}: {str(sentiment_error)}")
+                    try:
+                        # Rollback any failed transaction before updating tracker
+                        background_db.rollback()
+
+                        # Re-fetch tracker to ensure we have a clean state
+                        tracker = background_db.query(GoogleReviewScrapeTracker).filter(
+                            GoogleReviewScrapeTracker.id == tracker_id
+                        ).first()
+
+                        if tracker:
+                            tracker.sentiment_analysis_status = 'FAILED'
+                            tracker.warning_message = f"Background manual sentiment analysis error: {str(sentiment_error)}"
+                            tracker.sentiment_duration_seconds = int((datetime.now() - sentiment_start_time).total_seconds())
+                            background_db.commit()
+                    except Exception as update_error:
+                        logger.error(f"Failed to update tracker after error: {str(update_error)}")
+                        try:
+                            background_db.rollback()
+                        except:
+                            pass  # Ignore rollback errors
+
+            finally:
+                background_db.close()
+
+        except Exception as e:
+            logger.error(f"Critical error in background manual sentiment analysis for dealer {dealer_id}: {str(e)}", exc_info=True)
+
     async def sync_process_google_review_sentiment_analysis(
         self,
         dealer_id: str,
@@ -1362,7 +1524,7 @@ class CustomerGoogleReviewController:
                 GoogleReviewDetail.review_text.isnot(None),
                 GoogleReviewDetail.review_text != "",
                 GoogleReviewDetail.sentiment_analyzed_at.is_(None)
-            ).limit(limit).all()
+            )
 
             if not unanalyzed_reviews:
                 return {
@@ -1383,13 +1545,21 @@ class CustomerGoogleReviewController:
             for review in unanalyzed_reviews:
                 formatted_records.append({
                     "id": str(review.id),
-                    "no_tiket": review.dealer_id,  # Use dealer_id as identifier
+                    "no_tiket": review.review_id or "",  # Add null handling like Customer Satisfaction
                     "review": review.review_text or ""
                 })
 
+            print(f"📊 Processing {len(formatted_records)} records for sentiment analysis")
+            print(f"📝 Sample record: {formatted_records[0] if formatted_records else 'None'}")
+
             # Process sentiment analysis
             sentiment_results, errors = await sentiment_service.analyze_sentiments(formatted_records)
-
+            print(f"✅ Sentiment Results Count: {len(sentiment_results) if sentiment_results else 0}")
+            print(f"❌ Errors Count: {len(errors) if errors else 0}")
+            if errors:
+                print(f"🚨 First error: {errors[0] if errors else 'None'}")
+            if sentiment_results:
+                print(f"📄 Sample result: {sentiment_results[0] if sentiment_results else 'None'}")
             # Update GoogleReviewDetail records with sentiment results
             successful_count = 0
             failed_count = 0
@@ -1402,12 +1572,14 @@ class CustomerGoogleReviewController:
                     ).first()
 
                     if review_record:
-                        # Update sentiment fields
+                        # Update sentiment fields - Fixed to match sentiment analysis service output
                         review_record.sentiment = result.get('sentiment')
                         review_record.sentiment_score = result.get('sentiment_score')
-                        review_record.sentiment_confidence = result.get('confidence')
-                        review_record.sentiment_themes = result.get('themes')
-                        review_record.sentiment_analyzed_at = datetime.now()
+                        review_record.sentiment_reasons = result.get('sentiment_reasons')
+                        review_record.sentiment_suggestion = result.get('sentiment_suggestion')
+                        review_record.sentiment_themes = result.get('sentiment_themes')
+                        review_record.sentiment_analyzed_at = result.get('sentiment_analyzed_at')
+                        review_record.sentiment_batch_id = result.get('sentiment_batch_id')
 
                         successful_count += 1
 

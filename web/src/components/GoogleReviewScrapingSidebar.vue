@@ -123,7 +123,7 @@ const scrapeReviews = async () => {
     }
 };
 
-// Manual sentiment analysis - synchronous processing
+// Manual sentiment analysis - background processing
 const analyzingSentiment = ref(false);
 
 const analyzeSentimentManually = async () => {
@@ -140,23 +140,41 @@ const analyzeSentimentManually = async () => {
     analyzingSentiment.value = true;
 
     try {
-        const result = await GoogleReviewService.analyzeSentimentSync({
+        const result = await GoogleReviewService.analyzeSentiment({
             dealer_id: selectedDealer.value,
-            limit: 100
+            limit: 100,
+            batch_size: 10
         });
 
         if (result.success) {
-            toast.add({
-                severity: 'success',
-                summary: 'Analysis Complete',
-                detail: `Processed ${result.data.successful_records}/${result.data.total_records} reviews successfully`,
-                life: 5000
-            });
+            const totalReviews = result.data.total_reviews || 0;
+            const trackerId = result.data.tracker_id;
+
+            if (totalReviews === 0) {
+                toast.add({
+                    severity: 'info',
+                    summary: 'No Reviews to Analyze',
+                    detail: 'All reviews for this dealer have already been analyzed',
+                    life: 5000
+                });
+            } else {
+                toast.add({
+                    severity: 'success',
+                    summary: 'Analysis Started',
+                    detail: `Sentiment analysis started for ${totalReviews} reviews. Processing in background...`,
+                    life: 5000
+                });
+
+                // Refresh history after a short delay to show the new tracker
+                setTimeout(() => {
+                    refreshHistory();
+                }, 2000);
+            }
         } else {
             toast.add({
                 severity: 'error',
                 summary: 'Analysis Failed',
-                detail: result.message || 'Failed to analyze sentiment',
+                detail: result.message || 'Failed to start sentiment analysis',
                 life: 5000
             });
         }
@@ -165,7 +183,7 @@ const analyzeSentimentManually = async () => {
         toast.add({
             severity: 'error',
             summary: 'Analysis Error',
-            detail: error.response?.data?.detail || 'An error occurred during sentiment analysis',
+            detail: error.response?.data?.detail || 'An error occurred while starting sentiment analysis',
             life: 5000
         });
     } finally {
