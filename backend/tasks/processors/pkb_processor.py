@@ -28,17 +28,17 @@ class PKBDataProcessor(BaseDataProcessor):
     def fetch_api_data(self, dealer: Dealer, from_time: str, to_time: str, **kwargs) -> Dict[str, Any]:
         """Fetch PKB data from API or dummy source"""
         try:
-            self.logger.info(f"Fetching PKB data for dealer {dealer.dealer_id}")
+            self.logger.info(f"Fetching PKB data for dealer {dealer.dealer_id} > {from_time} - {to_time}")
 
             # Check if dealer has API credentials
             if not dealer.api_key or not dealer.secret_key:
                 self.logger.info(f"No API credentials for dealer {dealer.dealer_id}, using dummy data")
-                return get_dummy_pkb_data(dealer.dealer_id, from_time, to_time)
+                return None # get_dummy_pkb_data(dealer.dealer_id, from_time, to_time)
 
             # Check if dealer should use dummy data
-            if should_use_dummy_data(dealer.dealer_id):
-                self.logger.info(f"Using dummy PKB data for dealer {dealer.dealer_id}")
-                return get_dummy_pkb_data(dealer.dealer_id, from_time, to_time)
+            #if should_use_dummy_data(dealer.dealer_id):
+            #    self.logger.info(f"Using dummy PKB data for dealer {dealer.dealer_id}")
+            #    return get_dummy_pkb_data(dealer.dealer_id, from_time, to_time)
 
             # Make API call
             client = PKBAPIClient()
@@ -339,8 +339,11 @@ class PKBDataProcessor(BaseDataProcessor):
                 self.logger.warning(f"No PKB mappings found for {record_type} in dealer {dealer_id}")
                 return 0
 
-            # Update child records with correct foreign keys
+            # Update child records with correct foreign keys and deduplicate
             valid_records = []
+            seen_constraints = set()
+            duplicates_removed = 0
+
             for record in child_records:
                 # Create a copy to avoid mutating the original
                 record_copy = record.copy()
@@ -348,12 +351,34 @@ class PKBDataProcessor(BaseDataProcessor):
 
                 if work_order and work_order in pkb_mapping:
                     record_copy['pkb_data_id'] = pkb_mapping[work_order]
-                    valid_records.append(record_copy)
+
+                    # Create constraint tuple based on record type
+                    if record_type == "services":
+                        # For PKBService: unique constraint is (pkb_data_id, id_job)
+                        constraint_key = (record_copy.get('pkb_data_id'), record_copy.get('id_job'))
+                    else:  # parts
+                        # For PKBPart: unique constraint is (pkb_data_id, id_job, parts_number)
+                        constraint_key = (
+                            record_copy.get('pkb_data_id'),
+                            record_copy.get('id_job'),
+                            record_copy.get('parts_number')
+                        )
+
+                    # Check for duplicates based on unique constraint
+                    if constraint_key not in seen_constraints:
+                        seen_constraints.add(constraint_key)
+                        valid_records.append(record_copy)
+                    else:
+                        duplicates_removed += 1
+                        self.logger.debug(f"Removing duplicate {record_type} record with constraint: {constraint_key}")
                 else:
                     self.logger.debug(f"Skipping {record_type} record - work order {work_order} not found in PKB mapping")
 
+            if duplicates_removed > 0:
+                self.logger.info(f"Removed {duplicates_removed} duplicate {record_type} records for dealer {dealer_id}")
+
             if not valid_records:
-                self.logger.warning(f"No valid {record_type} records found after FK mapping for dealer {dealer_id}")
+                self.logger.warning(f"No valid {record_type} records found after FK mapping and deduplication for dealer {dealer_id}")
                 return 0
 
             # Bulk upsert child records with conflict resolution

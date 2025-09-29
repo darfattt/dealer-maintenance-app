@@ -205,7 +205,7 @@ class PKBAPIClient:
         # Generate token using token manager
         token_manager = DGITokenManager(api_key, secret_key)
         headers = token_manager.get_headers()
-        
+        print(f"Headers : {headers}")
         payload = {
             "fromTime": from_time,
             "toTime": to_time,
@@ -215,7 +215,7 @@ class PKBAPIClient:
         base_prod_url = 'https://gvt-apigateway.daya-dms.id/dgi-api/v1.3'
         url = f"{base_prod_url}{self.endpoint}"
         
-        logger.info(f"Calling PKB API for dealer {dealer_id} at {url}")
+        logger.info(f"Calling PKB API for dealer {dealer_id} at {url} with payload {payload}" )
         
         with httpx.Client(timeout=self.config['timeout_seconds']) as client:
             response = client.post(url, headers=headers, json=payload)
