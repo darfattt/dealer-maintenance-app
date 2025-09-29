@@ -161,7 +161,7 @@ const analyzeSentimentManually = async () => {
                 toast.add({
                     severity: 'success',
                     summary: 'Analysis Started',
-                    detail: `Sentiment analysis started for ${totalReviews} reviews. Processing in background...`,
+                    detail: `Sentiment analysis started for ${totalReviews} reviews. Processing in background, please wait for a moment...`,
                     life: 5000
                 });
 
