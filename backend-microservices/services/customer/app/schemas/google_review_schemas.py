@@ -524,6 +524,8 @@ class ScrapeTrackerSummary(BaseModel):
     business_name: Optional[str] = None
     analyze_sentiment_enabled: bool
     sentiment_analysis_status: Optional[str] = None
+    sentiment_analyzed_count: int = 0
+    sentiment_failed_count: int = 0
     sentiment_completion_rate: float
     scrape_date: datetime
     completed_date: Optional[datetime] = None
@@ -561,6 +563,8 @@ class ScrapeTrackerSummary(BaseModel):
             business_name=tracker.business_name,
             analyze_sentiment_enabled=tracker.analyze_sentiment_enabled,
             sentiment_analysis_status=tracker.sentiment_analysis_status,
+            sentiment_analyzed_count=tracker.sentiment_analyzed_count or 0,
+            sentiment_failed_count=tracker.sentiment_failed_count or 0,
             sentiment_completion_rate=round(sentiment_completion_rate, 1),
             scrape_date=tracker.scrape_date,
             completed_date=tracker.completed_date,

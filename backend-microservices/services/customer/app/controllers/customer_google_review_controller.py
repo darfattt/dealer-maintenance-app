@@ -1374,17 +1374,8 @@ class CustomerGoogleReviewController:
                         background_db.commit()
                         return
 
-                    # Prepare records for sentiment analysis (same format as customer satisfaction)
-                    formatted_records = []
-                    for review in unanalyzed_reviews:
-                        formatted_records.append({
-                            "id": str(review.id),
-                            "no_tiket": review.review_id or "",  # Add null handling like Customer Satisfaction
-                            "review": review.review_text or ""
-                        })
-
-                    print(f"📊 Processing {len(formatted_records)} records for sentiment analysis")
-                    print(f"📝 Sample record: {formatted_records[0] if formatted_records else 'None'}")
+                    # Process records one by one for sentiment analysis
+                    print(f"📊 Processing {len(unanalyzed_reviews)} records for sentiment analysis (one by one)")
 
                     # Run sentiment analysis asynchronously in background thread
                     import asyncio
@@ -1392,17 +1383,61 @@ class CustomerGoogleReviewController:
                     asyncio.set_event_loop(loop)
 
                     try:
-                        # Process sentiment analysis
-                        sentiment_results, errors = loop.run_until_complete(
-                            sentiment_service.analyze_sentiments(formatted_records)
-                        )
+                        # Process sentiment analysis one record at a time
+                        sentiment_results = []
+                        errors = []
 
-                        print(f"✅ Sentiment Results Count: {len(sentiment_results) if sentiment_results else 0}")
-                        print(f"❌ Errors Count: {len(errors) if errors else 0}")
+                        for index, review in enumerate(unanalyzed_reviews, 1):
+                            try:
+                                # Prepare single record
+                                single_record = [{
+                                    "id": str(review.id),
+                                    "no_tiket": str(review.id) or "",
+                                    "review": review.review_text or ""
+                                }]
+
+                                print(f"📝 Processing record {index}/{len(unanalyzed_reviews)}: ID {review.id}")
+
+                                # Analyze single record
+                                results, record_errors = loop.run_until_complete(
+                                    sentiment_service.analyze_sentiments(single_record)
+                                )
+
+                                # Accumulate results
+                                if results:
+                                    sentiment_results.extend(results)
+                                    # Update tracker with successful analysis
+                                    tracker.sentiment_analyzed_count += len(results)
+
+                                if record_errors:
+                                    errors.extend(record_errors)
+                                    # Update tracker with failed analysis
+                                    tracker.sentiment_failed_count += len(record_errors)
+
+                                # Commit tracker updates periodically (every 5 records) or on last record
+                                if index % 5 == 0 or index == len(unanalyzed_reviews):
+                                    try:
+                                        background_db.commit()
+                                        logger.info(f"Tracker updated: {tracker.sentiment_analyzed_count} analyzed, "
+                                                  f"{tracker.sentiment_failed_count} failed "
+                                                  f"(completion rate: {tracker.sentiment_completion_rate}%)")
+                                    except Exception as commit_error:
+                                        logger.warning(f"Failed to commit tracker update: {str(commit_error)}")
+                                        background_db.rollback()
+
+                            except Exception as e:
+                                error_msg = f"Failed to process record {review.id}: {str(e)}"
+                                print(f"❌ {error_msg}")
+                                errors.append(error_msg)
+                                # Update failed count
+                                tracker.sentiment_failed_count += 1
+
+                        print(f"✅ Sentiment Results Count: {len(sentiment_results)}")
+                        print(f"❌ Errors Count: {len(errors)}")
                         if errors:
-                            print(f"🚨 First error: {errors[0] if errors else 'None'}")
+                            print(f"🚨 First error: {errors[0]}")
                         if sentiment_results:
-                            print(f"📄 Sample result: {sentiment_results[0] if sentiment_results else 'None'}")
+                            print(f"📄 Sample result: {sentiment_results[0]}")
 
                         # Update GoogleReviewDetail records with sentiment results
                         successful_count = 0
@@ -1540,26 +1575,44 @@ class CustomerGoogleReviewController:
                     }
                 }
 
-            # Prepare records for sentiment analysis (same format as customer satisfaction)
-            formatted_records = []
-            for review in unanalyzed_reviews:
-                formatted_records.append({
-                    "id": str(review.id),
-                    "no_tiket": review.review_id or "",  # Add null handling like Customer Satisfaction
-                    "review": review.review_text or ""
-                })
+            # Process records one by one for sentiment analysis
+            print(f"📊 Processing {len(unanalyzed_reviews)} records for sentiment analysis (one by one)")
 
-            print(f"📊 Processing {len(formatted_records)} records for sentiment analysis")
-            print(f"📝 Sample record: {formatted_records[0] if formatted_records else 'None'}")
+            # Process sentiment analysis one record at a time
+            sentiment_results = []
+            errors = []
 
-            # Process sentiment analysis
-            sentiment_results, errors = await sentiment_service.analyze_sentiments(formatted_records)
-            print(f"✅ Sentiment Results Count: {len(sentiment_results) if sentiment_results else 0}")
-            print(f"❌ Errors Count: {len(errors) if errors else 0}")
+            for index, review in enumerate(unanalyzed_reviews, 1):
+                try:
+                    # Prepare single record
+                    single_record = [{
+                        "id": str(review.id),
+                        "no_tiket": str(review.id) or "",
+                        "review": review.review_text or ""
+                    }]
+
+                    print(f"📝 Processing record {index}/{len(unanalyzed_reviews)}: ID {review.id}")
+
+                    # Analyze single record
+                    results, record_errors = await sentiment_service.analyze_sentiments(single_record)
+
+                    # Accumulate results
+                    if results:
+                        sentiment_results.extend(results)
+                    if record_errors:
+                        errors.extend(record_errors)
+
+                except Exception as e:
+                    error_msg = f"Failed to process record {review.id}: {str(e)}"
+                    print(f"❌ {error_msg}")
+                    errors.append(error_msg)
+
+            print(f"✅ Sentiment Results Count: {len(sentiment_results)}")
+            print(f"❌ Errors Count: {len(errors)}")
             if errors:
-                print(f"🚨 First error: {errors[0] if errors else 'None'}")
+                print(f"🚨 First error: {errors[0]}")
             if sentiment_results:
-                print(f"📄 Sample result: {sentiment_results[0] if sentiment_results else 'None'}")
+                print(f"📄 Sample result: {sentiment_results[0]}")
             # Update GoogleReviewDetail records with sentiment results
             successful_count = 0
             failed_count = 0

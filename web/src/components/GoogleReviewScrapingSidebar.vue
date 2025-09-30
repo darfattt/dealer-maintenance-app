@@ -439,15 +439,20 @@ onMounted(() => {
                                 </div>
                                 <div class="flex flex-col gap-1 ml-2">
                                     <Tag :value="scrape.scrape_status" :severity="getStatusSeverity(scrape.scrape_status)" class="text-xs" />
-                                    <!-- <Tag v-if="scrape.analyze_sentiment_enabled && scrape.sentiment_analysis_status"
+                                    <Tag v-if="scrape.analyze_sentiment_enabled && scrape.sentiment_analysis_status"
                                          :value="scrape.sentiment_analysis_status"
                                          :severity="getSentimentStatusSeverity(scrape.sentiment_analysis_status)"
-                                         class="text-xs" /> -->
+                                         class="text-xs" />
                                 </div>
                             </div>
                             <div class="text-xs text-gray-600 mt-2">
                                 {{ scrape.scraped_reviews || 0 }} reviews • {{ scrape.success_rate || 0 }}% success
-                                <span v-if="scrape.sentiment_completion_rate !== undefined"> • {{ scrape.sentiment_completion_rate }}% sentiment</span>
+                                <span v-if="scrape.analyze_sentiment_enabled && scrape.sentiment_analyzed_count !== undefined">
+                                    <br/>
+                                    Sentiment: {{ scrape.sentiment_analyzed_count || 0 }} analyzed
+                                    <span v-if="scrape.sentiment_failed_count > 0">, {{ scrape.sentiment_failed_count }} failed</span>
+                                    • {{ scrape.sentiment_completion_rate || 0 }}% complete
+                                </span>
                             </div>
                         </div>
                     </div>
