@@ -18,7 +18,7 @@ const model = ref([
             // Hide Dashboard items for DEALER_USER role
             ...(!isDealerUser.value
                 ? [
-                      { label: 'H1 (Work In Progress)', icon: 'pi pi-fw pi-chart-bar' },
+                    //   { label: 'H1 (Work In Progress)', icon: 'pi pi-fw pi-chart-bar' },
                       { label: 'H23', icon: 'pi pi-fw pi-chart-line', to: '/h23-dashboard' }
                   ]
                 : [])
