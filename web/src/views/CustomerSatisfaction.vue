@@ -7,6 +7,7 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import Dropdown from 'primevue/dropdown';
 import DatePicker from 'primevue/datepicker';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
@@ -45,6 +46,10 @@ const overallRating = ref(null);
 const sentimentStatistics = ref(null);
 const sentimentThemesStatistics = ref(null);
 const searchTrigger = ref(0);
+
+// Dealer selection state (for SUPER_ADMIN)
+const dealerOptions = ref([]);
+const loadingDealers = ref(false);
 
 // Dialog state for details popup
 const showDetailsDialog = ref(false);
@@ -87,7 +92,6 @@ const formattedDateFrom = computed(() => {
 const formattedDateTo = computed(() => {
     return selectedDateTo.value ? formatDateForAPI(selectedDateTo.value) : null;
 });
-
 
 // Load data
 const loadData = async () => {
@@ -202,7 +206,36 @@ const handleSearch = () => {
 // Pagination handler
 const onPageChange = (event) => {
     pagination.page = event.page + 1;
+    pagination.page_size = event.rows;
     loadData();
+};
+
+// Load dealer options for SUPER_ADMIN
+const loadDealerOptions = async () => {
+    if (!showAhassFilter.value) return; // Only for SUPER_ADMIN
+
+    loadingDealers.value = true;
+    try {
+        const result = await CustomerService.getActiveDealers();
+        if (result.success) {
+            dealerOptions.value = result.data.map(dealer => ({
+                label: dealer.dealer_name || dealer.dealer_id,
+                value: dealer.dealer_id,
+                dealer_id: dealer.dealer_id,
+                dealer_name: dealer.dealer_name
+            }));
+        }
+    } catch (error) {
+        console.error('Error loading dealer options:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load dealer options',
+            life: 3000
+        });
+    } finally {
+        loadingDealers.value = false;
+    }
 };
 
 // Filter actions
@@ -291,7 +324,6 @@ const getRatingSeverity = (rating) => {
     if (ratingNum >= 3) return 'warning';
     return 'danger';
 };
-
 
 // Overall rating card helper functions
 const getStarColor = (starPosition, rating) => {
@@ -393,7 +425,12 @@ const parseSentimentThemes = (themesString) => {
 };
 
 // Initialize
-onMounted(() => {
+onMounted(async () => {
+    // Load dealer options for SUPER_ADMIN
+    if (showAhassFilter.value) {
+        await loadDealerOptions();
+    }
+
     loadData();
     loadLastUploadInfo();
 });
@@ -403,10 +440,21 @@ onMounted(() => {
     <div class="space-y-6">
         <!-- Filter Controls -->
         <div class="flex justify-end items-center space-x-4 mb-6">
-            <!-- No AHASS Filter (Only for SUPER_ADMIN) -->
+            <!-- Dealer Selection (Only for SUPER_ADMIN) -->
             <div v-if="showAhassFilter" class="flex items-center space-x-2">
-                <label for="ahass-filter" class="text-sm font-medium">No AHASS:</label>
-                <InputText id="ahass-filter" v-model="filters.no_ahass" placeholder="Enter No AHASS" class="w-36" />
+                <label for="dealer-filter" class="text-sm font-medium">Dealer:</label>
+                <Dropdown
+                    id="dealer-filter"
+                    v-model="filters.no_ahass"
+                    :options="dealerOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Dealer"
+                    :loading="loadingDealers"
+                    class="w-48"
+                    :filter="true"
+                    filterPlaceholder="Search dealers..."
+                />
             </div>
 
             <!-- Date Range Filters -->
@@ -593,8 +641,8 @@ onMounted(() => {
                         </template>
                     </Column>
 
-                     <!-- Sentiment Column -->
-                     <Column field="sentiment" header="Sentiment" style="min-width: 120px">
+                    <!-- Sentiment Column -->
+                    <Column field="sentiment" header="Sentiment" style="min-width: 120px">
                         <template #body="{ data }">
                             <div v-if="data.sentiment" class="flex align-items-center gap-2">
                                 <Tag :value="data.sentiment" :severity="getSentimentSeverity(data.sentiment)" class="text-xs" />
@@ -609,8 +657,6 @@ onMounted(() => {
                             <span class="text-sm">{{ data.indikasi_keluhan || '-' }}</span>
                         </template>
                     </Column>
-
-                   
 
                     <!-- Rating Column -->
                     <Column field="rating" header="Rating" style="min-width: 100px">
@@ -634,12 +680,12 @@ onMounted(() => {
                 </DataTable>
 
                 <!-- Pagination -->
-                <Paginator  :rows="pagination.page_size" :totalRecords="pagination.total_count" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
+                <Paginator :rows="pagination.page_size" :totalRecords="pagination.total_count" :rowsPerPageOptions="[10, 20, 50]" @page="onPageChange" class="mt-4" />
 
                 <!-- Simplified Latest Upload Info -->
-                <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-surface-700 dark:to-surface-800 rounded-xl border border-blue-200 dark:border-surface-600 shadow-sm">
+                <div v-if="lastUploadInfo" class="mt-6 p-4 bg-gradient-to-r from-green-50 to-indigo-50 dark:from-surface-700 dark:to-surface-800 rounded-xl border border-green-200 dark:border-surface-600 shadow-sm">
                     <div class="flex items-center space-x-3">
-                        <div class="flex items-center justify-center w-10 h-10 bg-blue-500 dark:bg-blue-600 text-white rounded-full">
+                        <div class="flex items-center justify-center w-10 h-10 bg-green-500 dark:bg-green-600 text-white rounded-full">
                             <i class="pi pi-calendar text-lg"></i>
                         </div>
                         <div class="flex-1">

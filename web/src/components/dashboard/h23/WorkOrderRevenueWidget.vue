@@ -30,7 +30,7 @@ const formatCurrency = (amount) => {
     if (amount === null || amount === undefined || amount === 0) {
         return 'Rp 0';
     }
-    
+
     // Convert to number and format with thousands separators
     const formatted = new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -38,7 +38,7 @@ const formatCurrency = (amount) => {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     }).format(amount);
-    
+
     return formatted;
 };
 
@@ -101,7 +101,7 @@ onMounted(() => {
                         {{ formatCurrency(revenueData.total_revenue) }}
                     </div>
                 </div>
-                
+
                 <!-- Records Information -->
                 <div class="text-sm text-muted-color">
                     <span>{{ revenueData.total_records }} work orders</span>
@@ -117,9 +117,7 @@ onMounted(() => {
             <!-- No Data State -->
             <div v-if="!loading && !error && Object.keys(revenueData).length === 0" class="text-center py-6">
                 <div class="mb-4">
-                    <div class="text-4xl md:text-5xl font-bold text-gray-400 dark:text-gray-500 leading-tight">
-                        Rp 0
-                    </div>
+                    <div class="text-4xl md:text-5xl font-bold text-gray-400 dark:text-gray-500 leading-tight">Rp 0</div>
                 </div>
                 <p class="text-muted-color text-sm">No revenue data available</p>
             </div>
@@ -146,7 +144,7 @@ onMounted(() => {
         font-size: 2rem;
         line-height: 2.5rem;
     }
-    
+
     .md\:text-5xl {
         font-size: 2.25rem;
         line-height: 2.75rem;

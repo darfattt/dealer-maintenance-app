@@ -89,7 +89,7 @@ onMounted(() => {
                         </div>
                         <div class="text-xs text-muted-color">Documents</div>
                     </div>
-                    
+
                     <!-- Total Parts -->
                     <div class="text-center">
                         <div class="text-6xl md:text-6xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">
@@ -98,7 +98,7 @@ onMounted(() => {
                         <div class="text-xs text-muted-color">Parts</div>
                     </div>
                 </div>
-                
+
                 <!-- Visual Element and Summary -->
                 <!-- <div class="text-center">
                     <div class="inline-flex items-center justify-center w-16 h-16 bg-purple-50 rounded-full mb-3">
@@ -155,7 +155,7 @@ onMounted(() => {
         font-size: 1.75rem;
         line-height: 2.25rem;
     }
-    
+
     .md\:text-4xl {
         font-size: 2rem;
         line-height: 2.5rem;

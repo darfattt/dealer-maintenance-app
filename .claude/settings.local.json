@@ -1,32 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)",
-      "Bash(rg:*)",
-      "Bash(ls:*)",
-      "Bash(python3:*)",
-      "Bash(rm:*)",
-      "Bash(python test_pkb_processor_fixes.py)",
-      "Bash(mkdir:*)",
-      "Bash(docker-compose up:*)",
-      "Bash(docker compose:*)",
-      "Bash(python:*)",
-      "Bash(sed:*)",
-      "Bash(cp:*)",
-      "Bash(docker-compose build:*)",
-      "Bash(curl:*)",
-      "Bash(chmod:*)",
-      "Bash(find:*)",
-      "Bash(npm run lint:*)",
+      "Read(//e/darfat/work/dgi/dealer-management-app/**)",
+      "Bash(python test_api_config_fix.py:*)",
+      "Bash(python test_work_order_sanitization.py)",
+      "Bash(python test_pkb_transaction_fix.py)",
+      "Bash(docker-compose exec:*)",
       "Bash(docker-compose:*)",
-      "Bash(for file in DocumentHandlingDetail.vue DealingProcess.vue ProspectingActivity.vue)",
-      "Bash(do)",
-      "Bash(echo:*)",
-      "Bash(done)",
-      "Bash(timeout 30s npm run build)",
-      "WebSearch",
-      "WebFetch(domain:www.npmjs.com)"
+      "Bash(python:*)",
+      "Bash(curl:*)"
     ],
-    "deny": []
+    "deny": [],
+    "ask": []
   }
 }

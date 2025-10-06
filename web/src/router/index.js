@@ -88,6 +88,16 @@ const router = createRouter({
                     path: '/sentiment-analysis',
                     name: 'sentiment-analysis',
                     component: () => import('@/views/SentimentAnalysis.vue')
+                },
+                {
+                    path: '/configuration/whatsapp-templates',
+                    name: 'whatsapp-templates',
+                    component: () => import('@/views/WhatsAppTemplateManagement.vue')
+                },
+                {
+                    path: '/google-reviews',
+                    name: 'google-reviews',
+                    component: () => import('@/views/GoogleReviews.vue')
                 }
             ]
         },

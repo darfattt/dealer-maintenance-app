@@ -8,7 +8,7 @@ const authStore = useAuthStore();
 
 // Check if user is DEALER_USER role
 const isDealerUser = computed(() => {
-    return authStore.userRole === 'DEALER_USER' || authStore.userRole === 'DEALER_ADMIN'  ;
+    return authStore.userRole === 'DEALER_ADMIN';
 });
 
 const model = ref([
@@ -16,23 +16,32 @@ const model = ref([
         label: 'Home',
         items: [
             // Hide Dashboard items for DEALER_USER role
-            ...(!isDealerUser.value ? [
-                { label: 'H1 (Work In Progress)', icon: 'pi pi-fw pi-chart-bar', to: '/h1-dashboard' },
-                { label: 'H23', icon: 'pi pi-fw pi-chart-line', to: '/h23-dashboard' }
-            ] : [])
+            ...(!isDealerUser.value
+                ? [
+                    //   { label: 'H1 (Work In Progress)', icon: 'pi pi-fw pi-chart-bar' },
+                      { label: 'H23', icon: 'pi pi-fw pi-chart-line', to: '/h23-dashboard' }
+                  ]
+                : [])
         ]
     },
     {
         label: 'Customer',
         items: [
             { label: 'Customer Validation Request', icon: 'pi pi-fw pi-users', to: '/customer-validation' },
-            { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' },
-            { label: 'Customer Satisfaction', icon: 'pi pi-fw pi-star', to: '/customer-satisfaction' }
+            { label: 'Customer Reminder Request', icon: 'pi pi-fw pi-bell', to: '/customer-reminders' }
         ]
     },
     {
-        label: 'AHASS',
-        items: [{ label: 'Sentiment Analysis', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' }]
+        label: 'Sentiment Analysis',
+        items: [
+            //{ label: 'DA', icon: 'pi pi-fw pi-chart-line', to: '/sentiment-analysis' },
+            { label: 'Daya Auto', icon: 'pi pi-fw pi-star', to: '/customer-satisfaction' },
+            { label: 'Google Reviews', icon: 'pi pi-fw pi-google', to: '/google-reviews' }
+        ]
+    },
+    {
+        label: 'Configuration',
+        items: [{ label: 'WhatsApp Template', icon: 'pi pi-fw pi-comments', to: '/configuration/whatsapp-templates' }]
     }
 ]);
 </script>

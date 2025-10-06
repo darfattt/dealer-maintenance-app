@@ -259,17 +259,15 @@ class SentimentAnalysisService:
                     
                     logger.info(f"Making sentiment analysis API request (attempt {attempt + 1}/{self.max_retries})")
                     logger.debug(f"Circuit breaker state: {self.circuit_breaker.state.value}")
-                    logger.debug(f"Request URL: {self.api_url}")
+                    print(f"Request URL: {self.api_url}")
                     logger.debug(f"Request headers: {dict(self.headers)}")
-                    logger.debug(f"Request data: {request_data}")
-                    
+                    print(f"Request data: {json.dumps(request_data)}")
                     response = await client.post(
                         self.api_url,
                         headers=self.headers,
                         json=request_data
                     )
                     
-                    logger.info(f"Response status: {response.status_code}")
                     logger.debug(f"Response headers: {dict(response.headers)}")
                     
                     response.raise_for_status()
@@ -291,7 +289,7 @@ class SentimentAnalysisService:
                         self.circuit_breaker.record_success()
                         return None
                     
-                    logger.info(f"Sentiment analysis API request successful, response text length: {len(response_text)}")
+                    print(f"Sentiment analysis API request successful, response text length: {len(response_text)}")
                     logger.debug(f"Raw response text content: {response_text[:500]}..." if len(response_text) > 500 else response_text)
                     
                     # Record success in circuit breaker
@@ -351,14 +349,14 @@ class SentimentAnalysisService:
         question_data = []
         for record in records:
             question_data.append({
-                "id": record["id"],
-                "no_tiket": record["no_tiket"],
-                "review": record["review"]
+                'id': record["id"],
+                'no_tiket': record["no_tiket"],
+                'review': record["review"]
             })
         
         # Convert to proper JSON string as expected by API
-        question_str = json.dumps(question_data)
-        
+        question_str = json.dumps(question_data).replace('"', "'")
+
         return {
             "question": question_str
         }

@@ -59,18 +59,24 @@ const fetchTotalUnitEntryData = async () => {
 // Get trend icon based on trend direction
 const getTrendIcon = (trend) => {
     switch (trend) {
-        case 'up': return 'pi pi-arrow-up';
-        case 'down': return 'pi pi-arrow-down';
-        default: return 'pi pi-minus';
+        case 'up':
+            return 'pi pi-arrow-up';
+        case 'down':
+            return 'pi pi-arrow-down';
+        default:
+            return 'pi pi-minus';
     }
 };
 
 // Get trend color based on trend direction
 const getTrendColor = (trend) => {
     switch (trend) {
-        case 'up': return '#10B981'; // green-500
-        case 'down': return '#EF4444'; // red-500
-        default: return '#6B7280'; // gray-500
+        case 'up':
+            return '#10B981'; // green-500
+        case 'down':
+            return '#EF4444'; // red-500
+        default:
+            return '#6B7280'; // gray-500
     }
 };
 
@@ -100,36 +106,30 @@ onMounted(() => {
             <!-- Unit Entry Data -->
             <div v-if="!error && Object.keys(unitEntryData).length > 0" class="text-center py-6">
                 <div class="relative inline-block mb-4">
-                    <div
-                        class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400"
-                    >
+                    <div class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto bg-blue-50 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400">
                         {{ unitEntryData.count }}
                     </div>
                     <!-- Trend Indicator -->
-                    <div 
-                        v-if="unitEntryData.trend !== 'stable'" 
-                        class="absolute -bottom-2 -right-2 rounded-full p-2 text-white text-xs"
-                        :style="{ backgroundColor: getTrendColor(unitEntryData.trend) }"
-                    >
+                    <div v-if="unitEntryData.trend !== 'stable'" class="absolute -bottom-2 -right-2 rounded-full p-2 text-white text-xs" :style="{ backgroundColor: getTrendColor(unitEntryData.trend) }">
                         <i :class="getTrendIcon(unitEntryData.trend)"></i>
                     </div>
                 </div>
-                
+
                 <!-- Trend Information -->
                 <div class="text-sm text-muted-color">
                     <div v-if="unitEntryData.trend !== 'stable'" class="flex items-center justify-center space-x-2">
-                        <span :class="{ 
-                            'text-green-600 dark:text-green-400': unitEntryData.trend === 'up', 
-                            'text-red-600 dark:text-red-400': unitEntryData.trend === 'down' 
-                        }">
+                        <span
+                            :class="{
+                                'text-green-600 dark:text-green-400': unitEntryData.trend === 'up',
+                                'text-red-600 dark:text-red-400': unitEntryData.trend === 'down'
+                            }"
+                        >
                             <i :class="getTrendIcon(unitEntryData.trend)" class="mr-1"></i>
                             {{ unitEntryData.percentage.toFixed(1) }}%
                         </span>
-                        <span>from previous month</span>
+                        <span>dari bulan lalu</span>
                     </div>
-                    <div v-else>
-                        No change from previous month
-                    </div>
+                    <div v-else>Tidak ada Perbandingan Data dengan Bulan Lalu</div>
                 </div>
             </div>
 
@@ -141,9 +141,7 @@ onMounted(() => {
 
             <!-- No Data State -->
             <div v-if="!loading && !error && Object.keys(unitEntryData).length === 0" class="text-center py-6">
-                <div class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 mb-4">
-                    0
-                </div>
+                <div class="text-6xl font-bold rounded-full w-32 h-32 flex items-center justify-center mx-auto bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 mb-4">0</div>
                 <p class="text-muted-color text-sm">No data available</p>
             </div>
         </template>

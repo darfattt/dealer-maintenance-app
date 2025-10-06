@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     
     # Admin User (for initial setup)
     admin_email: str = "admin@dealer-dashboard.com"
-    admin_password: str = "Admin123!"
+    admin_password: str = "test"
     admin_full_name: str = "System Administrator"
     
     # Email Configuration (for password reset)

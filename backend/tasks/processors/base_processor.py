@@ -220,8 +220,15 @@ class BaseDataProcessor(ABC):
 
                 self.logger.debug(f"Processed batch of {len(batch)} records for {model_class.__name__}")
 
-            except (psycopg2.errors.InFailedSqlTransaction, psycopg2.errors.IntegrityError) as pg_error:
+            except (psycopg2.errors.InFailedSqlTransaction, psycopg2.errors.IntegrityError, psycopg2.errors.SyntaxError) as pg_error:
                 self.logger.error(f"PostgreSQL error in bulk upsert batch: {pg_error}")
+                # Check for SQL corruption patterns
+                error_str = str(pg_error).lower()
+                if any(pattern in error_str for pattern in ['malformed', 'syntax error', 'invalid input', 'parameter']):
+                    self.logger.error(f"Detected SQL corruption in batch for {model_class.__name__}: {pg_error}")
+                    # Log the problematic batch data for debugging
+                    self.logger.debug(f"Problematic batch data sample: {batch[:3] if len(batch) > 3 else batch}")
+
                 # Force rollback and retry with individual inserts
                 if self._safe_rollback(db):
                     total_processed += self._fallback_individual_inserts(
@@ -343,11 +350,12 @@ class BaseDataProcessor(ABC):
             # Validate response
             self.validate_api_response(api_data)
 
-            # Process records
+            # Process records (implementations handle their own commits for complex processors)
             records_processed = self.process_records(db, dealer_id, api_data)
 
-            # Commit all changes
-            db.commit()
+            # For simple processors, commit here. Complex processors (like PKB) handle their own commits.
+            if not hasattr(self, '_handles_own_commits') or not self._handles_own_commits:
+                db.commit()
 
             # Log successful fetch
             duration = int((datetime.utcnow() - start_time).total_seconds())

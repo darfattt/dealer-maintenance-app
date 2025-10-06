@@ -20,7 +20,9 @@ from app.schemas.customer_reminder_request import (
     ReminderType,
     BulkReminderRequest,
     BulkReminderResponse,
-    BulkReminderCustomerData
+    BulkReminderCustomerData,
+    ReminderTargetResponse,
+    get_reminder_target_options
 )
 
 logger = logging.getLogger(__name__)
@@ -65,6 +67,34 @@ class CustomerReminderController:
         return 'ERROR'
     
     
+    def _validate_whatsapp_template(self, reminder_target: str, reminder_type: str, dealer_id: str) -> Optional[str]:
+        """
+        Pre-validate that WhatsApp template exists for given parameters
+
+        Args:
+            reminder_target: Target category
+            reminder_type: Type of reminder
+            dealer_id: Dealer ID for dealer-specific templates
+
+        Returns:
+            None if template exists, error message if template not found
+        """
+        try:
+            template = self.template_repo.get_template_with_fallback(
+                reminder_target=reminder_target,
+                reminder_type=reminder_type,
+                dealer_id=dealer_id
+            )
+
+            if not template:
+                return f"Template WhatsApp tidak ditemukan untuk reminder_target='{reminder_target}' dan reminder_type='{reminder_type}' (dealer: {dealer_id}). Silakan konfigurasi template di database."
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error validating template for {reminder_target}-{reminder_type} (dealer: {dealer_id}): {str(e)}")
+            return f"Terjadi kesalahan saat memvalidasi template: {str(e)}"
+
     async def add_bulk_reminders(self, request_data: BulkReminderRequest, dealer_id: str, created_by: str = 'api') -> BulkReminderResponse:
         """Handle bulk customer reminder creation"""
         try:
@@ -76,7 +106,7 @@ class CustomerReminderController:
                     message={"error": "Dealer tidak ditemukan atau tidak aktif"},
                     data=None
                 )
-            
+
             # Step 2: Validate dealer has Fonnte configuration
             has_config, config_error = self.dealer_repo.validate_dealer_fonnte_config(dealer_id)
             if not has_config:
@@ -86,14 +116,28 @@ class CustomerReminderController:
                     message={"error": "Konfigurasi WhatsApp tidak tersedia untuk dealer ini"},
                     data=None
                 )
+
+            # Step 3: Validate WhatsApp template exists before processing customers
+            template_error = self._validate_whatsapp_template(
+                reminder_target=request_data.filter_target,
+                reminder_type=request_data.filter_data,
+                dealer_id=dealer_id
+            )
+            if template_error:
+                logger.warning(f"Template validation failed for dealer {dealer_id}: {template_error}")
+                return BulkReminderResponse(
+                    status=0,
+                    message={"error": template_error},
+                    data=None
+                )
             
-            # Step 3: Create processing tracker
+            # Step 4: Create processing tracker
             processing_tracker = self.processing_repo.create_processing_tracker(
                 created_by=created_by
             )
             transaction_id = processing_tracker.transaction_id
             
-            # Step 4: Process each customer in the bulk request
+            # Step 5: Process each customer in the bulk request
             total_customers = len(request_data.data)
             successful_reminders = 0
             failed_reminders = 0
@@ -127,7 +171,8 @@ class CustomerReminderController:
                             "nama_ahass": request_data.nama_ahass,
                             "alamat_ahass": request_data.alamat_ahass
                         },
-                        dealer_name=self.dealer_repo.get_dealer_name(dealer_id) or "Dealer"
+                        dealer_name=self.dealer_repo.get_dealer_name(dealer_id) or "Dealer",
+                        dealer_id=dealer_id
                     )
                     
                     try:
@@ -236,40 +281,33 @@ class CustomerReminderController:
             )
     
     def _create_bulk_reminder_message_template(
-        self, 
+        self,
         customer_data,
-        reminder_target: str, 
-        reminder_type: str, 
+        reminder_target: str,
+        reminder_type: str,
         ahass_data: Dict[str, Any],
-        dealer_name: str
+        dealer_name: str,
+        dealer_id: str
     ) -> str:
         """Create WhatsApp message template for bulk reminders using enhanced database templates"""
-        
+
         # Try to get template from database with complete customer data
         formatted_message = self.template_repo.format_template_with_customer_data(
             reminder_target=reminder_target,
             reminder_type=reminder_type,
             customer_data=customer_data,
             ahass_data=ahass_data,
-            dealer_name=dealer_name
+            dealer_name=dealer_name,
+            dealer_id=dealer_id
         )
-        
+
         if formatted_message:
             return formatted_message
-        
-        # Fallback to basic template if no database template found
-        logger.warning(f"No template found for {reminder_target} - {reminder_type}, using fallback")
-        customer_name = getattr(customer_data, 'nama_pelanggan', 'Bpk/Ibu')
-        return f"""Halo {customer_name},
 
-Ini adalah pengingat dari {dealer_name} terkait {reminder_target}.
-
-{reminder_type}
-
-Terima kasih atas perhatian Anda.
-
-Salam,
-{dealer_name}"""
+        # Raise error if no database template found
+        error_msg = f"No WhatsApp template found for reminder_target='{reminder_target}' and reminder_type='{reminder_type}' (dealer: {dealer_id}). Please configure the template in the database."
+        logger.error(error_msg)
+        raise ValueError(error_msg)
     
     async def _send_bulk_reminder_whatsapp(self, dealer_id: str, phone_number: str, nama_pelanggan: str, message: str):
         """Send WhatsApp message for bulk reminder using Fonnte API"""
@@ -623,3 +661,24 @@ Salam,
                 "success": False,
                 "message": f"Error: {str(e)}"
             }
+
+    def get_reminder_targets(self) -> ReminderTargetResponse:
+        """
+        Get available reminder targets for frontend dropdown
+
+        Returns:
+            ReminderTargetResponse: Response with list of reminder target options
+        """
+        try:
+            options = get_reminder_target_options()
+            return ReminderTargetResponse(
+                success=True,
+                data=options
+            )
+        except Exception as e:
+            logger.error(f"Error getting reminder targets: {str(e)}")
+            # Return empty list on error to prevent frontend crashes
+            return ReminderTargetResponse(
+                success=False,
+                data=[]
+            )

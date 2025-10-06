@@ -30,7 +30,7 @@ const formatCurrency = (amount) => {
     if (amount === null || amount === undefined || amount === 0) {
         return 'Rp 0';
     }
-    
+
     // Convert to number and format with thousands separators
     const formatted = new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -38,7 +38,7 @@ const formatCurrency = (amount) => {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     }).format(amount);
-    
+
     return formatted;
 };
 
@@ -100,22 +100,21 @@ onMounted(() => {
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <!-- Amount -->
                     <div class="text-center">
-                        <div class="text-2xl md:text-3xl font-bold text-orange-600 dark:text-orange-400 mb-1">
+                        <div class="text-6xl md:text-6xl font-bold text-orange-600 dark:text-orange-400 mb-1">
                             {{ formatCurrency(nscData.total_amount) }}
                         </div>
                         <div class="text-xs text-muted-color">Amount</div>
                     </div>
-                    
+
                     <!-- Total Records -->
                     <div class="text-center">
-                        <div class="text-2xl md:text-3xl font-bold text-amber-600 dark:text-amber-400 mb-1">
+                        <div class="text-6xl md:text-6xl font-bold text-amber-600 dark:text-amber-400 mb-1">
                             {{ nscData.total_records }}
                         </div>
                         <div class="text-xs text-muted-color">Data NSC</div>
                     </div>
                 </div>
-                
-                
+
                 <!-- Visual Element - icon or graphic representation -->
                 <!-- <div class="mt-4">
                     <div class="inline-flex items-center justify-center w-16 h-16 bg-orange-50 rounded-full">
@@ -134,11 +133,11 @@ onMounted(() => {
             <div v-if="!loading && !error && Object.keys(nscData).length === 0" class="text-center py-8">
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="text-center">
-                        <div class="text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-500 mb-1">Rp 0</div>
+                        <div class="text-6xl md:text-6xl font-bold text-gray-400 dark:text-gray-500 mb-1">Rp 0</div>
                         <div class="text-xs text-muted-color">Amount</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-2xl md:text-3xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
+                        <div class="text-6xl md:text-6xl font-bold text-gray-400 dark:text-gray-500 mb-1">0</div>
                         <div class="text-xs text-muted-color">Data NSC</div>
                     </div>
                 </div>
@@ -150,7 +149,6 @@ onMounted(() => {
         </template>
     </Card>
 </template>
-
 
 <style scoped>
 /* Additional custom styles if needed */
@@ -168,7 +166,7 @@ onMounted(() => {
         font-size: 1.5rem;
         line-height: 2rem;
     }
-    
+
     .md\:text-3xl {
         font-size: 1.75rem;
         line-height: 2.25rem;
