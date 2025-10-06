@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Read(//e/darfat/work/dgi/dealer-management-app/**)"
+      "Read(//e/darfat/work/dgi/dealer-management-app/**)",
+      "Bash(python test_api_config_fix.py:*)",
+      "Bash(python test_work_order_sanitization.py)",
+      "Bash(python test_pkb_transaction_fix.py)",
+      "Bash(docker-compose exec:*)",
+      "Bash(docker-compose:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

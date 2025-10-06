@@ -7,6 +7,7 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import Dropdown from 'primevue/dropdown';
 import DatePicker from 'primevue/datepicker';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
