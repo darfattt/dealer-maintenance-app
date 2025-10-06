@@ -201,6 +201,7 @@ const handleSearch = () => {
 // Pagination handler
 const onPageChange = (event) => {
     pagination.page = event.page + 1;
+    pagination.page_size = event.rows;
     loadData();
 };
 

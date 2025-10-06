@@ -361,16 +361,10 @@ const handleSearch = () => {
     }
 };
 
-// Pagination handler (only loads reviews, not statistics)
+// Pagination handler (handles both page and page size changes, only loads reviews, not statistics)
 const onPageChange = (event) => {
     pagination.page = event.page + 1;
-    loadReviewsOnly();
-};
-
-// Rows per page change handler
-const onRowsChange = (event) => {
-    pagination.per_page = event.value;
-    pagination.page = 1; // Reset to first page when changing page size
+    pagination.per_page = event.rows;
     loadReviewsOnly();
 };
 
@@ -719,7 +713,6 @@ onMounted(async () => {
                     :totalRecords="pagination.total_items"
                     :rowsPerPageOptions="[10, 20, 50]"
                     @page="onPageChange"
-                    @update:rows="onRowsChange"
                     class="mt-4"
                 />
 
