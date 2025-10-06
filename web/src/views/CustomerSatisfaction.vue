@@ -47,6 +47,10 @@ const sentimentStatistics = ref(null);
 const sentimentThemesStatistics = ref(null);
 const searchTrigger = ref(0);
 
+// Dealer selection state (for SUPER_ADMIN)
+const dealerOptions = ref([]);
+const loadingDealers = ref(false);
+
 // Dialog state for details popup
 const showDetailsDialog = ref(false);
 const selectedRecord = ref(null);
@@ -204,6 +208,34 @@ const onPageChange = (event) => {
     pagination.page = event.page + 1;
     pagination.page_size = event.rows;
     loadData();
+};
+
+// Load dealer options for SUPER_ADMIN
+const loadDealerOptions = async () => {
+    if (!showAhassFilter.value) return; // Only for SUPER_ADMIN
+
+    loadingDealers.value = true;
+    try {
+        const result = await CustomerService.getActiveDealers();
+        if (result.success) {
+            dealerOptions.value = result.data.map(dealer => ({
+                label: dealer.dealer_name || dealer.dealer_id,
+                value: dealer.dealer_id,
+                dealer_id: dealer.dealer_id,
+                dealer_name: dealer.dealer_name
+            }));
+        }
+    } catch (error) {
+        console.error('Error loading dealer options:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load dealer options',
+            life: 3000
+        });
+    } finally {
+        loadingDealers.value = false;
+    }
 };
 
 // Filter actions
@@ -393,7 +425,12 @@ const parseSentimentThemes = (themesString) => {
 };
 
 // Initialize
-onMounted(() => {
+onMounted(async () => {
+    // Load dealer options for SUPER_ADMIN
+    if (showAhassFilter.value) {
+        await loadDealerOptions();
+    }
+
     loadData();
     loadLastUploadInfo();
 });
@@ -403,10 +440,21 @@ onMounted(() => {
     <div class="space-y-6">
         <!-- Filter Controls -->
         <div class="flex justify-end items-center space-x-4 mb-6">
-            <!-- No AHASS Filter (Only for SUPER_ADMIN) -->
+            <!-- Dealer Selection (Only for SUPER_ADMIN) -->
             <div v-if="showAhassFilter" class="flex items-center space-x-2">
-                <label for="ahass-filter" class="text-sm font-medium">No AHASS:</label>
-                <InputText id="ahass-filter" v-model="filters.no_ahass" placeholder="Enter No AHASS" class="w-36" />
+                <label for="dealer-filter" class="text-sm font-medium">Dealer:</label>
+                <Dropdown
+                    id="dealer-filter"
+                    v-model="filters.no_ahass"
+                    :options="dealerOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Dealer"
+                    :loading="loadingDealers"
+                    class="w-48"
+                    :filter="true"
+                    filterPlaceholder="Search dealers..."
+                />
             </div>
 
             <!-- Date Range Filters -->
