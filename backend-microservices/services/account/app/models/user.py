@@ -15,6 +15,7 @@ Base = declarative_base()
 
 class UserRole(enum.Enum):
     """User roles enumeration"""
+    SYSTEM_ADMIN = "SYSTEM_ADMIN"
     SUPER_ADMIN = "SUPER_ADMIN"
     DEALER_ADMIN = "DEALER_ADMIN"
     DEALER_USER = "DEALER_USER"
@@ -86,6 +87,7 @@ class User(Base):
             UserRole.DEALER_USER: 1,
             UserRole.DEALER_ADMIN: 2,
             UserRole.SUPER_ADMIN: 3,
+            UserRole.SYSTEM_ADMIN: 4,
         }
 
         user_level = role_hierarchy.get(self.role, 0)
@@ -95,7 +97,7 @@ class User(Base):
     
     def can_access_dealer(self, dealer_id: str) -> bool:
         """Check if user can access specific dealer data"""
-        if self.role == UserRole.SUPER_ADMIN:
+        if self.role == UserRole.SYSTEM_ADMIN or self.role == UserRole.SUPER_ADMIN:
             return True
 
         if self.role == UserRole.DEALER_ADMIN:
@@ -109,8 +111,8 @@ class User(Base):
 
     def get_accessible_dealer_ids(self) -> list[str]:
         """Get list of dealer IDs that user can access"""
-        if self.role == UserRole.SUPER_ADMIN:
-            # SUPER_ADMIN can access all dealers - return empty list to indicate "all"
+        if self.role == UserRole.SYSTEM_ADMIN or self.role == UserRole.SUPER_ADMIN:
+            # SYSTEM_ADMIN and SUPER_ADMIN can access all dealers - return empty list to indicate "all"
             return []
 
         if self.role == UserRole.DEALER_ADMIN:
