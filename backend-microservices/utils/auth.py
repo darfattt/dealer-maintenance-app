@@ -28,27 +28,39 @@ class AuthUtils:
     def hash_password(password: str) -> str:
         """
         Hash a password using bcrypt
-        
+
         Args:
             password: Plain text password
-            
+
         Returns:
             Hashed password
+
+        Note:
+            Bcrypt has a 72-byte limit. Passwords are truncated to ensure compatibility.
         """
+        # Truncate password to 72 bytes to comply with bcrypt limitation
+        if len(password.encode('utf-8')) > 72:
+            password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
         return pwd_context.hash(password)
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """
         Verify a password against its hash
-        
+
         Args:
             plain_password: Plain text password
             hashed_password: Hashed password
-            
+
         Returns:
             True if password matches, False otherwise
+
+        Note:
+            Bcrypt has a 72-byte limit. Passwords are truncated to ensure compatibility.
         """
+        # Truncate password to 72 bytes to comply with bcrypt limitation
+        if len(plain_password.encode('utf-8')) > 72:
+            plain_password = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
         return pwd_context.verify(plain_password, hashed_password)
     
     @staticmethod

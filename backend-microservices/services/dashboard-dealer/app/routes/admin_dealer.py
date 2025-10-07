@@ -2,7 +2,7 @@
 Admin dealer management routes (SYSTEM_ADMIN only)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -14,7 +14,10 @@ from app.schemas.dealer import (
     DealerUpdateRequest,
     DealerUpdateResponse,
     DealerStatusRequest,
-    DealerStatusResponse
+    DealerStatusResponse,
+    DealerRegistrationRequest,
+    DealerRegistrationResponse,
+    BulkDealerRegistrationResponse
 )
 
 router = APIRouter(tags=["admin-dealer"])
@@ -198,6 +201,190 @@ async def toggle_dealer_status(
             if "not found" in result.message:
                 raise HTTPException(status_code=404, detail=result.message)
             raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.post("/admin/dealers/register", response_model=DealerRegistrationResponse, status_code=201)
+async def register_dealer(
+    registration_data: DealerRegistrationRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Register a new dealer with admin user (SYSTEM_ADMIN only)
+
+    This endpoint creates both a dealer and a DEALER_ADMIN user in one atomic operation.
+    If the user creation fails, the dealer creation is rolled back.
+
+    **Required Role**: SYSTEM_ADMIN
+
+    **Request Body**:
+    - **Step 1 - Dealer Info**:
+        - dealer_id: Unique dealer ID (1-10 characters)
+        - dealer_name: Dealer name
+    - **Step 2 - DGI API Configuration** (optional):
+        - api_key: DGI API key
+        - secret_key: DGI secret key
+    - **Step 3 - WhatsApp Configuration** (optional):
+        - phone_number: WhatsApp phone number
+        - fonnte_api_key: Fonnte API key
+        - fonnte_api_url: Fonnte API URL (default: https://api.fonnte.com/send)
+    - **Step 4 - Google Maps Configuration** (optional):
+        - google_location_url: Google Maps location URL
+    - **Step 5 - Admin User Info** (required):
+        - admin_email: Admin user email
+        - admin_full_name: Admin user full name
+        - admin_password: Admin user password (min 8 characters)
+
+    **Returns**:
+        Registration response with dealer and user data
+
+    **Example**:
+        POST /api/v1/admin/dealers/register
+        {
+            "dealer_id": "DLR001",
+            "dealer_name": "ABC Motors",
+            "api_key": "your-api-key",
+            "secret_key": "your-secret-key",
+            "admin_email": "admin@abcmotors.com",
+            "admin_full_name": "John Doe",
+            "admin_password": "SecurePass123"
+        }
+    """
+    try:
+        controller = AdminDealerController(db)
+        result = await controller.register_dealer(registration_data)
+
+        if not result.success:
+            # Check for specific error types
+            if "already exists" in result.message:
+                raise HTTPException(status_code=400, detail=result.message)
+            elif "Account service unavailable" in result.message:
+                raise HTTPException(status_code=503, detail=result.message)
+            elif "Failed to create admin user" in result.message:
+                raise HTTPException(status_code=400, detail=result.message)
+            else:
+                raise HTTPException(status_code=500, detail=result.message)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+@router.post("/admin/dealers/bulk-register", response_model=BulkDealerRegistrationResponse, status_code=201)
+async def bulk_register_dealers(
+    file: UploadFile = File(..., description="Excel or CSV file (.xlsx, .xls, or .csv) with dealer data"),
+    db: Session = Depends(get_db)
+):
+    """
+    Bulk register dealers from Excel or CSV file upload (SYSTEM_ADMIN only)
+
+    This endpoint allows uploading an Excel or CSV file to register multiple dealers at once.
+    Each row in the file represents one dealer registration.
+
+    **Required Role**: SYSTEM_ADMIN
+
+    **File Format**:
+
+    The file (Excel or CSV) must contain the following columns:
+
+    **Required Columns**:
+    - **dealer_id**: Unique dealer ID (1-10 characters)
+    - **dealer_name**: Dealer name
+    - **admin_email**: Admin user email address
+    - **admin_full_name**: Admin user full name
+    - **admin_password**: Admin user password (min 8 characters)
+
+    **Optional Columns**:
+    - **api_key**: DGI API key
+    - **secret_key**: DGI secret key
+    - **fonnte_api_key**: Fonnte WhatsApp API key
+    - **fonnte_api_url**: Fonnte API URL (default: https://api.fonnte.com/send)
+    - **phone_number**: WhatsApp phone number
+    - **google_location_url**: Google Maps location URL
+
+    **File Requirements**:
+    - Format: .xlsx, .xls, or .csv
+    - Maximum file size: 10MB
+    - First row must be column headers
+    - Each subsequent row is one dealer registration
+
+    **Processing Behavior**:
+    - Each dealer is processed independently
+    - Failed registrations do not stop the process
+    - Detailed results returned for each dealer
+    - Reasons for failure included in response
+
+    **Response includes**:
+    - Total dealers processed
+    - Success and failure counts
+    - Detailed results for each dealer (success/failure with messages)
+
+    **Example Excel Structure**:
+    ```
+    | dealer_id | dealer_name | api_key | admin_email         | admin_full_name | admin_password |
+    |-----------|-------------|---------|---------------------|-----------------|----------------|
+    | DLR001    | ABC Motors  | key123  | admin@abc.com       | John Doe        | SecurePass123  |
+    | DLR002    | XYZ Auto    | key456  | admin@xyz.com       | Jane Smith      | SecurePass456  |
+    ```
+
+    **Error Cases**:
+    - Invalid file format (400)
+    - Missing required columns (400)
+    - Invalid data in rows (detailed in response)
+    - Duplicate dealer_id in Excel (detailed in response)
+    - Dealer already exists in database (detailed in response)
+    """
+    try:
+        # Validate file type
+        if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file format. Only .xlsx, .xls, and .csv files are supported."
+            )
+
+        # Read file content
+        file_content = await file.read()
+
+        # Validate file size (10MB limit)
+        if len(file_content) > 10 * 1024 * 1024:
+            raise HTTPException(
+                status_code=400,
+                detail="File size exceeds 10MB limit"
+            )
+
+        controller = AdminDealerController(db)
+
+        # Parse file to dealer list (pass filename for format detection)
+        try:
+            dealers_list = AdminDealerController.parse_excel_to_dealer_list(file_content, file.filename)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File parsing error: {str(e)}"
+            )
+
+        if not dealers_list:
+            raise HTTPException(
+                status_code=400,
+                detail="No dealers found in file"
+            )
+
+        # Perform bulk registration
+        result = await controller.bulk_register_dealers(dealers_list)
 
         return result
 

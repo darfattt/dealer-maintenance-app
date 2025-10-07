@@ -1,18 +1,55 @@
 <script setup>
+import { ref, computed, onMounted } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useAuthStore } from '@/stores/auth';
 import AppConfigurator from './AppConfigurator.vue';
+import DealerService from '@/service/DealerService';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 const router = useRouter();
 const toast = useToast();
 const authStore = useAuthStore();
 
+// Dealer info state
+const dealerName = ref(null);
+const loadingDealer = ref(false);
+
+// Computed property for dealer display
+const dealerInfo = computed(() => {
+    if (!dealerName.value) return '';
+    return ` - ${dealerName.value}`;
+});
+
+// Computed property for user greeting
+const userGreeting = computed(() => {
+    if (!authStore.isAuthenticated) return '';
+    return `Hi ${authStore.userName}${dealerInfo.value}`;
+});
+
+// Fetch dealer info when component mounts
+onMounted(async () => {
+    if (authStore.isAuthenticated && authStore.userDealerId) {
+        loadingDealer.value = true;
+        try {
+            const dealer = await DealerService.getDealerById(authStore.userDealerId);
+            dealerName.value = dealer.dealer_name;
+        } catch (error) {
+            console.error('Failed to fetch dealer info:', error);
+            // Fallback to showing dealer_id if fetch fails
+            dealerName.value = authStore.userDealerId;
+        } finally {
+            loadingDealer.value = false;
+        }
+    }
+});
+
 const handleLogout = async () => {
     try {
         await authStore.logout();
+        // Clear dealer info on logout
+        dealerName.value = null;
         toast.add({
             severity: 'success',
             summary: 'Success',
@@ -88,18 +125,10 @@ const handleLogout = async () => {
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <!-- <div v-if="authStore.isAuthenticated" class="layout-topbar-action text-sm">
+                    <div v-if="authStore.isAuthenticated" class="layout-topbar-action text-sm">
                         <i class="pi pi-user"></i>
-                        <span>{{ authStore.userName }}</span>
-                    </div> -->
-                    <!-- <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
-                    </button> -->
+                        <span>{{ userGreeting }}</span>
+                    </div>
                     <button v-if="authStore.isAuthenticated" type="button" class="layout-topbar-action" @click="handleLogout">
                         <i class="pi pi-sign-out"></i>
                         <span>Logout</span>

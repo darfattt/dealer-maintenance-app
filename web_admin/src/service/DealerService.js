@@ -87,6 +87,54 @@ class DealerService {
             throw error;
         }
     }
+
+    /**
+     * Register a new dealer with admin user
+     * @param {Object} data - Registration data
+     * @param {string} data.dealer_id - Dealer ID
+     * @param {string} data.dealer_name - Dealer name
+     * @param {string} data.api_key - API key (optional)
+     * @param {string} data.secret_key - Secret key (optional)
+     * @param {string} data.fonnte_api_key - Fonnte API key (optional)
+     * @param {string} data.fonnte_api_url - Fonnte API URL (optional)
+     * @param {string} data.phone_number - Phone number (optional)
+     * @param {string} data.google_location_url - Google location URL (optional)
+     * @param {string} data.admin_email - Admin email
+     * @param {string} data.admin_full_name - Admin full name
+     * @param {string} data.admin_password - Admin password
+     * @returns {Promise} API response with created dealer and user
+     */
+    async registerDealer(data) {
+        try {
+            const response = await ApiService.post('/v1/admin/dealers/register', data);
+            return response.data;
+        } catch (error) {
+            console.error('Error registering dealer:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Bulk register dealers from Excel file
+     * @param {File} file - Excel file (.xlsx or .xls)
+     * @returns {Promise} API response with bulk registration results
+     */
+    async bulkRegisterDealers(file) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await ApiService.post('/v1/admin/dealers/bulk-register', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error bulk registering dealers:', error);
+            throw error;
+        }
+    }
 }
 
 export default new DealerService();

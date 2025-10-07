@@ -182,3 +182,26 @@ class UserDealerListResponse(BaseModel):
     """Schema for user dealer list response"""
     user_dealers: list[UserDealerResponse]
     total: int
+
+
+class DealerAdminRegistration(BaseModel):
+    """Schema for creating a dealer admin user during dealer registration"""
+    email: EmailStr
+    full_name: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=100)
+    dealer_id: str = Field(..., max_length=10)
+
+    @validator('password')
+    def validate_password(cls, v):
+        """Validate password strength"""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+
+        has_upper = any(c.isupper() for c in v)
+        has_lower = any(c.islower() for c in v)
+        has_digit = any(c.isdigit() for c in v)
+
+        if not (has_upper and has_lower and has_digit):
+            raise ValueError('Password must contain at least one uppercase letter, one lowercase letter, and one digit')
+
+        return v

@@ -4,13 +4,18 @@ import AppMenuItem from './AppMenuItem.vue';
 
 const model = ref([
     {
-        label: 'System Administration',
+        label: 'Dealer Management',
         items: [
             {
-                label: 'Dealer Management',
+                label: 'Register New Dealer',
+                icon: 'pi pi-fw pi-plus-circle',
+                to: '/dealer-management/register'
+            },
+            {
+                label: 'Dealers',
                 icon: 'pi pi-fw pi-building',
                 to: '/dealer-management'
-            }
+            },
         ]
     }
 ]);

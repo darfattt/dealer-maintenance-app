@@ -18,6 +18,12 @@ const router = createRouter({
                     name: 'dealer-management',
                     component: () => import('@/views/DealerManagement.vue'),
                     meta: { requiresSystemAdmin: true }
+                },
+                {
+                    path: '/dealer-management/register',
+                    name: 'dealer-registration',
+                    component: () => import('@/views/DealerRegistration.vue'),
+                    meta: { requiresSystemAdmin: true }
                 }
             ]
         },

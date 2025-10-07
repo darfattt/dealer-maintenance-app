@@ -8,7 +8,7 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse
+from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse, DealerAdminRegistration
 from app.repositories.user_repository import UserRepository
 import sys
 import os
@@ -307,12 +307,63 @@ class UserController:
         # Super admin can modify all users
         if current_user.has_permission(UserRole.SUPER_ADMIN):
             return True
-        
+
         # Users can modify their own profile (with restrictions)
         if current_user.id == target_user.id:
             # Users cannot change their own role or dealer_id
             if update_data.role is not None or update_data.dealer_id is not None:
                 return False
             return True
-        
+
         return False
+
+    def create_dealer_admin(self, user_data: DealerAdminRegistration) -> UserResponse:
+        """
+        Create a dealer admin user during dealer registration
+        No authentication required - this is called by the backend API during dealer registration
+
+        Args:
+            user_data: Dealer admin registration data
+
+        Returns:
+            Created user response
+
+        Raises:
+            HTTPException: If email already exists or validation fails
+        """
+        # Check if email already exists
+        existing_user = self.user_repo.get_user_by_email(user_data.email)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Email {user_data.email} is already registered"
+            )
+
+        # Create user with DEALER_ADMIN role
+        try:
+            user = self.user_repo.create_user(
+                email=user_data.email,
+                password=user_data.password,
+                full_name=user_data.full_name,
+                username=None,
+                role=UserRole.DEALER_ADMIN,
+                dealer_id=user_data.dealer_id,
+                is_active=True,
+                is_verified=True
+            )
+
+            logger.info(f"Dealer admin user created: {user.email} for dealer {user_data.dealer_id}")
+            return UserResponse.from_orm(user)
+
+        except ValueError as e:
+            logger.error(f"Failed to create dealer admin: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error creating dealer admin: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create dealer admin user"
+            )
