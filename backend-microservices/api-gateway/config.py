@@ -84,6 +84,9 @@ class Settings(BaseSettings):
             "/v1/dashboard": self.dashboard_dealer_service_url,
             "/v1/admin": self.dashboard_dealer_service_url,
             "/v1/jobs": self.dealer_dashboard_service_url,
+            "/api/v1/audit": self.account_service_url,
+            "/api/v1/api-logs": self.account_service_url,
+            "/api/v1/trackers": self.customer_service_url,
         }
 
 

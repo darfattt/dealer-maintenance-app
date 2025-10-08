@@ -24,6 +24,12 @@ const router = createRouter({
                     name: 'dealer-registration',
                     component: () => import('@/views/DealerRegistration.vue'),
                     meta: { requiresSystemAdmin: true }
+                },
+                {
+                    path: '/system-logs/activities',
+                    name: 'activities',
+                    component: () => import('@/views/activities/Activities.vue'),
+                    meta: { requiresSystemAdmin: true }
                 }
             ]
         },

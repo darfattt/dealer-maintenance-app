@@ -17,6 +17,16 @@ const model = ref([
                 to: '/dealer-management'
             },
         ]
+    },
+    {
+        label: 'System Logs',
+        items: [
+            {
+                label: 'Activities',
+                icon: 'pi pi-fw pi-list',
+                to: '/system-logs/activities'
+            }
+        ]
     }
 ]);
 </script>

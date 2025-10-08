@@ -1384,3 +1384,31 @@ class CustomerSatisfactionRepository:
                     "has_prev": False
                 }
             }
+
+    def get_today_upload_trackers(self) -> List[CustomerSatisfactionUploadTracker]:
+        """
+        Get all Customer Satisfaction upload trackers from today (no pagination)
+
+        Returns:
+            List of CustomerSatisfactionUploadTracker objects from today
+        """
+        try:
+            from datetime import date, datetime
+
+            # Get today's date range (00:00:00 to 23:59:59)
+            today_start = datetime.combine(date.today(), datetime.min.time())
+            today_end = datetime.combine(date.today(), datetime.max.time())
+
+            return (
+                self.db.query(CustomerSatisfactionUploadTracker)
+                .filter(
+                    CustomerSatisfactionUploadTracker.upload_date >= today_start,
+                    CustomerSatisfactionUploadTracker.upload_date <= today_end
+                )
+                .order_by(CustomerSatisfactionUploadTracker.upload_date.desc())
+                .all()
+            )
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting today's upload trackers: {str(e)}")
+            return []

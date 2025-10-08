@@ -204,3 +204,118 @@ class ApiRequestLogRepository:
         except SQLAlchemyError as e:
             logger.error(f"Database error getting request logs for {request_name}: {str(e)}")
             return []
+
+    def get_today_request_logs(self) -> list:
+        """
+        Get all API request logs from today (no pagination)
+
+        Returns:
+            List of ApiRequestLog objects from today
+        """
+        try:
+            from datetime import date, datetime
+
+            # Get today's date range (00:00:00 to 23:59:59)
+            today_start = datetime.combine(date.today(), datetime.min.time())
+            today_end = datetime.combine(date.today(), datetime.max.time())
+
+            return (
+                self.db.query(ApiRequestLog)
+                .filter(
+                    ApiRequestLog.request_timestamp >= today_start,
+                    ApiRequestLog.request_timestamp <= today_end
+                )
+                .order_by(ApiRequestLog.request_timestamp.desc())
+                .all()
+            )
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting today's request logs: {str(e)}")
+            return []
+
+    def get_today_summary_by_dealer(self) -> list:
+        """
+        Get aggregated summary of today's API requests grouped by dealer_id
+
+        Returns:
+            List of dictionaries containing dealer summaries:
+            - dealer_id
+            - total_requests
+            - successful_requests
+            - failed_requests
+            - avg_processing_time_ms
+            - request_count_by_type
+        """
+        try:
+            from datetime import date, datetime
+            from sqlalchemy import func, case
+
+            # Get today's date range
+            today_start = datetime.combine(date.today(), datetime.min.time())
+            today_end = datetime.combine(date.today(), datetime.max.time())
+
+            # Query aggregated data grouped by dealer_id
+            results = (
+                self.db.query(
+                    ApiRequestLog.dealer_id,
+                    func.count(ApiRequestLog.id).label('total_requests'),
+                    func.sum(
+                        case(
+                            (ApiRequestLog.response_status == 'success', 1),
+                            else_=0
+                        )
+                    ).label('successful_requests'),
+                    func.sum(
+                        case(
+                            (ApiRequestLog.response_status == 'error', 1),
+                            else_=0
+                        )
+                    ).label('failed_requests'),
+                    func.avg(ApiRequestLog.processing_time_ms).label('avg_processing_time_ms')
+                )
+                .filter(
+                    ApiRequestLog.request_timestamp >= today_start,
+                    ApiRequestLog.request_timestamp <= today_end,
+                    ApiRequestLog.dealer_id.isnot(None)  # Only include records with dealer_id
+                )
+                .group_by(ApiRequestLog.dealer_id)
+                .order_by(ApiRequestLog.dealer_id)
+                .all()
+            )
+
+            # Get request count by type for each dealer
+            summaries = []
+            for row in results:
+                dealer_id = row.dealer_id
+
+                # Get request count by type for this dealer
+                request_types = (
+                    self.db.query(
+                        ApiRequestLog.request_name,
+                        func.count(ApiRequestLog.id).label('count')
+                    )
+                    .filter(
+                        ApiRequestLog.dealer_id == dealer_id,
+                        ApiRequestLog.request_timestamp >= today_start,
+                        ApiRequestLog.request_timestamp <= today_end
+                    )
+                    .group_by(ApiRequestLog.request_name)
+                    .all()
+                )
+
+                request_count_by_type = {rt.request_name: rt.count for rt in request_types}
+
+                summaries.append({
+                    'dealer_id': dealer_id,
+                    'total_requests': row.total_requests,
+                    'successful_requests': row.successful_requests or 0,
+                    'failed_requests': row.failed_requests or 0,
+                    'avg_processing_time_ms': float(row.avg_processing_time_ms) if row.avg_processing_time_ms else 0.0,
+                    'request_count_by_type': request_count_by_type
+                })
+
+            return summaries
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting today's dealer summary: {str(e)}")
+            return []
