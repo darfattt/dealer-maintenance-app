@@ -22,6 +22,11 @@ const model = ref([
         label: 'System Logs',
         items: [
             {
+                label: 'Summary',
+                icon: 'pi pi-fw pi-chart-bar',
+                to: '/system-logs/summary'
+            },
+            {
                 label: 'Activities',
                 icon: 'pi pi-fw pi-list',
                 to: '/system-logs/activities'

@@ -205,9 +205,12 @@ class ApiRequestLogRepository:
             logger.error(f"Database error getting request logs for {request_name}: {str(e)}")
             return []
 
-    def get_today_request_logs(self) -> list:
+    def get_today_request_logs(self, indonesia_date=None) -> list:
         """
         Get all API request logs from today (no pagination)
+
+        Args:
+            indonesia_date: Optional date object representing today in Indonesia timezone
 
         Returns:
             List of ApiRequestLog objects from today
@@ -216,8 +219,10 @@ class ApiRequestLogRepository:
             from datetime import date, datetime
 
             # Get today's date range (00:00:00 to 23:59:59)
-            today_start = datetime.combine(date.today(), datetime.min.time())
-            today_end = datetime.combine(date.today(), datetime.max.time())
+            # Use provided Indonesia date or fallback to system date
+            today_date = indonesia_date if indonesia_date else date.today()
+            today_start = datetime.combine(today_date, datetime.min.time())
+            today_end = datetime.combine(today_date, datetime.max.time())
 
             return (
                 self.db.query(ApiRequestLog)
@@ -233,9 +238,12 @@ class ApiRequestLogRepository:
             logger.error(f"Database error getting today's request logs: {str(e)}")
             return []
 
-    def get_today_summary_by_dealer(self) -> list:
+    def get_today_summary_by_dealer(self, indonesia_date=None) -> list:
         """
         Get aggregated summary of today's API requests grouped by dealer_id
+
+        Args:
+            indonesia_date: Optional date object representing today in Indonesia timezone
 
         Returns:
             List of dictionaries containing dealer summaries:
@@ -251,8 +259,10 @@ class ApiRequestLogRepository:
             from sqlalchemy import func, case
 
             # Get today's date range
-            today_start = datetime.combine(date.today(), datetime.min.time())
-            today_end = datetime.combine(date.today(), datetime.max.time())
+            # Use provided Indonesia date or fallback to system date
+            today_date = indonesia_date if indonesia_date else date.today()
+            today_start = datetime.combine(today_date, datetime.min.time())
+            today_end = datetime.combine(today_date, datetime.max.time())
 
             # Query aggregated data grouped by dealer_id
             results = (
@@ -318,4 +328,104 @@ class ApiRequestLogRepository:
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting today's dealer summary: {str(e)}")
+            return []
+
+    def get_weekly_summary_by_dealer(self, indonesia_date=None) -> list:
+        """
+        Get aggregated summary of this week's API requests grouped by dealer_id
+
+        Week is defined as Monday 00:00:00 to Sunday 23:59:59 in Indonesia timezone.
+
+        Args:
+            indonesia_date: Optional date object representing a date in the target week (Indonesia timezone)
+
+        Returns:
+            List of dictionaries containing dealer summaries:
+            - dealer_id
+            - total_requests
+            - successful_requests
+            - failed_requests
+            - avg_processing_time_ms
+            - request_count_by_type
+        """
+        try:
+            from datetime import date, datetime, timedelta
+            from sqlalchemy import func, case
+
+            # Get current week's date range (Monday to Sunday)
+            # Use provided Indonesia date or fallback to system date
+            today_date = indonesia_date if indonesia_date else date.today()
+
+            # Get Monday of the current week (weekday() returns 0 for Monday, 6 for Sunday)
+            days_since_monday = today_date.weekday()
+            week_start_date = today_date - timedelta(days=days_since_monday)
+            week_end_date = week_start_date + timedelta(days=6)
+
+            week_start = datetime.combine(week_start_date, datetime.min.time())
+            week_end = datetime.combine(week_end_date, datetime.max.time())
+
+            # Query aggregated data grouped by dealer_id
+            results = (
+                self.db.query(
+                    ApiRequestLog.dealer_id,
+                    func.count(ApiRequestLog.id).label('total_requests'),
+                    func.sum(
+                        case(
+                            (ApiRequestLog.response_status == 'success', 1),
+                            else_=0
+                        )
+                    ).label('successful_requests'),
+                    func.sum(
+                        case(
+                            (ApiRequestLog.response_status == 'error', 1),
+                            else_=0
+                        )
+                    ).label('failed_requests'),
+                    func.avg(ApiRequestLog.processing_time_ms).label('avg_processing_time_ms')
+                )
+                .filter(
+                    ApiRequestLog.request_timestamp >= week_start,
+                    ApiRequestLog.request_timestamp <= week_end,
+                    ApiRequestLog.dealer_id.isnot(None)  # Only include records with dealer_id
+                )
+                .group_by(ApiRequestLog.dealer_id)
+                .order_by(ApiRequestLog.dealer_id)
+                .all()
+            )
+
+            # Get request count by type for each dealer
+            summaries = []
+            for row in results:
+                dealer_id = row.dealer_id
+
+                # Get request count by type for this dealer
+                request_types = (
+                    self.db.query(
+                        ApiRequestLog.request_name,
+                        func.count(ApiRequestLog.id).label('count')
+                    )
+                    .filter(
+                        ApiRequestLog.dealer_id == dealer_id,
+                        ApiRequestLog.request_timestamp >= week_start,
+                        ApiRequestLog.request_timestamp <= week_end
+                    )
+                    .group_by(ApiRequestLog.request_name)
+                    .all()
+                )
+
+                request_count_by_type = {rt.request_name: rt.count for rt in request_types}
+
+                summaries.append({
+                    'dealer_id': dealer_id,
+                    'total_requests': row.total_requests,
+                    'successful_requests': row.successful_requests or 0,
+                    'failed_requests': row.failed_requests or 0,
+                    'avg_processing_time_ms': float(row.avg_processing_time_ms) if row.avg_processing_time_ms else 0.0,
+                    'request_count_by_type': request_count_by_type
+                })
+
+            return summaries
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting weekly dealer summary: {str(e)}")
             return []

@@ -1385,9 +1385,12 @@ class CustomerSatisfactionRepository:
                 }
             }
 
-    def get_today_upload_trackers(self) -> List[CustomerSatisfactionUploadTracker]:
+    def get_today_upload_trackers(self, indonesia_date=None) -> List[CustomerSatisfactionUploadTracker]:
         """
         Get all Customer Satisfaction upload trackers from today (no pagination)
+
+        Args:
+            indonesia_date: Optional date object representing today in Indonesia timezone
 
         Returns:
             List of CustomerSatisfactionUploadTracker objects from today
@@ -1396,8 +1399,10 @@ class CustomerSatisfactionRepository:
             from datetime import date, datetime
 
             # Get today's date range (00:00:00 to 23:59:59)
-            today_start = datetime.combine(date.today(), datetime.min.time())
-            today_end = datetime.combine(date.today(), datetime.max.time())
+            # Use provided Indonesia date or fallback to system date
+            today_date = indonesia_date if indonesia_date else date.today()
+            today_start = datetime.combine(today_date, datetime.min.time())
+            today_end = datetime.combine(today_date, datetime.max.time())
 
             return (
                 self.db.query(CustomerSatisfactionUploadTracker)

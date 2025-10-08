@@ -280,7 +280,7 @@ def get_today_login_activities(
     Get all login activities from today (no pagination, no filters)
 
     Only admins (SUPER_ADMIN, SYSTEM_ADMIN) can access this endpoint.
-    Returns all activities from 00:00:00 today to current time.
+    Returns all activities from 00:00:00 today to current time in Indonesia timezone (WIB/UTC+7).
     """
     # Check permissions - only admins
     if current_user.role not in [UserRole.SUPER_ADMIN, UserRole.SYSTEM_ADMIN]:
@@ -289,12 +289,13 @@ def get_today_login_activities(
             detail="Only administrators can access today's login activities"
         )
 
-    from datetime import date
+    from app.utils.timezone_utils import get_indonesia_datetime
     audit_repo = AuditRepository(db)
 
-    # Get today's date range (00:00:00 to 23:59:59)
-    today_start = datetime.combine(date.today(), datetime.min.time())
-    today_end = datetime.combine(date.today(), datetime.max.time())
+    # Get today's date range in Indonesia timezone (00:00:00 to 23:59:59 WIB)
+    indonesia_now = get_indonesia_datetime()
+    today_start = datetime.combine(indonesia_now.date(), datetime.min.time())
+    today_end = datetime.combine(indonesia_now.date(), datetime.max.time())
 
     # Get all logs from today without pagination
     logs, total = audit_repo.get_audit_logs(
@@ -321,7 +322,7 @@ def get_today_login_activities(
     ]
 
     return {
-        "date": date.today().isoformat(),
+        "date": indonesia_now.date().isoformat(),
         "total": total,
         "activities": log_responses
     }

@@ -30,6 +30,12 @@ const router = createRouter({
                     name: 'activities',
                     component: () => import('@/views/activities/Activities.vue'),
                     meta: { requiresSystemAdmin: true }
+                },
+                {
+                    path: '/system-logs/summary',
+                    name: 'summary',
+                    component: () => import('@/views/summary/Summary.vue'),
+                    meta: { requiresSystemAdmin: true }
                 }
             ]
         },

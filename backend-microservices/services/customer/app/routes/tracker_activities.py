@@ -60,7 +60,7 @@ def get_today_google_review_scrapes(
     Get all Google Review scrape activities from today (no pagination, no filters)
 
     Only admins can access this endpoint.
-    Returns all scrape activities from 00:00:00 today to current time.
+    Returns all scrape activities from 00:00:00 today to current time in Indonesia timezone (WIB/UTC+7).
     """
     # Check if user has admin permissions
     if not hasattr(current_user, 'role'):
@@ -81,9 +81,12 @@ def get_today_google_review_scrapes(
 
     logger.info(f"Admin {current_user.email} accessing today's Google Review scrape activities")
 
-    # Get today's scrape activities
+    from app.utils.timezone_utils import get_indonesia_datetime
+
+    # Get today's scrape activities using Indonesia timezone
     scrape_tracker_repo = GoogleReviewScrapeTrackerRepository(db)
-    activities = scrape_tracker_repo.get_today_scrape_activities()
+    indonesia_now = get_indonesia_datetime()
+    activities = scrape_tracker_repo.get_today_scrape_activities(indonesia_date=indonesia_now.date())
 
     # Convert to response models
     activity_responses = [
@@ -122,7 +125,7 @@ def get_today_google_review_scrapes(
     ]
 
     return GoogleReviewScrapeTrackerListResponse(
-        date=date.today().isoformat(),
+        date=indonesia_now.date().isoformat(),
         total=len(activity_responses),
         activities=activity_responses
     )
@@ -158,9 +161,12 @@ def get_today_google_review_summary_by_dealer(
 
     logger.info(f"Admin {current_user.email} accessing today's Google Review dealer summary")
 
-    # Get today's dealer summary
+    from app.utils.timezone_utils import get_indonesia_datetime
+
+    # Get today's dealer summary using Indonesia timezone
     scrape_tracker_repo = GoogleReviewScrapeTrackerRepository(db)
-    summaries = scrape_tracker_repo.get_today_summary_by_dealer()
+    indonesia_now = get_indonesia_datetime()
+    summaries = scrape_tracker_repo.get_today_summary_by_dealer(indonesia_date=indonesia_now.date())
 
     # Convert to response models
     summary_responses = [
@@ -183,7 +189,78 @@ def get_today_google_review_summary_by_dealer(
     ]
 
     return DealerScrapeStatsListResponse(
-        date=date.today().isoformat(),
+        date=indonesia_now.date().isoformat(),
+        total_dealers=len(summary_responses),
+        summaries=summary_responses
+    )
+
+
+@router.get("/google-reviews/weekly/summary-by-dealer", response_model=DealerScrapeStatsListResponse)
+def get_weekly_google_review_summary_by_dealer(
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get summary of this week's Google Review scrape activities grouped by dealer_id
+
+    Only admins can access this endpoint.
+    Returns aggregated statistics per dealer for the current week (Monday to Sunday) in Indonesia timezone (WIB/UTC+7).
+    """
+    # Check if user has admin permissions
+    if not hasattr(current_user, 'role'):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Check for admin roles
+    admin_roles = ['SUPER_ADMIN', 'SYSTEM_ADMIN']
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    if user_role not in admin_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can access Google Review scrape summaries"
+        )
+
+    logger.info(f"Admin {current_user.email} accessing weekly Google Review dealer summary")
+
+    from app.utils.timezone_utils import get_indonesia_datetime
+    from datetime import timedelta
+
+    # Get this week's dealer summary using Indonesia timezone
+    scrape_tracker_repo = GoogleReviewScrapeTrackerRepository(db)
+    indonesia_now = get_indonesia_datetime()
+    summaries = scrape_tracker_repo.get_weekly_summary_by_dealer(indonesia_date=indonesia_now.date())
+
+    # Calculate week start and end dates for display
+    days_since_monday = indonesia_now.date().weekday()
+    week_start_date = indonesia_now.date() - timedelta(days=days_since_monday)
+    week_end_date = week_start_date + timedelta(days=6)
+    week_range = f"{week_start_date.isoformat()} to {week_end_date.isoformat()}"
+
+    # Convert to response models
+    summary_responses = [
+        DealerScrapeStatsResponse(
+            dealer_id=summary['dealer_id'],
+            dealer_name=summary['dealer_name'],
+            total_scrapes=summary['total_scrapes'],
+            completed_scrapes=summary['completed_scrapes'],
+            failed_scrapes=summary['failed_scrapes'],
+            processing_scrapes=summary['processing_scrapes'],
+            partial_scrapes=summary['partial_scrapes'],
+            total_reviews_scraped=summary['total_reviews_scraped'],
+            total_new_reviews=summary['total_new_reviews'],
+            total_duplicate_reviews=summary['total_duplicate_reviews'],
+            avg_scrape_duration_seconds=summary['avg_scrape_duration_seconds'],
+            sentiment_analysis_enabled_count=summary['sentiment_analysis_enabled_count'],
+            sentiment_completed_count=summary['sentiment_completed_count']
+        )
+        for summary in summaries
+    ]
+
+    return DealerScrapeStatsListResponse(
+        date=week_range,
         total_dealers=len(summary_responses),
         summaries=summary_responses
     )
@@ -198,7 +275,7 @@ def get_today_customer_satisfaction_uploads(
     Get all Customer Satisfaction upload trackers from today (no pagination, no filters)
 
     Only admins can access this endpoint.
-    Returns all upload activities from 00:00:00 today to current time.
+    Returns all upload activities from 00:00:00 today to current time in Indonesia timezone (WIB/UTC+7).
     """
     # Check if user has admin permissions
     if not hasattr(current_user, 'role'):
@@ -219,9 +296,12 @@ def get_today_customer_satisfaction_uploads(
 
     logger.info(f"Admin {current_user.email} accessing today's Customer Satisfaction upload trackers")
 
-    # Get today's upload trackers
+    from app.utils.timezone_utils import get_indonesia_datetime
+
+    # Get today's upload trackers using Indonesia timezone
     satisfaction_repo = CustomerSatisfactionRepository(db)
-    uploads = satisfaction_repo.get_today_upload_trackers()
+    indonesia_now = get_indonesia_datetime()
+    uploads = satisfaction_repo.get_today_upload_trackers(indonesia_date=indonesia_now.date())
 
     # Convert to response models
     upload_responses = [
@@ -242,7 +322,7 @@ def get_today_customer_satisfaction_uploads(
     ]
 
     return CustomerSatisfactionUploadTrackerListResponse(
-        date=date.today().isoformat(),
+        date=indonesia_now.date().isoformat(),
         total=len(upload_responses),
         uploads=upload_responses
     )
