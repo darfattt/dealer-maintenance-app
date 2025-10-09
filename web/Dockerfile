@@ -42,6 +42,12 @@ COPY nginx.conf /etc/nginx/nginx.conf
 COPY nginx.prod.conf /etc/nginx/nginx.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
+##########
+COPY autology.id.crt /etc/nginx/ssl/autology.id.crt
+COPY autology.id.key /etc/nginx/ssl/autology.id.key
+COPY nginx.conf /etc/nginx/ssl/nginx.conf
+##########
+
 # Make entrypoint script executable
 RUN chmod +x /docker-entrypoint.sh
 
@@ -51,7 +57,7 @@ ENV BACKEND_PORT=8080
 ENV NODE_ENV=production
 
 # Expose port
-EXPOSE 80
+EXPOSE 80 443
 
 # Use custom entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]
