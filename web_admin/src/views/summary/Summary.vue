@@ -2,7 +2,7 @@
     <div class="summary-container">
         <div class="flex justify-between items-center mb-6">
             <div>
-                <h1 class="text-3xl font-bold text-gray-800">System Summary</h1>
+                <h1 class="text-3xl font-bold text-gray-800">System Logs Summary</h1>
                 <p class="text-gray-600 mt-1">Dealer activity overview and statistics</p>
             </div>
             <div class="flex gap-2 items-center">
