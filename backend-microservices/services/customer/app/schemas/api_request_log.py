@@ -53,3 +53,22 @@ class DealerSummaryListResponse(BaseModel):
     date: str
     total_dealers: int
     summaries: list[DealerSummaryResponse]
+
+
+class WeeklyDealerSummaryResponse(BaseModel):
+    """Schema for weekly dealer summary response with week range"""
+    week_start_date: str  # ISO format date string (Monday)
+    week_end_date: str    # ISO format date string (Sunday)
+    dealer_id: str
+    total_requests: int
+    successful_requests: int
+    failed_requests: int
+    avg_processing_time_ms: float
+    request_count_by_type: Dict[str, int]
+
+
+class WeeklyDealerSummaryListResponse(BaseModel):
+    """Schema for weekly dealer summary list response"""
+    total_weeks: int
+    total_dealers: int
+    summaries: list[WeeklyDealerSummaryResponse]

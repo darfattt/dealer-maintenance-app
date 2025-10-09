@@ -21,7 +21,9 @@ from app.schemas.api_request_log import (
     ApiRequestLogResponse,
     ApiRequestLogListResponse,
     DealerSummaryResponse,
-    DealerSummaryListResponse
+    DealerSummaryListResponse,
+    WeeklyDealerSummaryResponse,
+    WeeklyDealerSummaryListResponse
 )
 from app.repositories.api_request_log_repository import ApiRequestLogRepository
 from utils.database import DatabaseManager
@@ -174,16 +176,16 @@ def get_today_summary_by_dealer(
     )
 
 
-@router.get("/weekly/summary-by-dealer", response_model=DealerSummaryListResponse)
+@router.get("/weekly/summary-by-dealer", response_model=WeeklyDealerSummaryListResponse)
 def get_weekly_summary_by_dealer(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get summary of this week's API requests grouped by dealer_id
+    Get summary of ALL weeks' API requests grouped by week and dealer_id
 
     Only admins can access this endpoint.
-    Returns aggregated statistics per dealer for the current week (Monday to Sunday) in Indonesia timezone (WIB/UTC+7).
+    Returns aggregated statistics per dealer for ALL historical weeks (Monday to Sunday) in Indonesia timezone (WIB/UTC+7).
     """
     # Check if user has admin permissions
     if not hasattr(current_user, 'role'):
@@ -202,25 +204,17 @@ def get_weekly_summary_by_dealer(
             detail="Only administrators can access API request summaries"
         )
 
-    logger.info(f"Admin {current_user.email} accessing weekly dealer summary")
+    logger.info(f"Admin {current_user.email} accessing weekly dealer summary (all weeks)")
 
-    from app.utils.timezone_utils import get_indonesia_datetime
-    from datetime import timedelta
-
-    # Get this week's summary using Indonesia timezone
+    # Get all weekly summaries
     api_log_repo = ApiRequestLogRepository(db)
-    indonesia_now = get_indonesia_datetime()
-    summaries = api_log_repo.get_weekly_summary_by_dealer(indonesia_date=indonesia_now.date())
-
-    # Calculate week start and end dates for display
-    days_since_monday = indonesia_now.date().weekday()
-    week_start_date = indonesia_now.date() - timedelta(days=days_since_monday)
-    week_end_date = week_start_date + timedelta(days=6)
-    week_range = f"{week_start_date.isoformat()} to {week_end_date.isoformat()}"
+    summaries = api_log_repo.get_weekly_summary_by_dealer()
 
     # Convert to response models
     summary_responses = [
-        DealerSummaryResponse(
+        WeeklyDealerSummaryResponse(
+            week_start_date=summary['week_start_date'],
+            week_end_date=summary['week_end_date'],
             dealer_id=summary['dealer_id'],
             total_requests=summary['total_requests'],
             successful_requests=summary['successful_requests'],
@@ -231,8 +225,12 @@ def get_weekly_summary_by_dealer(
         for summary in summaries
     ]
 
-    return DealerSummaryListResponse(
-        date=week_range,
-        total_dealers=len(summary_responses),
+    # Calculate unique weeks and dealers
+    unique_weeks = len(set((s.week_start_date, s.week_end_date) for s in summary_responses))
+    unique_dealers = len(set(s.dealer_id for s in summary_responses))
+
+    return WeeklyDealerSummaryListResponse(
+        total_weeks=unique_weeks,
+        total_dealers=unique_dealers,
         summaries=summary_responses
     )

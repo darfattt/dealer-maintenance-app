@@ -76,6 +76,32 @@ class DealerScrapeStatsListResponse(BaseModel):
     summaries: list[DealerScrapeStatsResponse]
 
 
+class WeeklyDealerScrapeStatsResponse(BaseModel):
+    """Schema for weekly dealer scrape statistics response with week range"""
+    week_start_date: str  # ISO format date string (Monday)
+    week_end_date: str    # ISO format date string (Sunday)
+    dealer_id: str
+    dealer_name: Optional[str]
+    total_scrapes: int
+    completed_scrapes: int
+    failed_scrapes: int
+    processing_scrapes: int
+    partial_scrapes: int
+    total_reviews_scraped: int
+    total_new_reviews: int
+    total_duplicate_reviews: int
+    avg_scrape_duration_seconds: float
+    sentiment_analysis_enabled_count: int
+    sentiment_completed_count: int
+
+
+class WeeklyDealerScrapeStatsListResponse(BaseModel):
+    """Schema for weekly dealer scrape statistics list response"""
+    total_weeks: int
+    total_dealers: int
+    summaries: list[WeeklyDealerScrapeStatsResponse]
+
+
 # Customer Satisfaction Upload Tracker Schemas
 
 class CustomerSatisfactionUploadTrackerResponse(BaseModel):

@@ -165,15 +165,17 @@ class GoogleReviewScrapeTrackerRepository:
 
     def get_weekly_summary_by_dealer(self, indonesia_date=None) -> List[Dict[str, Any]]:
         """
-        Get aggregated summary of this week's scrape activities grouped by dealer_id
+        Get aggregated summary of ALL weeks' scrape activities grouped by week and dealer_id
 
         Week is defined as Monday 00:00:00 to Sunday 23:59:59 in Indonesia timezone.
 
         Args:
-            indonesia_date: Optional date object representing a date in the target week (Indonesia timezone)
+            indonesia_date: Not used, kept for backward compatibility
 
         Returns:
-            List of dictionaries containing dealer scrape summaries:
+            List of dictionaries containing weekly dealer scrape summaries:
+            - week_start_date (ISO format)
+            - week_end_date (ISO format)
             - dealer_id
             - dealer_name
             - total_scrapes
@@ -191,21 +193,11 @@ class GoogleReviewScrapeTrackerRepository:
         try:
             from datetime import timedelta
 
-            # Get current week's date range (Monday to Sunday)
-            # Use provided Indonesia date or fallback to system date
-            today_date = indonesia_date if indonesia_date else date.today()
-
-            # Get Monday of the current week (weekday() returns 0 for Monday, 6 for Sunday)
-            days_since_monday = today_date.weekday()
-            week_start_date = today_date - timedelta(days=days_since_monday)
-            week_end_date = week_start_date + timedelta(days=6)
-
-            week_start = datetime.combine(week_start_date, datetime.min.time())
-            week_end = datetime.combine(week_end_date, datetime.max.time())
-
-            # Query aggregated data grouped by dealer_id
+            # Query aggregated data grouped by week and dealer_id
+            # Using date_trunc to group by week (Monday-based)
             results = (
                 self.db.query(
+                    func.date_trunc('week', GoogleReviewScrapeTracker.scrape_date).label('week_start'),
                     GoogleReviewScrapeTracker.dealer_id,
                     func.max(GoogleReviewScrapeTracker.dealer_name).label('dealer_name'),
                     func.count(GoogleReviewScrapeTracker.id).label('total_scrapes'),
@@ -251,19 +243,25 @@ class GoogleReviewScrapeTrackerRepository:
                     ).label('sentiment_completed_count')
                 )
                 .filter(
-                    GoogleReviewScrapeTracker.scrape_date >= week_start,
-                    GoogleReviewScrapeTracker.scrape_date <= week_end,
                     GoogleReviewScrapeTracker.dealer_id.isnot(None)  # Only include records with dealer_id
                 )
-                .group_by(GoogleReviewScrapeTracker.dealer_id)
-                .order_by(GoogleReviewScrapeTracker.dealer_id)
+                .group_by(func.date_trunc('week', GoogleReviewScrapeTracker.scrape_date), GoogleReviewScrapeTracker.dealer_id)
+                .order_by(func.date_trunc('week', GoogleReviewScrapeTracker.scrape_date).desc(), GoogleReviewScrapeTracker.dealer_id)
                 .all()
             )
 
             # Format results
             summaries = []
             for row in results:
+                week_start_datetime = row.week_start
+
+                # Calculate week end date (Sunday)
+                week_start_date = week_start_datetime.date()
+                week_end_date = week_start_date + timedelta(days=6)
+
                 summaries.append({
+                    'week_start_date': week_start_date.isoformat(),
+                    'week_end_date': week_end_date.isoformat(),
                     'dealer_id': row.dealer_id,
                     'dealer_name': row.dealer_name,
                     'total_scrapes': row.total_scrapes or 0,

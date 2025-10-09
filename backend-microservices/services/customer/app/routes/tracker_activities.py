@@ -22,6 +22,8 @@ from app.schemas.tracker_schemas import (
     GoogleReviewScrapeTrackerListResponse,
     DealerScrapeStatsResponse,
     DealerScrapeStatsListResponse,
+    WeeklyDealerScrapeStatsResponse,
+    WeeklyDealerScrapeStatsListResponse,
     CustomerSatisfactionUploadTrackerResponse,
     CustomerSatisfactionUploadTrackerListResponse
 )
@@ -195,16 +197,16 @@ def get_today_google_review_summary_by_dealer(
     )
 
 
-@router.get("/google-reviews/weekly/summary-by-dealer", response_model=DealerScrapeStatsListResponse)
+@router.get("/google-reviews/weekly/summary-by-dealer", response_model=WeeklyDealerScrapeStatsListResponse)
 def get_weekly_google_review_summary_by_dealer(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get summary of this week's Google Review scrape activities grouped by dealer_id
+    Get summary of ALL weeks' Google Review scrape activities grouped by week and dealer_id
 
     Only admins can access this endpoint.
-    Returns aggregated statistics per dealer for the current week (Monday to Sunday) in Indonesia timezone (WIB/UTC+7).
+    Returns aggregated statistics per dealer for ALL historical weeks (Monday to Sunday) in Indonesia timezone (WIB/UTC+7).
     """
     # Check if user has admin permissions
     if not hasattr(current_user, 'role'):
@@ -223,25 +225,17 @@ def get_weekly_google_review_summary_by_dealer(
             detail="Only administrators can access Google Review scrape summaries"
         )
 
-    logger.info(f"Admin {current_user.email} accessing weekly Google Review dealer summary")
+    logger.info(f"Admin {current_user.email} accessing weekly Google Review dealer summary (all weeks)")
 
-    from app.utils.timezone_utils import get_indonesia_datetime
-    from datetime import timedelta
-
-    # Get this week's dealer summary using Indonesia timezone
+    # Get all weekly dealer summaries
     scrape_tracker_repo = GoogleReviewScrapeTrackerRepository(db)
-    indonesia_now = get_indonesia_datetime()
-    summaries = scrape_tracker_repo.get_weekly_summary_by_dealer(indonesia_date=indonesia_now.date())
-
-    # Calculate week start and end dates for display
-    days_since_monday = indonesia_now.date().weekday()
-    week_start_date = indonesia_now.date() - timedelta(days=days_since_monday)
-    week_end_date = week_start_date + timedelta(days=6)
-    week_range = f"{week_start_date.isoformat()} to {week_end_date.isoformat()}"
+    summaries = scrape_tracker_repo.get_weekly_summary_by_dealer()
 
     # Convert to response models
     summary_responses = [
-        DealerScrapeStatsResponse(
+        WeeklyDealerScrapeStatsResponse(
+            week_start_date=summary['week_start_date'],
+            week_end_date=summary['week_end_date'],
             dealer_id=summary['dealer_id'],
             dealer_name=summary['dealer_name'],
             total_scrapes=summary['total_scrapes'],
@@ -259,9 +253,13 @@ def get_weekly_google_review_summary_by_dealer(
         for summary in summaries
     ]
 
-    return DealerScrapeStatsListResponse(
-        date=week_range,
-        total_dealers=len(summary_responses),
+    # Calculate unique weeks and dealers
+    unique_weeks = len(set((s.week_start_date, s.week_end_date) for s in summary_responses))
+    unique_dealers = len(set(s.dealer_id for s in summary_responses))
+
+    return WeeklyDealerScrapeStatsListResponse(
+        total_weeks=unique_weeks,
+        total_dealers=unique_dealers,
         summaries=summary_responses
     )
 

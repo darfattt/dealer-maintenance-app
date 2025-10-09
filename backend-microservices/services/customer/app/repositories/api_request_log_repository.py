@@ -332,15 +332,17 @@ class ApiRequestLogRepository:
 
     def get_weekly_summary_by_dealer(self, indonesia_date=None) -> list:
         """
-        Get aggregated summary of this week's API requests grouped by dealer_id
+        Get aggregated summary of ALL weeks' API requests grouped by week and dealer_id
 
         Week is defined as Monday 00:00:00 to Sunday 23:59:59 in Indonesia timezone.
 
         Args:
-            indonesia_date: Optional date object representing a date in the target week (Indonesia timezone)
+            indonesia_date: Not used, kept for backward compatibility
 
         Returns:
-            List of dictionaries containing dealer summaries:
+            List of dictionaries containing weekly dealer summaries:
+            - week_start_date (ISO format)
+            - week_end_date (ISO format)
             - dealer_id
             - total_requests
             - successful_requests
@@ -350,23 +352,13 @@ class ApiRequestLogRepository:
         """
         try:
             from datetime import date, datetime, timedelta
-            from sqlalchemy import func, case
+            from sqlalchemy import func, case, extract
 
-            # Get current week's date range (Monday to Sunday)
-            # Use provided Indonesia date or fallback to system date
-            today_date = indonesia_date if indonesia_date else date.today()
-
-            # Get Monday of the current week (weekday() returns 0 for Monday, 6 for Sunday)
-            days_since_monday = today_date.weekday()
-            week_start_date = today_date - timedelta(days=days_since_monday)
-            week_end_date = week_start_date + timedelta(days=6)
-
-            week_start = datetime.combine(week_start_date, datetime.min.time())
-            week_end = datetime.combine(week_end_date, datetime.max.time())
-
-            # Query aggregated data grouped by dealer_id
+            # Query aggregated data grouped by week and dealer_id
+            # Using date_trunc to group by week (Monday-based)
             results = (
                 self.db.query(
+                    func.date_trunc('week', ApiRequestLog.request_timestamp).label('week_start'),
                     ApiRequestLog.dealer_id,
                     func.count(ApiRequestLog.id).label('total_requests'),
                     func.sum(
@@ -384,21 +376,27 @@ class ApiRequestLogRepository:
                     func.avg(ApiRequestLog.processing_time_ms).label('avg_processing_time_ms')
                 )
                 .filter(
-                    ApiRequestLog.request_timestamp >= week_start,
-                    ApiRequestLog.request_timestamp <= week_end,
                     ApiRequestLog.dealer_id.isnot(None)  # Only include records with dealer_id
                 )
-                .group_by(ApiRequestLog.dealer_id)
-                .order_by(ApiRequestLog.dealer_id)
+                .group_by(func.date_trunc('week', ApiRequestLog.request_timestamp), ApiRequestLog.dealer_id)
+                .order_by(func.date_trunc('week', ApiRequestLog.request_timestamp).desc(), ApiRequestLog.dealer_id)
                 .all()
             )
 
-            # Get request count by type for each dealer
+            # Get request count by type for each week and dealer
             summaries = []
             for row in results:
+                week_start_datetime = row.week_start
                 dealer_id = row.dealer_id
 
-                # Get request count by type for this dealer
+                # Calculate week end date (Sunday)
+                week_start_date = week_start_datetime.date()
+                week_end_date = week_start_date + timedelta(days=6)
+
+                week_start = datetime.combine(week_start_date, datetime.min.time())
+                week_end = datetime.combine(week_end_date, datetime.max.time())
+
+                # Get request count by type for this dealer and week
                 request_types = (
                     self.db.query(
                         ApiRequestLog.request_name,
@@ -416,6 +414,8 @@ class ApiRequestLogRepository:
                 request_count_by_type = {rt.request_name: rt.count for rt in request_types}
 
                 summaries.append({
+                    'week_start_date': week_start_date.isoformat(),
+                    'week_end_date': week_end_date.isoformat(),
                     'dealer_id': dealer_id,
                     'total_requests': row.total_requests,
                     'successful_requests': row.successful_requests or 0,
