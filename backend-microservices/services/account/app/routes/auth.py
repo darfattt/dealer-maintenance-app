@@ -2,11 +2,11 @@
 Authentication routes
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.schemas.user import (
-    UserLogin, TokenResponse, RefreshTokenRequest, 
+    UserLogin, TokenResponse, RefreshTokenRequest,
     PasswordResetRequest, PasswordResetConfirm, ChangePasswordRequest,
     UserResponse
 )
@@ -27,15 +27,40 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 security = HTTPBearer()
 
 
+def get_client_ip(request: Request) -> str:
+    """Extract client IP address from request"""
+    # Check for X-Forwarded-For header (proxy/load balancer)
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # X-Forwarded-For can contain multiple IPs, take the first one
+        return forwarded_for.split(",")[0].strip()
+
+    # Check for X-Real-IP header
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+
+    # Fall back to direct client
+    return request.client.host if request.client else "unknown"
+
+
+def get_user_agent(request: Request) -> str:
+    """Extract user agent from request"""
+    return request.headers.get("User-Agent", "unknown")
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(
+    request: Request,
     login_data: UserLogin,
     db: Session = Depends(get_db)
 ):
     """
     Authenticate user and return access and refresh tokens
     """
-    auth_controller = AuthController(db)
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+    auth_controller = AuthController(db, ip_address=ip_address, user_agent=user_agent)
     return auth_controller.login(login_data)
 
 
@@ -99,8 +124,15 @@ def change_password(
 
 
 @router.post("/logout")
-def logout():
+def logout(
+    request: Request,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Logout user (client should discard tokens)
+    Logout user and log the activity
     """
-    return {"message": "Successfully logged out"}
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+    auth_controller = AuthController(db, ip_address=ip_address, user_agent=user_agent)
+    return auth_controller.logout(current_user)

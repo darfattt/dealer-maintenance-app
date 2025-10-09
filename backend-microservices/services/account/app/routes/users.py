@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.schemas.user import (
-    UserCreate, UserUpdate, UserResponse, UserListResponse
+    UserCreate, UserUpdate, UserResponse, UserListResponse, DealerAdminRegistration
 )
 from app.models.user import UserRole
 from app.controllers.user_controller import UserController
@@ -103,3 +103,16 @@ def delete_user(
     """
     user_controller = UserController(db)
     return user_controller.delete_user(user_id, current_user)
+
+
+@router.post("/dealer-admin", response_model=UserResponse, status_code=201)
+def create_dealer_admin(
+    user_data: DealerAdminRegistration,
+    db: Session = Depends(get_db)
+):
+    """
+    Create a dealer admin user (used during dealer registration)
+    This endpoint is called by the backend API during dealer registration
+    """
+    user_controller = UserController(db)
+    return user_controller.create_dealer_admin(user_data)

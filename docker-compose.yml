@@ -284,6 +284,36 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # Vue 3 Admin Web Application (Port 5001) - System Admin Portal for SYSTEM_ADMIN Role
+  web_admin:
+    build:
+      context: ./web_admin
+      dockerfile: Dockerfile
+      target: production
+      args:
+        NODE_ENV: production
+        VITE_API_BASE_URL: /api
+    container_name: dealer_web_admin
+    environment:
+      - NODE_ENV=production
+      - BACKEND_HOST=api_gateway
+      - BACKEND_PORT=8080
+      - DOCKER_ENV=true
+    ports:
+      - "5001:80"
+    depends_on:
+      api_gateway:
+        condition: service_healthy
+    networks:
+      - dealer_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
   # Dashboard Dealer Service (Port 8200) - Analytics Data Aggregation
   dashboard_dealer_service:
     build:

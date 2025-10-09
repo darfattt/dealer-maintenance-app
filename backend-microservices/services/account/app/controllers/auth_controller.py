@@ -9,8 +9,10 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.models.user import User, UserRole
+from app.models.login_audit import AuditAction
 from app.schemas.user import UserLogin, TokenResponse, RefreshTokenRequest, PasswordResetRequest, PasswordResetConfirm, ChangePasswordRequest
 from app.repositories.user_repository import UserRepository
+from app.repositories.audit_repository import AuditRepository
 import sys
 import os
 
@@ -27,9 +29,12 @@ logger = setup_logger(__name__)
 class AuthController:
     """Controller for authentication operations"""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, ip_address: Optional[str] = None, user_agent: Optional[str] = None):
         self.db = db
         self.user_repo = UserRepository(db)
+        self.audit_repo = AuditRepository(db)
+        self.ip_address = ip_address
+        self.user_agent = user_agent
     
     def login(self, login_data: UserLogin) -> TokenResponse:
         """
@@ -48,22 +53,52 @@ class AuthController:
         user = self.user_repo.get_user_by_email(login_data.email)
         if not user:
             logger.warning(f"Login attempt with non-existent email: {login_data.email}")
+            # Log failed login attempt
+            self.audit_repo.create_audit_log(
+                action=AuditAction.LOGIN_FAILED,
+                email=login_data.email,
+                user_id=None,
+                ip_address=self.ip_address,
+                user_agent=self.user_agent,
+                success=False,
+                failure_reason="User not found"
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
             )
-        
+
         # Check if user is active
         if not user.is_active:
             logger.warning(f"Login attempt with inactive user: {login_data.email}")
+            # Log failed login attempt
+            self.audit_repo.create_audit_log(
+                action=AuditAction.LOGIN_FAILED,
+                email=login_data.email,
+                user_id=user.id,
+                ip_address=self.ip_address,
+                user_agent=self.user_agent,
+                success=False,
+                failure_reason="Account is disabled"
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is disabled"
             )
-        
+
         # Verify password
         if not verify_password(login_data.password, user.hashed_password):
             logger.warning(f"Failed login attempt for user: {login_data.email}")
+            # Log failed login attempt
+            self.audit_repo.create_audit_log(
+                action=AuditAction.LOGIN_FAILED,
+                email=login_data.email,
+                user_id=user.id,
+                ip_address=self.ip_address,
+                user_agent=self.user_agent,
+                success=False,
+                failure_reason="Invalid password"
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
@@ -71,7 +106,18 @@ class AuthController:
         
         # Update last login
         self.user_repo.update_last_login(user.id)
-        
+
+        # Log successful login
+        self.audit_repo.create_audit_log(
+            action=AuditAction.LOGIN,
+            email=login_data.email,
+            user_id=user.id,
+            ip_address=self.ip_address,
+            user_agent=self.user_agent,
+            success=True,
+            failure_reason=None
+        )
+
         # Create tokens
         token_data = {
             "sub": str(user.id),
@@ -79,10 +125,10 @@ class AuthController:
             "role": user.role.value,
             "dealer_id": user.dealer_id
         }
-        
+
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token({"sub": str(user.id)})
-        
+
         logger.info(f"Successful login for user: {login_data.email}")
         
         # Convert User model to UserResponse
@@ -281,14 +327,14 @@ class AuthController:
     def change_password(self, user: User, change_request: ChangePasswordRequest) -> dict:
         """
         Change user password
-        
+
         Args:
             user: Current user
             change_request: Password change request
-            
+
         Returns:
             Success message
-            
+
         Raises:
             HTTPException: If current password is incorrect
         """
@@ -298,10 +344,35 @@ class AuthController:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Current password is incorrect"
             )
-        
+
         # Update password
         self.user_repo.update_password(user.id, change_request.new_password)
-        
+
         logger.info(f"Password changed for user: {user.email}")
-        
+
         return {"message": "Password has been changed successfully"}
+
+    def logout(self, user: User) -> dict:
+        """
+        Logout user and create audit log
+
+        Args:
+            user: Current user
+
+        Returns:
+            Success message
+        """
+        # Log logout activity
+        self.audit_repo.create_audit_log(
+            action=AuditAction.LOGOUT,
+            email=user.email,
+            user_id=user.id,
+            ip_address=self.ip_address,
+            user_agent=self.user_agent,
+            success=True,
+            failure_reason=None
+        )
+
+        logger.info(f"User logged out: {user.email}")
+
+        return {"message": "Successfully logged out"}
