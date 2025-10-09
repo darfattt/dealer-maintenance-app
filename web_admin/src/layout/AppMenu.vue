@@ -19,10 +19,10 @@ const model = ref([
         ]
     },
     {
-        label: 'System Logs',
+        label: 'Monitoring',
         items: [
             {
-                label: 'Summary',
+                label: 'System Logs',
                 icon: 'pi pi-fw pi-chart-bar',
                 to: '/system-logs/summary'
             },
@@ -30,6 +30,11 @@ const model = ref([
                 label: 'Activities',
                 icon: 'pi pi-fw pi-list',
                 to: '/system-logs/activities'
+            },
+            {
+                label: 'Anomalies',
+                icon: 'pi pi-fw pi-exclamation-triangle',
+                to: '/anomalies'
             }
         ]
     }

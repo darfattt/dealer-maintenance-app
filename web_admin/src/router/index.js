@@ -36,6 +36,12 @@ const router = createRouter({
                     name: 'summary',
                     component: () => import('@/views/summary/Summary.vue'),
                     meta: { requiresSystemAdmin: true }
+                },
+                {
+                    path: '/anomalies',
+                    name: 'anomalies',
+                    component: () => import('@/views/anomalies/Anomalies.vue'),
+                    meta: { requiresSystemAdmin: true }
                 }
             ]
         },

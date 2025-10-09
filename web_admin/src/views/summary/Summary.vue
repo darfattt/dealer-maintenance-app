@@ -34,20 +34,26 @@
                     </div>
                 </template>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    <div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <i class="pi pi-calendar"></i> Today's Summary
-                        </h3>
+                <TabView v-model:activeIndex="apiLogsSubTab" :key="'api-logs-' + activeTab" class="mt-4">
+                    <TabPanel>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-calendar"></i>
+                                <span>Today</span>
+                            </div>
+                        </template>
                         <ApiLogsSummary ref="apiLogsTodayRef" @loaded="onApiLogsTodayLoaded" />
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <i class="pi pi-chart-line"></i> This Week's Summary
-                        </h3>
+                    </TabPanel>
+                    <TabPanel>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-chart-line"></i>
+                                <span>This Week</span>
+                            </div>
+                        </template>
                         <ApiLogsWeeklySummary ref="apiLogsWeeklyRef" @loaded="onApiLogsWeeklyLoaded" />
-                    </div>
-                </div>
+                    </TabPanel>
+                </TabView>
             </TabPanel>
 
             <!-- Google Reviews Tab -->
@@ -59,20 +65,26 @@
                     </div>
                 </template>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    <div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <i class="pi pi-calendar"></i> Today's Summary
-                        </h3>
+                <TabView v-model:activeIndex="googleReviewsSubTab" :key="'google-reviews-' + activeTab" class="mt-4">
+                    <TabPanel>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-calendar"></i>
+                                <span>Today</span>
+                            </div>
+                        </template>
                         <GoogleReviewsSummary ref="googleReviewsTodayRef" @loaded="onGoogleReviewsTodayLoaded" />
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <i class="pi pi-chart-line"></i> This Week's Summary
-                        </h3>
+                    </TabPanel>
+                    <TabPanel>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-chart-line"></i>
+                                <span>This Week</span>
+                            </div>
+                        </template>
                         <GoogleReviewsWeeklySummary ref="googleReviewsWeeklyRef" @loaded="onGoogleReviewsWeeklyLoaded" />
-                    </div>
-                </div>
+                    </TabPanel>
+                </TabView>
             </TabPanel>
         </TabView>
     </div>
@@ -87,6 +99,8 @@ import GoogleReviewsSummary from './GoogleReviewsSummary.vue';
 import GoogleReviewsWeeklySummary from './GoogleReviewsWeeklySummary.vue';
 
 const activeTab = ref(0);
+const apiLogsSubTab = ref(0);
+const googleReviewsSubTab = ref(0);
 const autoRefresh = ref(false);
 const refreshing = ref(false);
 const lastUpdated = ref(formatToIndonesiaTime(new Date()));
@@ -116,19 +130,21 @@ const onGoogleReviewsWeeklyLoaded = () => {
 const refreshAll = async () => {
     refreshing.value = true;
     try {
-        // Refresh based on active tab
+        // Refresh based on active tab and sub-tab
         if (activeTab.value === 0) {
-            // API Logs Tab
-            await Promise.all([
-                apiLogsTodayRef.value?.loadData(),
-                apiLogsWeeklyRef.value?.loadData()
-            ]);
+            // API Logs Tab - refresh based on active sub-tab
+            if (apiLogsSubTab.value === 0) {
+                await apiLogsTodayRef.value?.loadData();
+            } else {
+                await apiLogsWeeklyRef.value?.loadData();
+            }
         } else if (activeTab.value === 1) {
-            // Google Reviews Tab
-            await Promise.all([
-                googleReviewsTodayRef.value?.loadData(),
-                googleReviewsWeeklyRef.value?.loadData()
-            ]);
+            // Google Reviews Tab - refresh based on active sub-tab
+            if (googleReviewsSubTab.value === 0) {
+                await googleReviewsTodayRef.value?.loadData();
+            } else {
+                await googleReviewsWeeklyRef.value?.loadData();
+            }
         }
         lastUpdated.value = formatToIndonesiaTime(new Date());
     } finally {
