@@ -24,6 +24,8 @@ from app.routes.google_review_routes import router as google_review_router
 from app.routes.health import router as health_router
 from app.routes.api_request_log import router as api_request_log_router
 from app.routes.tracker_activities import router as tracker_activities_router
+from app.routes.whatsapp_anomaly import router as whatsapp_anomaly_router
+from app.routes.google_scrape_anomaly import router as google_scrape_anomaly_router
 from utils.database import DatabaseManager
 from utils.logger import setup_logger
 from sqlalchemy import text
@@ -149,6 +151,8 @@ app.include_router(google_review_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(api_request_log_router, prefix="/api/v1")
 app.include_router(tracker_activities_router, prefix="/api/v1")
+app.include_router(whatsapp_anomaly_router, prefix="/api/v1")
+app.include_router(google_scrape_anomaly_router, prefix="/api/v1")
 
 
 # Root endpoint

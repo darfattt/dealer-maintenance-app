@@ -72,6 +72,8 @@ class Settings(BaseSettings):
             "/api/v1/audit": self.account_service_url,
             "/api/v1/api-logs": self.customer_service_url,
             "/api/v1/trackers": self.customer_service_url,
+            "/api/v1/google-scrape-anomalies": self.customer_service_url,
+             "/api/v1/whatsapp-anomalies": self.customer_service_url,
             # Google Reviews routes
             "/google-reviews": self.customer_service_url,
             "/api/google-reviews": self.customer_service_url,

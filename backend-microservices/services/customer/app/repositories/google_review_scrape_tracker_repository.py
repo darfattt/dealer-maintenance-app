@@ -3,10 +3,10 @@ Google Review Scrape Tracker repository for database operations
 """
 
 import logging
-from typing import List, Dict, Any
-from datetime import date, datetime
+from typing import List, Dict, Any, Optional, Tuple
+from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case, and_
+from sqlalchemy import func, case, and_, or_
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.google_review_scrape_tracker import GoogleReviewScrapeTracker
@@ -282,3 +282,295 @@ class GoogleReviewScrapeTrackerRepository:
         except SQLAlchemyError as e:
             logger.error(f"Database error getting weekly dealer scrape summary: {str(e)}")
             return []
+
+    # Anomaly tracking methods
+    def get_failed_scrapes(
+        self,
+        page: int = 1,
+        per_page: int = 10,
+        dealer_id: Optional[str] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
+        scrape_status: Optional[str] = None
+    ) -> Tuple[List[GoogleReviewScrapeTracker], int]:
+        """
+        Get failed and partial scrape operations with pagination
+
+        Args:
+            page: Page number (1-based)
+            per_page: Items per page
+            dealer_id: Optional dealer ID filter
+            date_from: Optional start date filter
+            date_to: Optional end date filter
+            scrape_status: Optional status filter (FAILED, PARTIAL)
+
+        Returns:
+            Tuple of (list of GoogleReviewScrapeTracker objects, total count)
+        """
+        try:
+            # Failed statuses
+            if scrape_status:
+                status_filter = [scrape_status]
+            else:
+                status_filter = ['FAILED', 'PARTIAL']
+
+            # Build base query
+            query = self.db.query(GoogleReviewScrapeTracker).filter(
+                GoogleReviewScrapeTracker.scrape_status.in_(status_filter)
+            )
+
+            # Apply filters
+            if dealer_id:
+                query = query.filter(GoogleReviewScrapeTracker.dealer_id == dealer_id)
+
+            if date_from:
+                date_from_start = datetime.combine(date_from, datetime.min.time())
+                query = query.filter(GoogleReviewScrapeTracker.scrape_date >= date_from_start)
+
+            if date_to:
+                date_to_end = datetime.combine(date_to, datetime.max.time())
+                query = query.filter(GoogleReviewScrapeTracker.scrape_date <= date_to_end)
+
+            # Get total count
+            total_count = query.count()
+
+            # Apply ordering and pagination
+            offset = (page - 1) * per_page
+            results = query.order_by(GoogleReviewScrapeTracker.scrape_date.desc()).offset(offset).limit(per_page).all()
+
+            return results, total_count
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting failed scrapes: {str(e)}")
+            return [], 0
+
+    def get_daily_failed_scrapes(self, dealer_id: Optional[str] = None, indonesia_date: Optional[date] = None) -> Dict[str, Any]:
+        """
+        Get daily summary of failed scrapes for today
+
+        Args:
+            dealer_id: Optional dealer ID filter
+            indonesia_date: Optional date object representing today in Indonesia timezone
+
+        Returns:
+            Dictionary with daily failure statistics
+        """
+        try:
+            # Get today's date range
+            today_date = indonesia_date if indonesia_date else date.today()
+            today_start = datetime.combine(today_date, datetime.min.time())
+            today_end = datetime.combine(today_date, datetime.max.time())
+
+            # Failed statuses
+            failed_statuses = ['FAILED', 'PARTIAL']
+
+            # Count failures
+            failed_query = self.db.query(func.count(GoogleReviewScrapeTracker.id)).filter(
+                GoogleReviewScrapeTracker.scrape_date >= today_start,
+                GoogleReviewScrapeTracker.scrape_date <= today_end,
+                GoogleReviewScrapeTracker.scrape_status.in_(failed_statuses)
+            )
+            if dealer_id:
+                failed_query = failed_query.filter(GoogleReviewScrapeTracker.dealer_id == dealer_id)
+            failed_count = failed_query.scalar() or 0
+
+            # Count total scrapes
+            total_query = self.db.query(func.count(GoogleReviewScrapeTracker.id)).filter(
+                GoogleReviewScrapeTracker.scrape_date >= today_start,
+                GoogleReviewScrapeTracker.scrape_date <= today_end
+            )
+            if dealer_id:
+                total_query = total_query.filter(GoogleReviewScrapeTracker.dealer_id == dealer_id)
+            total_count = total_query.scalar() or 0
+
+            # Calculate failure rate
+            failure_rate = (failed_count / total_count * 100) if total_count > 0 else 0.0
+
+            return {
+                'date': today_date.isoformat(),
+                'total_failed': failed_count,
+                'total_scrapes': total_count,
+                'failure_rate': round(failure_rate, 2)
+            }
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting daily failed scrapes: {str(e)}")
+            return {
+                'date': date.today().isoformat(),
+                'total_failed': 0,
+                'total_scrapes': 0,
+                'failure_rate': 0.0
+            }
+
+    def get_weekly_failed_scrapes(self, dealer_id: Optional[str] = None, indonesia_date: Optional[date] = None) -> Dict[str, Any]:
+        """
+        Get weekly summary of failed scrapes for past 7 days
+
+        Args:
+            dealer_id: Optional dealer ID filter
+            indonesia_date: Optional date object representing today in Indonesia timezone
+
+        Returns:
+            Dictionary with weekly failure statistics
+        """
+        try:
+            # Get date range for past 7 days
+            today_date = indonesia_date if indonesia_date else date.today()
+            week_ago = today_date - timedelta(days=7)
+            week_ago_start = datetime.combine(week_ago, datetime.min.time())
+            today_end = datetime.combine(today_date, datetime.max.time())
+
+            # Failed statuses
+            failed_statuses = ['FAILED', 'PARTIAL']
+
+            # Count failures
+            failed_query = self.db.query(func.count(GoogleReviewScrapeTracker.id)).filter(
+                GoogleReviewScrapeTracker.scrape_date >= week_ago_start,
+                GoogleReviewScrapeTracker.scrape_date <= today_end,
+                GoogleReviewScrapeTracker.scrape_status.in_(failed_statuses)
+            )
+            if dealer_id:
+                failed_query = failed_query.filter(GoogleReviewScrapeTracker.dealer_id == dealer_id)
+            failed_count = failed_query.scalar() or 0
+
+            # Count total scrapes
+            total_query = self.db.query(func.count(GoogleReviewScrapeTracker.id)).filter(
+                GoogleReviewScrapeTracker.scrape_date >= week_ago_start,
+                GoogleReviewScrapeTracker.scrape_date <= today_end
+            )
+            if dealer_id:
+                total_query = total_query.filter(GoogleReviewScrapeTracker.dealer_id == dealer_id)
+            total_count = total_query.scalar() or 0
+
+            # Calculate failure rate
+            failure_rate = (failed_count / total_count * 100) if total_count > 0 else 0.0
+
+            return {
+                'date_from': week_ago.isoformat(),
+                'date_to': today_date.isoformat(),
+                'total_failed': failed_count,
+                'total_scrapes': total_count,
+                'failure_rate': round(failure_rate, 2)
+            }
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting weekly failed scrapes: {str(e)}")
+            today_date = date.today()
+            week_ago = today_date - timedelta(days=7)
+            return {
+                'date_from': week_ago.isoformat(),
+                'date_to': today_date.isoformat(),
+                'total_failed': 0,
+                'total_scrapes': 0,
+                'failure_rate': 0.0
+            }
+
+    def get_scrape_failure_statistics(
+        self,
+        dealer_id: Optional[str] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        Get comprehensive scrape failure statistics with breakdowns
+
+        Args:
+            dealer_id: Optional dealer ID filter
+            date_from: Optional start date filter
+            date_to: Optional end date filter
+
+        Returns:
+            Dictionary with failure statistics and breakdowns
+        """
+        try:
+            # Failed statuses
+            failed_statuses = ['FAILED', 'PARTIAL']
+
+            # Build base filters
+            filters = [GoogleReviewScrapeTracker.scrape_status.in_(failed_statuses)]
+
+            if dealer_id:
+                filters.append(GoogleReviewScrapeTracker.dealer_id == dealer_id)
+
+            if date_from:
+                date_from_start = datetime.combine(date_from, datetime.min.time())
+                filters.append(GoogleReviewScrapeTracker.scrape_date >= date_from_start)
+
+            if date_to:
+                date_to_end = datetime.combine(date_to, datetime.max.time())
+                filters.append(GoogleReviewScrapeTracker.scrape_date <= date_to_end)
+
+            # Get status breakdown
+            status_breakdown = (
+                self.db.query(
+                    GoogleReviewScrapeTracker.scrape_status,
+                    func.count(GoogleReviewScrapeTracker.id).label('count')
+                )
+                .filter(and_(*filters))
+                .group_by(GoogleReviewScrapeTracker.scrape_status)
+                .all()
+            )
+
+            # Calculate total failed
+            total_failed = sum(count for _, count in status_breakdown)
+
+            # Format status breakdown with percentages
+            breakdown_by_status = []
+            for status, count in status_breakdown:
+                percentage = (count / total_failed * 100) if total_failed > 0 else 0.0
+                breakdown_by_status.append({
+                    'status': status,
+                    'count': count,
+                    'percentage': round(percentage, 2)
+                })
+
+            # Get type breakdown
+            type_breakdown = (
+                self.db.query(
+                    GoogleReviewScrapeTracker.scrape_type,
+                    func.count(GoogleReviewScrapeTracker.id).label('count')
+                )
+                .filter(and_(*filters))
+                .group_by(GoogleReviewScrapeTracker.scrape_type)
+                .all()
+            )
+
+            breakdown_by_type = {scrape_type: count for scrape_type, count in type_breakdown}
+
+            # Get common errors
+            error_query = (
+                self.db.query(
+                    GoogleReviewScrapeTracker.error_message,
+                    func.count(GoogleReviewScrapeTracker.id).label('count')
+                )
+                .filter(
+                    and_(*filters),
+                    GoogleReviewScrapeTracker.error_message.isnot(None),
+                    GoogleReviewScrapeTracker.error_message != ''
+                )
+                .group_by(GoogleReviewScrapeTracker.error_message)
+                .order_by(func.count(GoogleReviewScrapeTracker.id).desc())
+                .limit(10)
+                .all()
+            )
+
+            common_errors = [
+                {'error': error[:100], 'count': count}  # Truncate long error messages
+                for error, count in error_query
+            ]
+
+            return {
+                'total_failed': total_failed,
+                'breakdown_by_status': breakdown_by_status,
+                'breakdown_by_type': breakdown_by_type,
+                'common_errors': common_errors
+            }
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting scrape failure statistics: {str(e)}")
+            return {
+                'total_failed': 0,
+                'breakdown_by_status': [],
+                'breakdown_by_type': {},
+                'common_errors': []
+            }
