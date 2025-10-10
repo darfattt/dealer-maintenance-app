@@ -573,10 +573,14 @@ onMounted(async () => {
             </div>
 
             <!-- Date Range Filters -->
-            <div class="flex items-center space-x-2">
-                <DatePicker v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" class="w-36" showIcon />
+            <div class="flex items-center gap-2 date-range-wrapper">
+                <div class="calendar-container">
+                    <DatePicker v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" showIcon />
+                </div>
                 <span class="text-sm text-muted-color">to</span>
-                <DatePicker v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" class="w-36" showIcon />
+                <div class="calendar-container">
+                    <DatePicker v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" showIcon />
+                </div>
             </div>
 
             <!-- Search and Clear Buttons -->
@@ -997,5 +1001,28 @@ select.p-inputtext {
     background-repeat: no-repeat;
     background-size: 1.5em 1.5em;
     padding-right: 2.5rem;
+}
+
+/* Date range filter styling - Fix for production overlap issue */
+.date-range-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* 8px gap between elements */
+    flex-wrap: nowrap;
+}
+
+.calendar-container {
+    flex-shrink: 0; /* Prevent calendars from shrinking */
+    width: 9rem; /* 144px - equivalent to w-36 */
+    min-width: 9rem;
+}
+
+/* Ensure PrimeVue DatePicker respects container width */
+.calendar-container :deep(.p-datepicker) {
+    width: 100%;
+}
+
+.calendar-container :deep(.p-datepicker input) {
+    width: 100%;
 }
 </style>

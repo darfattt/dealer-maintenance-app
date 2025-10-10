@@ -390,10 +390,14 @@ onMounted(() => {
             </div>
 
             <!-- Date Range Filters -->
-            <div class="flex items-center space-x-2">
-                <Calendar v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" class="w-36" showIcon />
+            <div class="flex items-center gap-2 date-range-wrapper">
+                <div class="calendar-container">
+                    <Calendar v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" showIcon />
+                </div>
                 <span class="text-sm text-muted-color">to</span>
-                <Calendar v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" class="w-36" showIcon />
+                <div class="calendar-container">
+                    <Calendar v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" showIcon />
+                </div>
             </div>
         </div>
 
@@ -673,5 +677,28 @@ onMounted(() => {
         flex-wrap: wrap;
         gap: 0.5rem;
     }
+}
+
+/* Date range filter styling - Fix for production overlap issue */
+.date-range-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* 8px gap between elements */
+    flex-wrap: nowrap;
+}
+
+.calendar-container {
+    flex-shrink: 0; /* Prevent calendars from shrinking */
+    width: 9rem; /* 144px - equivalent to w-36 */
+    min-width: 9rem;
+}
+
+/* Ensure PrimeVue Calendar respects container width */
+.calendar-container :deep(.p-calendar) {
+    width: 100%;
+}
+
+.calendar-container :deep(.p-calendar input) {
+    width: 100%;
 }
 </style>
