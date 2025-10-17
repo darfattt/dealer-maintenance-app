@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useDealers } from '@/composables/useDealers';
 import Dropdown from 'primevue/dropdown';
-import Calendar from 'primevue/calendar';
+import DatePicker from 'primevue/datepicker';
 import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -392,11 +392,11 @@ onMounted(() => {
             <!-- Date Range Filters -->
             <div class="flex items-center gap-2 date-range-wrapper">
                 <div class="calendar-container">
-                    <Calendar v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" showIcon />
+                    <DatePicker v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" showIcon />
                 </div>
                 <span class="text-sm text-muted-color">to</span>
                 <div class="calendar-container">
-                    <Calendar v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" showIcon />
+                    <DatePicker v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" showIcon />
                 </div>
             </div>
         </div>
@@ -689,8 +689,8 @@ onMounted(() => {
 
 .calendar-container {
     flex-shrink: 0; /* Prevent calendars from shrinking */
-    width: 9rem; /* 144px - equivalent to w-36 */
-    min-width: 9rem;
+    width: 10rem; /* 144px - equivalent to w-36 */
+    min-width: 10rem;
 }
 
 /* Ensure PrimeVue Calendar respects container width */
