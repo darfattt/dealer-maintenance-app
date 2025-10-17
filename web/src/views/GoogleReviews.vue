@@ -7,7 +7,7 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import DatePicker from 'primevue/datepicker';
 import Tag from 'primevue/tag';
 import Paginator from 'primevue/paginator';
@@ -540,7 +540,7 @@ onMounted(async () => {
             <!-- Dealer Selection (Only for SUPER_ADMIN) -->
             <div v-if="showAhassFilter" class="flex items-center space-x-2">
                 <label for="dealer-filter" class="text-sm font-medium">Dealer:</label>
-                <Dropdown
+                <Select
                     id="dealer-filter"
                     v-model="filters.no_ahass"
                     :options="dealerOptions"
@@ -575,11 +575,11 @@ onMounted(async () => {
             <!-- Date Range Filters -->
             <div class="flex items-center gap-2 date-range-wrapper">
                 <div class="calendar-container">
-                    <DatePicker v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" showIcon />
+                    <DatePicker v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date"  showIcon fluid iconDisplay="input"  />
                 </div>
                 <span class="text-sm text-muted-color">to</span>
                 <div class="calendar-container">
-                    <DatePicker v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" showIcon />
+                    <DatePicker v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date"  showIcon fluid iconDisplay="input"  />
                 </div>
             </div>
 
