@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useDealers } from '@/composables/useDealers';
-import Dropdown from 'primevue/dropdown';
-import Calendar from 'primevue/calendar';
+import Select from 'primevue/select';
+import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
@@ -320,7 +320,7 @@ const exportHLOExcel = async () => {
             <!-- Dealer Selection (only for non-DEALER_USER) -->
             <div v-if="showDealerDropdown" class="flex items-center space-x-2">
                 <label for="dealer-filter" class="text-sm font-medium">Dealer:</label>
-                <Dropdown
+                <Select
                     id="dealer-filter"
                     v-model="selectedDealer"
                     :options="dealerOptions"
@@ -335,9 +335,9 @@ const exportHLOExcel = async () => {
 
             <!-- Date Range Filters -->
             <div class="flex items-center space-x-2">
-                <Calendar v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" class="w-36" showIcon />
+                <DatePicker v-model="selectedDateFrom" dateFormat="dd-mm-yy" placeholder="From Date" class="w-36" showIcon fluid iconDisplay="input"  />
                 <span class="text-sm text-muted-color">to</span>
-                <Calendar v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" class="w-36" showIcon />
+                <DatePicker v-model="selectedDateTo" dateFormat="dd-mm-yy" placeholder="To Date" class="w-36" showIcon fluid iconDisplay="input" />
             </div>
         </div>
 
